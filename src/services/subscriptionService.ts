@@ -247,7 +247,7 @@ static async getUserSubscription(userId: string): Promise<Subscription | null> {
     const now = new Date();
     const endDate = new Date(subscription.current_period_end);
     const isExpired = endDate <= now;
-    const isCancelled = subscription.status === 'cancelled';
+    const isCancelled = subscription.status === 'cancelled' || subscription.cancel_at_period_end === true;
     const hasAccess = (subscription.status === 'active' || (isCancelled && !isExpired)) && endDate > now;
     const daysRemaining = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     

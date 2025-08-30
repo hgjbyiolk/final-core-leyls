@@ -201,29 +201,8 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({ children, require
 
   // Show cancelled but still active subscription notice
   if (subscriptionData?.isCancelled && subscriptionData?.hasAccess && !subscriptionData?.isExpired) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        {/* Cancellation Notice Banner */}
-        <div className="bg-gradient-to-r from-orange-400 to-red-500 text-white p-4">
-          <div className="max-w-7xl mx-auto flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="h-5 w-5" />
-              <span className="font-medium">
-                Subscription cancelled. Access continues until {new Date(subscriptionData.subscription.current_period_end).toLocaleDateString()}
-              </span>
-            </div>
-            <button
-              onClick={handleUpgrade}
-              className="bg-white text-gray-900 px-4 py-2 rounded-lg font-medium hover:bg-gray-100 transition-colors flex items-center gap-2"
-            >
-              Reactivate
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-        {children}
-      </div>
-    );
+    // Just show children without the annoying banner
+    return <>{children}</>;
   }
 
   return <>{children}</>;

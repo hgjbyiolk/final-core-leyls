@@ -172,6 +172,9 @@ const BillingPage: React.FC = () => {
   const [error, setError] = useState('');
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
+  const [showResubscribeModal, setShowResubscribeModal] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
+  const [resubscribeLoading, setResubscribeLoading] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   
   const { user } = useAuth();
@@ -310,6 +313,48 @@ const BillingPage: React.FC = () => {
       setError(err.message || 'Failed to cancel subscription');
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleResubscribe = async () => {
+    if (!subscription?.subscription?.id || !selectedPaymentMethod) return;
+
+    try {
+      setResubscribeLoading(true);
+      
+      // Call edge function to reactivate subscription
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reactivate-subscription`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subscriptionId: subscription.subscription.id,
+          paymentMethodId: selectedPaymentMethod
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reactivate subscription');
+      }
+
+      // Refresh subscription data
+      await loadBillingData();
+      setShowResubscribeModal(false);
+      setSelectedPaymentMethod('');
+      
+      // Show success message
+      alert('Subscription reactivated successfully! Auto-renewal will resume at the end of your current billing period.');
+      
+      // Trigger subscription update event
+      window.dispatchEvent(new CustomEvent('subscription-updated'));
+      
+    } catch (err: any) {
+      setError(err.message || 'Failed to reactivate subscription');
+    } finally {
+      setResubscribeLoading(false);
     }
   };
 
@@ -641,11 +686,21 @@ const getPlanDurationText = (planType: string) => {
               {/* Action Buttons */}
               <div className="pt-4 border-t border-gray-200 space-y-3">
                 {subscription.isCancelled && !subscription.isExpired && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
                     <p className="text-yellow-800 text-sm font-medium">
                       Subscription cancelled. Access continues until {nextBillingInfo.text}
                     </p>
                   </div>
+                )}
+
+                {subscription.isCancelled && !subscription.isExpired && (
+                  <button
+                    onClick={() => setShowResubscribeModal(true)}
+                    className="w-full py-3 px-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
+                  >
+                    <Crown className="h-4 w-4" />
+                    Reactivate Subscription
+                  </button>
                 )}
 
                 {subscription.isExpired && (
@@ -1037,6 +1092,145 @@ const getPlanDurationText = (planType: string) => {
                 customerId={subscription?.subscription?.stripe_customer_id || ''}
               />
             </Elements>
+          </div>
+        </div>
+      )}
+
+      {/* Resubscribe Modal */}
+      {showResubscribeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-gray-900">Reactivate Subscription</h3>
+              <button
+                onClick={() => {
+                  setShowResubscribeModal(false);
+                  setSelectedPaymentMethod('');
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-green-900 mb-1">Reactivate Your Subscription</p>
+                    <p className="text-green-700 text-sm">
+                      Your subscription will automatically renew at the end of your current billing period ({nextBillingInfo.text}). 
+                      No immediate charge will be applied.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Select Payment Method
+                </label>
+                
+                {paymentMethods.length === 0 ? (
+                  <div className="text-center py-6">
+                    <CreditCard className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 mb-4">No payment methods available</p>
+                    <button
+                      onClick={() => {
+                        setShowResubscribeModal(false);
+                        setShowAddPaymentModal(true);
+                      }}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                      Add Payment Method
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {paymentMethods.map((method) => (
+                      <label
+                        key={method.id}
+                        className={`flex items-center p-4 border rounded-lg cursor-pointer transition-all ${
+                          selectedPaymentMethod === method.id
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="paymentMethod"
+                          value={method.id}
+                          checked={selectedPaymentMethod === method.id}
+                          onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                          className="sr-only"
+                        />
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <CreditCard className="h-5 w-5 text-gray-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {method.card?.brand.toUpperCase()} •••• {method.card?.last4}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              Expires {method.card?.exp_month}/{method.card?.exp_year}
+                            </p>
+                          </div>
+                          {method.is_default && (
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full font-medium">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        {selectedPaymentMethod === method.id && (
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                        )}
+                      </label>
+                    ))}
+                    
+                    <button
+                      onClick={() => {
+                        setShowResubscribeModal(false);
+                        setShowAddPaymentModal(true);
+                      }}
+                      className="w-full py-2 px-4 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add New Payment Method
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {paymentMethods.length > 0 && (
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => {
+                    setShowResubscribeModal(false);
+                    setSelectedPaymentMethod('');
+                  }}
+                  className="flex-1 py-3 px-4 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleResubscribe}
+                  disabled={resubscribeLoading || !selectedPaymentMethod}
+                  className="flex-1 py-3 px-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {resubscribeLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Crown className="h-4 w-4" />
+                      Reactivate Subscription
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
