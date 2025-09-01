@@ -137,30 +137,43 @@ export class SubscriptionService {
   }
 static async getUserSubscription(userId: string): Promise<Subscription | null> {
   try {
-    // Use direct query instead of RPC to avoid type mismatch issues
-    const { data: fallbackData, error: fallbackError } = await supabase
-      .from('subscriptions')
-      .select(`
+    const { data, error: rpcError } = await supabase.rpc('get_subscription_with_periods', {
+      user_id_param: userId
+    });
+
+    if (rpcError) {
+      console.error('Error fetching subscription via RPC:', rpcError);
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('subscriptions')
+        .select(`
   *,
   billing_period_text,
-  billing_period_accurate,
-  cancel_at_period_end,
-  will_renew
+  billing_period_accurate
 `)
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .maybeSingle();
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .maybeSingle();
+      
+      if (fallbackError) {
+        console.error('Fallback query failed:', fallbackError);
+        return null;
+      }
+
+      // 🔎 Log fallback data before returning
+      if (fallbackData) {
+        console.log("Fetched subscription (fallback):", fallbackData);
+      }
+      return fallbackData;
+    }
     
-    if (fallbackError) {
-      console.error('Error fetching subscription:', fallbackError);
-      return null;
+    const subscription = data && data.length > 0 ? data[0] : null;
+
+    // 🔎 Log RPC data before returning
+    if (subscription) {
+      console.log("Fetched subscription (rpc):", subscription);
     }
 
-    // 🔎 Log subscription data before returning
-    if (fallbackData) {
-      console.log("Fetched subscription:", fallbackData);
-    }
-    return fallbackData;
+    return subscription;
   } catch (error: any) {
     console.error('Error fetching user subscription:', error);
     return null;

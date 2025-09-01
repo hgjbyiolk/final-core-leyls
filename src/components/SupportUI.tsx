@@ -3,40 +3,32 @@ import {
   MessageSquare, Plus, Search, Filter, Clock, CheckCircle,
   AlertCircle, User, Send, X, ChevronDown, ChevronUp,
   Loader2, RefreshCw, Tag, Calendar, Users, Settings,
-  MessageCircle, Phone, Mail, FileText, Zap, Star,
-  Paperclip, Image, File, Download, Eye, Trash2,
-  UserCheck, UserX, Circle, Minimize2, Maximize2
+  MessageCircle, Phone, Mail, FileText, Zap, Star
 } from 'lucide-react';
-import { ChatService, ChatSession, ChatMessage, ChatParticipant } from '../services/chatService';
+import { SupportService, SupportTicket, SupportMessage } from '../services/supportService';
 import { useAuth } from '../contexts/AuthContext';
 
 const SupportUI: React.FC = () => {
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [participants, setParticipants] = useState<ChatParticipant[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
+  const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [showCreateSession, setShowCreateSession] = useState(false);
+  const [showCreateTicket, setShowCreateTicket] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
-  const [newSessionData, setNewSessionData] = useState({
+  const [newTicketData, setNewTicketData] = useState({
     title: '',
+    description: '',
     priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
     category: 'general'
   });
   const [createLoading, setCreateLoading] = useState(false);
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const [dragOver, setDragOver] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
-  
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const messageSubscriptionRef = useRef<any>(null);
-  const sessionSubscriptionRef = useRef<any>(null);
-  const participantSubscriptionRef = useRef<any>(null);
+  const ticketSubscriptionRef = useRef<any>(null);
 
   const { user, restaurant } = useAuth();
 
@@ -53,8 +45,8 @@ const SupportUI: React.FC = () => {
 
   useEffect(() => {
     if (restaurant) {
-      fetchSessions();
-      setupSessionSubscription();
+      fetchTickets();
+      setupTicketSubscription();
     }
     
     return () => {
@@ -63,258 +55,218 @@ const SupportUI: React.FC = () => {
   }, [restaurant]);
 
   useEffect(() => {
-    if (selectedSession) {
+    if (selectedTicket) {
       fetchMessages();
-      fetchParticipants();
       setupMessageSubscription();
-      setupParticipantSubscription();
-      markAsRead();
     } else {
       cleanupMessageSubscription();
-      cleanupParticipantSubscription();
     }
-  }, [selectedSession]);
+  }, [selectedTicket]);
 
   const cleanupSubscriptions = () => {
     cleanupMessageSubscription();
-    cleanupSessionSubscription();
-    cleanupParticipantSubscription();
+    cleanupTicketSubscription();
   };
 
   const cleanupMessageSubscription = () => {
     if (messageSubscriptionRef.current) {
+      console.log('🔌 Cleaning up message subscription');
       messageSubscriptionRef.current.unsubscribe();
       messageSubscriptionRef.current = null;
     }
   };
 
-  const cleanupSessionSubscription = () => {
-    if (sessionSubscriptionRef.current) {
-      sessionSubscriptionRef.current.unsubscribe();
-      sessionSubscriptionRef.current = null;
+  const cleanupTicketSubscription = () => {
+    if (ticketSubscriptionRef.current) {
+      console.log('🔌 Cleaning up ticket subscription');
+      ticketSubscriptionRef.current.unsubscribe();
+      ticketSubscriptionRef.current = null;
     }
   };
 
-  const cleanupParticipantSubscription = () => {
-    if (participantSubscriptionRef.current) {
-      participantSubscriptionRef.current.unsubscribe();
-      participantSubscriptionRef.current = null;
-    }
-  };
-
-  const setupSessionSubscription = () => {
+  const setupTicketSubscription = () => {
     if (!restaurant) return;
     
-    cleanupSessionSubscription();
+    cleanupTicketSubscription();
     
-    sessionSubscriptionRef.current = ChatService.subscribeToChatSessions((payload) => {
+    console.log('🔌 Setting up ticket subscription for restaurant:', restaurant.id);
+    
+    ticketSubscriptionRef.current = SupportService.subscribeToTickets((payload) => {
+      console.log('🎫 Real-time ticket update:', payload);
+      
       if (payload.eventType === 'INSERT' && payload.new) {
+        // Only add tickets for this restaurant
         if (payload.new.restaurant_id === restaurant.id) {
-          setSessions(prev => {
-            const exists = prev.some(session => session.id === payload.new.id);
+          setTickets(prev => {
+            const exists = prev.some(ticket => ticket.id === payload.new.id);
             if (exists) return prev;
             
             return [payload.new, ...prev].sort((a, b) => 
-              new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
             );
           });
         }
       } else if (payload.eventType === 'UPDATE' && payload.new) {
-        setSessions(prev => prev.map(session => 
-          session.id === payload.new.id ? { ...session, ...payload.new } : session
+        setTickets(prev => prev.map(ticket => 
+          ticket.id === payload.new.id ? payload.new : ticket
         ));
       }
     });
   };
 
   const setupMessageSubscription = () => {
-    if (!selectedSession) return;
+    if (!selectedTicket) return;
     
     cleanupMessageSubscription();
     
-    messageSubscriptionRef.current = ChatService.subscribeToMessages(
-      selectedSession.id,
+    console.log('🔌 Setting up message subscription for ticket:', selectedTicket.id);
+    
+    messageSubscriptionRef.current = SupportService.subscribeToMessages(
+      selectedTicket.id,
       (payload) => {
+        console.log('📨 Real-time message update:', payload);
+        
         if (payload.eventType === 'INSERT' && payload.new) {
           setMessages(prev => {
+            // Check if message already exists (prevent duplicates)
             const exists = prev.some(msg => msg.id === payload.new.id);
-            if (exists) return prev;
+            if (exists) {
+              console.log('📨 Message already exists, skipping');
+              return prev;
+            }
             
-            return [...prev, payload.new].sort((a, b) => 
+            console.log('📨 Adding new message:', payload.new);
+            const newMessages = [...prev, payload.new].sort((a, b) => 
               new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
             );
+            return newMessages;
           });
         }
       }
     );
   };
 
-  const setupParticipantSubscription = () => {
-    if (!selectedSession) return;
-    
-    cleanupParticipantSubscription();
-    
-    participantSubscriptionRef.current = ChatService.subscribeToParticipants(
-      selectedSession.id,
-      (payload) => {
-        if (payload.eventType === 'INSERT' && payload.new) {
-          setParticipants(prev => {
-            const exists = prev.some(p => p.user_id === payload.new.user_id);
-            if (exists) return prev;
-            return [...prev, payload.new];
-          });
-        } else if (payload.eventType === 'UPDATE' && payload.new) {
-          setParticipants(prev => prev.map(p => 
-            p.user_id === payload.new.user_id ? payload.new : p
-          ));
-        }
-      }
-    );
-  };
-
-  const fetchSessions = async () => {
+  const fetchTickets = async () => {
     if (!restaurant) return;
     
     try {
       setLoading(true);
-      const sessionsData = await ChatService.getRestaurantChatSessions(restaurant.id);
-      setSessions(sessionsData);
+      const ticketsData = await SupportService.getRestaurantTickets(restaurant.id);
+      setTickets(ticketsData);
     } catch (error) {
-      console.error('Error fetching sessions:', error);
+      console.error('Error fetching tickets:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchMessages = async () => {
-    if (!selectedSession) return;
+    if (!selectedTicket) return;
     
     try {
-      const messagesData = await ChatService.getChatMessages(selectedSession.id);
-      setMessages(messagesData);
+      const messagesData = await SupportService.getTicketMessages(selectedTicket.id);
+      setMessages(messagesData.sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      ));
     } catch (error) {
       console.error('Error fetching messages:', error);
     }
   };
 
-  const fetchParticipants = async () => {
-    if (!selectedSession) return;
-    
-    try {
-      const participantsData = await ChatService.getChatParticipants(selectedSession.id);
-      setParticipants(participantsData);
-    } catch (error) {
-      console.error('Error fetching participants:', error);
-    }
-  };
-
-  const markAsRead = async () => {
-    if (!selectedSession || !user) return;
-    
-    try {
-      await ChatService.markMessagesAsRead(selectedSession.id, user.id);
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
-    }
-  };
-
-  const handleCreateSession = async () => {
+  const handleCreateTicket = async () => {
     if (!restaurant || !user) return;
 
     try {
       setCreateLoading(true);
       
-      if (!newSessionData.title.trim()) {
-        alert('Please enter a chat title');
+      if (!newTicketData.title.trim() || !newTicketData.description.trim()) {
+        alert('Please fill in all required fields');
         return;
       }
 
-      const session = await ChatService.createChatSession({
+      await SupportService.createTicket({
         restaurant_id: restaurant.id,
-        title: newSessionData.title,
-        priority: newSessionData.priority,
-        category: newSessionData.category,
+        title: newTicketData.title,
+        description: newTicketData.description,
+        priority: newTicketData.priority,
+        category: newTicketData.category,
         created_by_user_id: user.id
       });
 
-      setNewSessionData({
+      setNewTicketData({
         title: '',
+        description: '',
         priority: 'medium',
         category: 'general'
       });
-      setShowCreateSession(false);
-      await fetchSessions();
-      setSelectedSession(session);
+      setShowCreateTicket(false);
+      await fetchTickets();
     } catch (error) {
-      console.error('Error creating chat session:', error);
-      alert('Failed to create chat session');
+      console.error('Error creating ticket:', error);
+      alert('Failed to create ticket');
     } finally {
       setCreateLoading(false);
     }
   };
 
   const handleSendMessage = async () => {
-    if (!selectedSession || !user || (!newMessage.trim() && attachments.length === 0)) return;
+    if (!selectedTicket || !user || !newMessage.trim()) return;
 
     try {
       setSendingMessage(true);
       
-      const userName = user.user_metadata?.first_name && user.user_metadata?.last_name
-        ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}`
-        : user.email?.split('@')[0] || 'Restaurant Manager';
-
-      await ChatService.sendMessage({
-        session_id: selectedSession.id,
+      console.log('📤 Sending message:', {
+        ticketId: selectedTicket.id,
+        message: newMessage.trim(),
+        userId: user.id
+      });
+      
+      // Create optimistic message for immediate UI update
+      const optimisticMessage: SupportMessage = {
+        id: `optimistic-${Date.now()}`,
+        ticket_id: selectedTicket.id,
         sender_type: 'restaurant_manager',
         sender_id: user.id,
-        sender_name: userName,
-        message: newMessage.trim() || 'Sent attachments',
-        message_type: attachments.length > 0 ? 'file' : 'text',
-        attachments: attachments.length > 0 ? attachments : undefined
+        message: newMessage.trim(),
+        created_at: new Date().toISOString()
+      };
+      
+      // Add optimistic message immediately
+      setMessages(prev => [...prev, optimisticMessage]);
+      const messageToSend = newMessage.trim();
+      setNewMessage(''); // Clear input immediately
+      
+      // Send actual message
+      await SupportService.sendMessage({
+        ticket_id: selectedTicket.id,
+        sender_type: 'restaurant_manager',
+        sender_id: user.id,
+        message: messageToSend
       });
 
-      setNewMessage('');
-      setAttachments([]);
+      console.log('✅ Message sent successfully');
+      
+      // Remove optimistic message after a delay (real message will come via subscription)
+      setTimeout(() => {
+        setMessages(prev => prev.filter(msg => !msg.id.startsWith('optimistic-')));
+      }, 2000);
       
     } catch (error) {
       console.error('Error sending message:', error);
+      // Remove optimistic message and restore input on error
+      setMessages(prev => prev.filter(msg => !msg.id.startsWith('optimistic-')));
+      setNewMessage(messageToSend);
       alert('Failed to send message');
     } finally {
       setSendingMessage(false);
     }
   };
 
-  const handleFileSelect = (files: FileList | null) => {
-    if (!files) return;
-    
-    const validFiles = Array.from(files).filter(file => {
-      // Allow images, documents, and text files up to 10MB
-      const validTypes = [
-        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-        'application/pdf', 'text/plain', 'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      ];
-      
-      return validTypes.includes(file.type) && file.size <= 10 * 1024 * 1024; // 10MB limit
-    });
-
-    setAttachments(prev => [...prev, ...validFiles]);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    handleFileSelect(e.dataTransfer.files);
-  };
-
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'resolved': return 'bg-blue-100 text-blue-800';
+      case 'open': return 'bg-blue-100 text-blue-800';
+      case 'in_progress': return 'bg-yellow-100 text-yellow-800';
+      case 'resolved': return 'bg-green-100 text-green-800';
       case 'closed': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -330,6 +282,15 @@ const SupportUI: React.FC = () => {
     }
   };
 
+  const filteredTickets = tickets.filter(ticket => {
+    const matchesSearch = ticket.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         ticket.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || ticket.status === statusFilter;
+    const matchesPriority = priorityFilter === 'all' || ticket.priority === priorityFilter;
+    
+    return matchesSearch && matchesStatus && matchesPriority;
+  });
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -340,44 +301,25 @@ const SupportUI: React.FC = () => {
     });
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const filteredSessions = sessions.filter(session => {
-    const matchesSearch = session.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || session.status === statusFilter;
-    const matchesPriority = priorityFilter === 'all' || session.priority === priorityFilter;
-    
-    return matchesSearch && matchesStatus && matchesPriority;
-  });
-
-  const onlineParticipants = participants.filter(p => p.is_online);
-  const adminParticipants = participants.filter(p => p.user_type === 'super_admin' && p.is_online);
-
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Live Support Chat</h1>
-          <p className="text-gray-600">Get real-time help with your loyalty program</p>
+          <h1 className="text-2xl font-bold text-gray-900">Support Center</h1>
+          <p className="text-gray-600">Get help with your loyalty program</p>
         </div>
         <button
-          onClick={() => setShowCreateSession(true)}
+          onClick={() => setShowCreateTicket(true)}
           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] text-white rounded-xl hover:shadow-lg transition-all duration-200"
         >
           <Plus className="h-4 w-4" />
-          Start New Chat
+          New Ticket
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-300px)]">
-        {/* Chat Sessions Sidebar */}
+        {/* Tickets Sidebar */}
         <div className="bg-white border border-gray-200 rounded-xl flex flex-col">
           {/* Filters */}
           <div className="p-4 border-b border-gray-200 space-y-3">
@@ -385,7 +327,7 @@ const SupportUI: React.FC = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search chats..."
+                placeholder="Search tickets..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#E6A85C] focus:border-transparent text-sm"
@@ -399,7 +341,8 @@ const SupportUI: React.FC = () => {
                 className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-[#E6A85C] focus:border-transparent"
               >
                 <option value="all">All Status</option>
-                <option value="active">Active</option>
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
                 <option value="resolved">Resolved</option>
                 <option value="closed">Closed</option>
               </select>
@@ -418,65 +361,49 @@ const SupportUI: React.FC = () => {
             </div>
           </div>
 
-          {/* Sessions List */}
+          {/* Tickets List */}
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="p-4 text-center">
                 <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                <p className="text-gray-500">Loading chats...</p>
+                <p className="text-gray-500">Loading tickets...</p>
               </div>
-            ) : filteredSessions.length === 0 ? (
+            ) : filteredTickets.length === 0 ? (
               <div className="p-4 text-center">
                 <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                <p className="text-gray-500">No chat sessions found</p>
+                <p className="text-gray-500">No tickets found</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-200">
-                {filteredSessions.map((session) => (
+                {filteredTickets.map((ticket) => (
                   <button
-                    key={session.id}
-                    onClick={() => setSelectedSession(session)}
-                    className={`w-full p-4 text-left hover:bg-gray-50 transition-colors relative ${
-                      selectedSession?.id === session.id ? 'bg-gradient-to-r from-[#E6A85C]/10 via-[#E85A9B]/10 to-[#D946EF]/10 border-r-2 border-[#E6A85C]' : ''
+                    key={ticket.id}
+                    onClick={() => setSelectedTicket(ticket)}
+                    className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${
+                      selectedTicket?.id === ticket.id ? 'bg-gradient-to-r from-[#E6A85C]/10 via-[#E85A9B]/10 to-[#D946EF]/10 border-r-2 border-[#E6A85C]' : ''
                     }`}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="font-medium text-gray-900 text-sm line-clamp-1">
-                        {session.title}
+                        {ticket.title}
                       </h3>
                       <div className="flex gap-1">
-                        {session.unread_count && session.unread_count > 0 && (
-                          <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full min-w-[20px] text-center">
-                            {session.unread_count}
-                          </span>
-                        )}
-                        <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(session.status)}`}>
-                          {session.status}
+                        <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(ticket.status)}`}>
+                          {ticket.status.replace('_', ' ')}
                         </span>
                       </div>
                     </div>
-                    
-                    {session.last_message && (
-                      <p className="text-xs text-gray-600 line-clamp-1 mb-2">
-                        <span className="font-medium">{session.last_message.sender_name}:</span> {session.last_message.message}
-                      </p>
-                    )}
-                    
+                    <p className="text-xs text-gray-600 line-clamp-2 mb-2">
+                      {ticket.description}
+                    </p>
                     <div className="flex items-center justify-between">
-                      <span className={`text-xs px-2 py-1 rounded-full ${getPriorityColor(session.priority)}`}>
-                        {session.priority}
+                      <span className={`text-xs px-2 py-1 rounded-full ${getPriorityColor(ticket.priority)}`}>
+                        {ticket.priority}
                       </span>
                       <span className="text-xs text-gray-500">
-                        {formatDate(session.last_message_at)}
+                        {formatDate(ticket.created_at)}
                       </span>
                     </div>
-
-                    {session.assigned_admin_name && (
-                      <div className="flex items-center gap-1 mt-2">
-                        <UserCheck className="h-3 w-3 text-green-600" />
-                        <span className="text-xs text-green-600">{session.assigned_admin_name}</span>
-                      </div>
-                    )}
                   </button>
                 ))}
               </div>
@@ -486,120 +413,55 @@ const SupportUI: React.FC = () => {
 
         {/* Chat Area */}
         <div className="lg:col-span-2 bg-white border border-gray-200 rounded-xl flex flex-col">
-          {selectedSession ? (
+          {selectedTicket ? (
             <>
               {/* Chat Header */}
               <div className="p-4 border-b border-gray-200">
                 <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <h2 className="font-semibold text-gray-900">{selectedSession.title}</h2>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(selectedSession.status)}`}>
-                          {selectedSession.status}
-                        </span>
-                        <span className={`text-xs px-2 py-1 rounded-full ${getPriorityColor(selectedSession.priority)}`}>
-                          {selectedSession.priority}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-4 mt-2">
-                      <span className="text-xs text-gray-500">
-                        Created {formatDate(selectedSession.created_at)}
+                  <div>
+                    <h2 className="font-semibold text-gray-900">{selectedTicket.title}</h2>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(selectedTicket.status)}`}>
+                        {selectedTicket.status.replace('_', ' ')}
                       </span>
-                      
-                      {/* Online Participants */}
-                      {onlineParticipants.length > 0 && (
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1">
-                            <Circle className="h-2 w-2 text-green-500 fill-current" />
-                            <span className="text-xs text-gray-500">
-                              {onlineParticipants.length} online
-                            </span>
-                          </div>
-                          {adminParticipants.length > 0 && (
-                            <span className="text-xs text-green-600 font-medium">
-                              Support: {adminParticipants.map(p => p.user_name).join(', ')}
-                            </span>
-                          )}
-                        </div>
-                      )}
+                      <span className={`text-xs px-2 py-1 rounded-full ${getPriorityColor(selectedTicket.priority)}`}>
+                        {selectedTicket.priority}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        Created {formatDate(selectedTicket.created_at)}
+                      </span>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setIsMinimized(!isMinimized)}
-                      className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-                    >
-                      {isMinimized ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedSession(null);
-                        cleanupMessageSubscription();
-                        cleanupParticipantSubscription();
-                      }}
-                      className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedTicket(null);
+                      cleanupMessageSubscription();
+                    }}
+                    className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                
+                {/* Ticket Description */}
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-700">{selectedTicket.description}</p>
                 </div>
               </div>
 
               {/* Messages */}
-              <div className={`flex-1 overflow-y-auto p-4 space-y-4 min-h-0 ${isMinimized ? 'h-20' : ''}`}>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
                 {messages.map((message) => (
                   <div
                     key={message.id}
                     className={`flex ${message.sender_type === 'restaurant_manager' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className={`max-w-xs lg:max-w-md ${
+                    <div className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl ${
                       message.sender_type === 'restaurant_manager'
-                        ? 'bg-gradient-to-r from-[#E6A85C] to-[#E85A9B] text-white rounded-2xl rounded-br-md'
-                        : message.is_system_message
-                        ? 'bg-gray-100 text-gray-700 rounded-lg'
-                        : 'bg-gray-100 text-gray-900 rounded-2xl rounded-bl-md'
-                    } px-4 py-3`}>
-                      {!message.is_system_message && (
-                        <p className={`text-xs mb-1 ${
-                          message.sender_type === 'restaurant_manager' ? 'text-white/70' : 'text-gray-500'
-                        }`}>
-                          {message.sender_name}
-                        </p>
-                      )}
-                      
+                        ? 'bg-gradient-to-r from-[#E6A85C] to-[#E85A9B] text-white'
+                        : 'bg-gray-100 text-gray-900'
+                    }`}>
                       <p className="text-sm leading-relaxed">{message.message}</p>
-                      
-                      {/* Attachments */}
-                      {message.attachments && message.attachments.length > 0 && (
-                        <div className="mt-2 space-y-2">
-                          {message.attachments.map((attachment) => (
-                            <div key={attachment.id} className="bg-white/10 rounded-lg p-2">
-                              <div className="flex items-center gap-2">
-                                {attachment.file_type.startsWith('image/') ? (
-                                  <Image className="h-4 w-4" />
-                                ) : (
-                                  <File className="h-4 w-4" />
-                                )}
-                                <span className="text-xs font-medium">{attachment.file_name}</span>
-                                <span className="text-xs opacity-70">({formatFileSize(attachment.file_size)})</span>
-                                <a
-                                  href={attachment.file_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-xs hover:underline flex items-center gap-1"
-                                >
-                                  <Download className="h-3 w-3" />
-                                </a>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      
                       <p className={`text-xs mt-2 ${
                         message.sender_type === 'restaurant_manager' ? 'text-white/70' : 'text-gray-500'
                       }`}>
@@ -611,67 +473,26 @@ const SupportUI: React.FC = () => {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* File Upload Area */}
-              {attachments.length > 0 && (
-                <div className="px-4 py-2 border-t border-gray-200 bg-gray-50">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {attachments.map((file, index) => (
-                      <div key={index} className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-gray-200">
-                        {file.type.startsWith('image/') ? (
-                          <Image className="h-4 w-4 text-blue-600" />
-                        ) : (
-                          <File className="h-4 w-4 text-gray-600" />
-                        )}
-                        <span className="text-sm text-gray-700">{file.name}</span>
-                        <span className="text-xs text-gray-500">({formatFileSize(file.size)})</span>
-                        <button
-                          onClick={() => removeAttachment(index)}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Message Input */}
-              <div 
-                className={`p-4 border-t border-gray-200 ${dragOver ? 'bg-blue-50' : ''}`}
-                onDrop={handleDrop}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragOver(true);
-                }}
-                onDragLeave={() => setDragOver(false)}
-              >
+              <div className="p-4 border-t border-gray-200">
                 <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey && !sendingMessage) {
-                          e.preventDefault();
-                          handleSendMessage();
-                        }
-                      }}
-                      placeholder="Type your message..."
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E6A85C] focus:border-transparent pr-12"
-                      disabled={sendingMessage}
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded"
-                    >
-                      <Paperclip className="h-4 w-4" />
-                    </button>
-                  </div>
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey && !sendingMessage) {
+                        e.preventDefault();
+                        handleSendMessage();
+                      }
+                    }}
+                    placeholder="Type your message..."
+                    className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E6A85C] focus:border-transparent"
+                    disabled={sendingMessage}
+                  />
                   <button
                     onClick={handleSendMessage}
-                    disabled={sendingMessage || (!newMessage.trim() && attachments.length === 0)}
+                    disabled={sendingMessage || !newMessage.trim()}
                     className="px-6 py-3 bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] text-white rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                   >
                     {sendingMessage ? (
@@ -681,46 +502,28 @@ const SupportUI: React.FC = () => {
                     )}
                   </button>
                 </div>
-                
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept="image/*,.pdf,.doc,.docx,.txt"
-                  onChange={(e) => handleFileSelect(e.target.files)}
-                  className="hidden"
-                />
-                
-                {dragOver && (
-                  <div className="absolute inset-0 bg-blue-100/50 border-2 border-dashed border-blue-400 rounded-xl flex items-center justify-center">
-                    <div className="text-center">
-                      <Paperclip className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                      <p className="text-blue-700 font-medium">Drop files here to attach</p>
-                    </div>
-                  </div>
-                )}
               </div>
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
                 <MessageCircle className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Select a Chat</h3>
-                <p className="text-gray-500">Choose a chat session to start messaging</p>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Select a Ticket</h3>
+                <p className="text-gray-500">Choose a support ticket to view the conversation</p>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Create Chat Session Modal */}
-      {showCreateSession && (
+      {/* Create Ticket Modal */}
+      {showCreateTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900">Start New Chat</h3>
+              <h3 className="text-lg font-bold text-gray-900">Create Support Ticket</h3>
               <button
-                onClick={() => setShowCreateSession(false)}
+                onClick={() => setShowCreateTicket(false)}
                 className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
               >
                 <X className="h-5 w-5" />
@@ -730,14 +533,27 @@ const SupportUI: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Chat Title *
+                  Title *
                 </label>
                 <input
                   type="text"
-                  value={newSessionData.title}
-                  onChange={(e) => setNewSessionData({ ...newSessionData, title: e.target.value })}
+                  value={newTicketData.title}
+                  onChange={(e) => setNewTicketData({ ...newTicketData, title: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#E6A85C] focus:border-transparent"
-                  placeholder="Brief description of your issue"
+                  placeholder="Brief description of the issue"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description *
+                </label>
+                <textarea
+                  value={newTicketData.description}
+                  onChange={(e) => setNewTicketData({ ...newTicketData, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#E6A85C] focus:border-transparent"
+                  placeholder="Detailed description of the issue"
+                  rows={4}
                 />
               </div>
 
@@ -747,8 +563,8 @@ const SupportUI: React.FC = () => {
                     Priority
                   </label>
                   <select
-                    value={newSessionData.priority}
-                    onChange={(e) => setNewSessionData({ ...newSessionData, priority: e.target.value as any })}
+                    value={newTicketData.priority}
+                    onChange={(e) => setNewTicketData({ ...newTicketData, priority: e.target.value as any })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#E6A85C] focus:border-transparent"
                   >
                     <option value="low">Low</option>
@@ -763,8 +579,8 @@ const SupportUI: React.FC = () => {
                     Category
                   </label>
                   <select
-                    value={newSessionData.category}
-                    onChange={(e) => setNewSessionData({ ...newSessionData, category: e.target.value })}
+                    value={newTicketData.category}
+                    onChange={(e) => setNewTicketData({ ...newTicketData, category: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#E6A85C] focus:border-transparent"
                   >
                     <option value="general">General</option>
@@ -779,13 +595,13 @@ const SupportUI: React.FC = () => {
 
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowCreateSession(false)}
+                onClick={() => setShowCreateTicket(false)}
                 className="flex-1 py-3 px-4 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={handleCreateSession}
+                onClick={handleCreateTicket}
                 disabled={createLoading}
                 className="flex-1 py-3 px-4 bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] text-white rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
@@ -793,8 +609,8 @@ const SupportUI: React.FC = () => {
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <>
-                    <MessageSquare className="h-4 w-4" />
-                    Start Chat
+                    <Plus className="h-4 w-4" />
+                    Create Ticket
                   </>
                 )}
               </button>

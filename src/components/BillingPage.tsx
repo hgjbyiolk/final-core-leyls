@@ -177,7 +177,7 @@ const BillingPage: React.FC = () => {
   const [resubscribeLoading, setResubscribeLoading] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   
-  const { user, session } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const loadBillingData = async () => {
@@ -322,17 +322,11 @@ const BillingPage: React.FC = () => {
     try {
       setResubscribeLoading(true);
       
-      // Get the user's access token for authentication
-      const accessToken = session?.access_token;
-      if (!accessToken) {
-        throw new Error('No valid session found. Please log in again.');
-      }
-      
       // Call edge function to reactivate subscription
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reactivate-subscription`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
