@@ -5,7 +5,7 @@ import {
   Crown, Award, ChefHat, AlertCircle, CheckCircle,
   Clock, Eye, MoreVertical, UserPlus, Send, X,
   Loader2, FileText, Download, Image, File, Paperclip,
-  UserCheck, Circle, Bell, Star, Gift, Target
+  UserCheck, Circle, Bell, Star, Gift, Target, UserX
 } from 'lucide-react';
 import { SubscriptionService } from '../services/subscriptionService';
 import { ChatService, ChatSession, ChatMessage, ChatParticipant } from '../services/chatService';
