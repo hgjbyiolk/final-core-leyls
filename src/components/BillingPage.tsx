@@ -1244,4 +1244,4 @@ const getPlanDurationText = (planType: string) => {
   );
 }; 
 
-export default BillingPage; 
+export default BillingPage;

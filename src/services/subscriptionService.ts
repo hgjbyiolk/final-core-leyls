@@ -389,4 +389,3 @@ static async getUserSubscription(userId: string): Promise<Subscription | null> {
     }
   }
 }
- 
