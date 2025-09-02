@@ -79,18 +79,25 @@ export class SubscriptionService {
         .maybeSingle();
 
       if (fetchError) {
-        console.error('❌ Fetch Error:', fetchError);
-        throw new Error(`Failed to fetch subscription: ${fetchError.message}`);
+        console.error('❌ Error fetching subscription:', fallbackError);
+        throw new Error(`Failed to fetch subscription: ${fallbackError.message}`);
       }
 
-      if (!subscriptionData) {
         throw new Error('Subscription was not created properly');
-      }
+        console.log('✅ Subscription found:', {
+          id: fallbackData.id,
+          planType: fallbackData.plan_type,
+          status: fallbackData.status,
+          hasStripeId: !!fallbackData.stripe_subscription_id
+        });
+      } else {
+        console.log('ℹ️ No subscription found for user');
 
+      
       console.log('✅ Subscription created/updated:', subscriptionData);
       return subscriptionData;
-    } catch (error: any) {
-      console.error('Error creating subscription:', error);
+      console.error('💥 Error in getUserSubscription:', error);
+      throw error;
       throw error;
     }
   }
@@ -324,16 +331,17 @@ static async getUserSubscription(userId: string): Promise<Subscription | null> {
 
       return data || [];
     } catch (error: any) {
-      console.error('Error fetching all subscriptions:', error);
+      console.log('🔍 Fetching subscription for user:', userId);
+      
       const { data: fallbackData, error: fallbackError } = await supabase
         .from('subscriptions')
         .select('*')
-        .order('created_at', { ascending: false });
-
-      if (fallbackError) throw fallbackError;
-      return (fallbackData || []).map(sub => ({
-        ...sub,
-        user_email: 'Unknown',
+          *,
+          billing_period_text,
+          billing_period_accurate,
+          cancel_at_period_end,
+          will_renew
+        `)
         restaurant_name: 'Unknown Restaurant'
       }));
     }

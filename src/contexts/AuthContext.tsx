@@ -117,7 +117,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('🏪 Fetching restaurant for user:', userId);
       
-      // Simple query with shorter timeout
+      // Test Supabase connection first
+      const { error: connectionError } = await supabase
+        .from('restaurants')
+        .select('count')
+        .limit(1);
+        
+      if (connectionError) {
+        console.error('❌ Supabase connection test failed:', connectionError);
+        throw new Error('Database connection failed. Please check your Supabase configuration.');
+      }
+      
+      console.log('✅ Supabase connection test passed');
+      
+      // Fetch restaurant data
       const { data, error } = await supabase
         .from('restaurants')
         .select('id, name, slug, settings')
@@ -126,8 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('❌ Error fetching restaurant:', error);
-        // Create restaurant in background if fetch fails
-        createDefaultRestaurant(userId);
+        throw new Error(`Failed to fetch restaurant: ${error.message}`);
         return;
       }
 

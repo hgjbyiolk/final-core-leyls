@@ -322,17 +322,21 @@ const BillingPage: React.FC = () => {
     try {
       setResubscribeLoading(true);
       
-      // Get the user's access token for authentication
-      const accessToken = session?.access_token;
-      if (!accessToken) {
-        throw new Error('No valid session found. Please log in again.');
+      // Get fresh session to ensure we have a valid token
+      const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !currentSession?.access_token) {
+        console.error('❌ Session error:', sessionError);
+        throw new Error('Authentication error. Please refresh the page and try again.');
       }
+      
+      console.log('🔐 Using fresh session token for reactivation');
       
       // Call edge function to reactivate subscription
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reactivate-subscription`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          'Authorization': `Bearer ${currentSession.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -342,8 +346,22 @@ const BillingPage: React.FC = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to reactivate subscription');
+        const responseText = await response.text();
+        console.error('❌ Reactivation failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: responseText
+        });
+        
+        let errorMessage = 'Failed to reactivate subscription';
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          errorMessage = `Server error (${response.status}): ${response.statusText}`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       // Refresh subscription data
