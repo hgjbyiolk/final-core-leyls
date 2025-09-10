@@ -205,9 +205,9 @@ const SupportUI: React.FC = () => {
     }
   };
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // const scrollToBottom = () => {
+  //   messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  // }; 
 
   const fetchSessions = async () => {
     if (!restaurant) return;
