@@ -20,7 +20,6 @@ import SupportUI from './components/SupportUI';
 import SuperAdminLogin from './components/SuperAdminLogin';
 import SupportPortal from './components/SupportPortal';
 import SupportPortalLogin from './components/SupportPortalLogin';
-import SupportPortal from './components/SupportPortal';
 import PrivacyPage from './components/PrivacyPage';
 import TermsPage from './components/TermsPage';
 import BillingPage from './components/BillingPage';
