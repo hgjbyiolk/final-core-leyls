@@ -30,6 +30,7 @@ const SupportUI: React.FC = () => {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('disconnected');
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   
   // Refs for subscriptions and auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -166,11 +167,18 @@ const SupportUI: React.FC = () => {
               const exists = prev.some(msg => msg.id === payload.new.id);
               if (exists) return prev;
               
+              // Don't add if it's our optimistic message
+              if (payload.new.sender_id === user?.id && 
+                  Math.abs(new Date(payload.new.created_at).getTime() - Date.now()) < 5000) {
+                // This might be our own message, let optimistic update handle it
+                return prev;
+              }
+              
               const newMessages = [...prev, payload.new].sort((a, b) => 
                 new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
               );
               
-              // Auto-scroll to bottom
+              // Auto-scroll to bottom for new messages
               setTimeout(() => scrollToBottom(), 100);
               
               return newMessages;
@@ -296,20 +304,48 @@ const SupportUI: React.FC = () => {
     if (!selectedSession || !user || !newMessage.trim()) return;
 
     const messageText = newMessage.trim();
+    const tempId = `temp_${Date.now()}`;
+    
+    // Optimistically add message to UI immediately
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      session_id: selectedSession.id,
+      sender_type: 'restaurant_manager',
+      sender_id: user.id,
+      sender_name: user.email?.split('@')[0] || 'Restaurant Manager',
+      message: messageText,
+      message_type: 'text',
+      has_attachments: false,
+      is_system_message: false,
+      created_at: new Date().toISOString()
+    };
+
+    setMessages(prev => [...prev, optimisticMessage]);
     setNewMessage('');
     setSendingMessage(true);
+    scrollToBottom();
 
     try {
-      await ChatService.sendMessage({
+      const sentMessage = await ChatService.sendMessage({
         session_id: selectedSession.id,
         sender_type: 'restaurant_manager',
         sender_id: user.id,
         sender_name: user.email?.split('@')[0] || 'Restaurant Manager',
         message: messageText
       });
+
+      // Replace optimistic message with real one
+      setMessages(prev => prev.map(msg => 
+        msg.id === tempId ? sentMessage : msg
+      ));
+
+      console.log('✅ Message sent successfully');
     } catch (error) {
       console.error('Error sending message:', error);
-      setNewMessage(messageText); // Restore message on error
+      
+      // Remove optimistic message on error and restore text
+      setMessages(prev => prev.filter(msg => msg.id !== tempId));
+      setNewMessage(messageText);
       alert('Failed to send message');
     } finally {
       setSendingMessage(false);

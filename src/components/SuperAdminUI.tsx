@@ -132,21 +132,35 @@ const SuperAdminUI: React.FC = () => {
             {[
               { id: 'overview', label: 'Overview', icon: BarChart3 },
               { id: 'subscriptions', label: 'Subscriptions', icon: Crown },
-              { id: 'analytics', label: 'Analytics', icon: TrendingUp }
+              { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+              { id: 'support', label: 'Support Portal', icon: MessageSquare, external: true }
             ].map((tab) => {
               const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onClick={() => {
+                    if (tab.external) {
+                      window.open('/support-portal', '_blank');
+                    } else {
+                      setActiveTab(tab.id as any);
+                    }
+                  }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === tab.id
+                    activeTab === tab.id && !tab.external
                       ? 'bg-red-100 text-red-700 font-medium'
+                      : tab.external
+                      ? 'text-blue-600 hover:bg-blue-50'
                       : 'text-gray-600 hover:bg-gray-100'
                   }`}
                 >
                   <Icon className="h-5 w-5" />
                   {tab.label}
+                  {tab.external && (
+                    <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                      External
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -272,6 +286,26 @@ const SuperAdminUI: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* Support Portal Link */}
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <MessageSquare className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-blue-900">Support Portal</h3>
+                <p className="text-blue-700 text-sm">Access the dedicated support chat system</p>
+              </div>
+              <button
+                onClick={() => window.open('/support-portal', '_blank')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                <MessageSquare className="h-4 w-4" />
+                Open Portal
+              </button>
+            </div>
+          </div>
         </main>
       </div>
     </div>
