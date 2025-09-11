@@ -80,7 +80,27 @@ export interface CreateParticipantData {
 }
 
 export class ChatService {
-  // Get all chat sessions (for support agents)
+  // Set support agent context for database access
+  static async setSupportAgentContext(agentEmail: string): Promise<void> {
+    try {
+      console.log('🔐 Setting support agent context:', agentEmail);
+      const { error } = await supabase.rpc('set_support_agent_context', {
+        agent_email: agentEmail
+      });
+      
+      if (error) {
+        console.error('❌ Error setting agent context:', error);
+        throw error;
+      }
+      
+      console.log('✅ Support agent context set successfully');
+    } catch (error: any) {
+      console.error('Error setting support agent context:', error);
+      throw error;
+    }
+  }
+
+  // Get all chat sessions (for support agents - sees ALL restaurants)
   static async getAllChatSessions(): Promise<ChatSession[]> {
     try {
       console.log('🔍 Fetching ALL chat sessions for support portal');
@@ -106,7 +126,7 @@ export class ChatService {
     }
   }
 
-  // Get chat sessions for a specific restaurant
+  // Get chat sessions for a specific restaurant (for restaurant managers)
   static async getRestaurantChatSessions(restaurantId: string): Promise<ChatSession[]> {
     try {
       console.log('🔍 Fetching chat sessions for restaurant:', restaurantId);
@@ -233,7 +253,7 @@ export class ChatService {
     }
   }
 
-  // Send a message
+  // Send a message with proper real-time handling
   static async sendMessage(messageData: CreateMessageData): Promise<ChatMessage> {
     console.log('📤 Sending message:', {
       sessionId: messageData.session_id,
@@ -243,14 +263,21 @@ export class ChatService {
       isSystem: messageData.is_system_message
     });
     
+    // Ensure proper message data structure
+    const messageToInsert = {
+      session_id: messageData.session_id,
+      sender_type: messageData.sender_type,
+      sender_id: messageData.sender_id,
+      sender_name: messageData.sender_name,
+      message: messageData.message,
+      message_type: messageData.message_type || 'text',
+      has_attachments: messageData.has_attachments || false,
+      is_system_message: messageData.is_system_message || false
+    };
+
     const { data, error } = await supabase
       .from('chat_messages')
-      .insert({
-        ...messageData,
-        message_type: messageData.message_type || 'text',
-        has_attachments: messageData.has_attachments || false,
-        is_system_message: messageData.is_system_message || false
-      })
+      .insert(messageToInsert)
       .select()
       .single();
 
@@ -287,7 +314,7 @@ export class ChatService {
     }
   }
 
-  // Add participant to session
+  // Add participant to session with proper validation
   static async addParticipant(
     sessionId: string,
     participantData: CreateParticipantData
@@ -295,15 +322,25 @@ export class ChatService {
     console.log('👤 Adding participant to session:', {
       sessionId,
       userType: participantData.user_type,
-      userName: participantData.user_name
+      userName: participantData.user_name,
+      userId: participantData.user_id
     });
+
+    // Validate user_type before inserting
+    if (!['restaurant_manager', 'support_agent'].includes(participantData.user_type)) {
+      throw new Error(`Invalid user_type: ${participantData.user_type}. Must be 'restaurant_manager' or 'support_agent'`);
+    }
     
+    const participantToInsert = {
+      session_id: sessionId,
+      user_type: participantData.user_type,
+      user_id: participantData.user_id,
+      user_name: participantData.user_name
+    };
+
     const { data, error } = await supabase
       .from('chat_participants')
-      .insert({
-        session_id: sessionId,
-        ...participantData
-      })
+      .insert(participantToInsert)
       .select()
       .single();
 
@@ -341,28 +378,30 @@ export class ChatService {
     }
   }
 
-  // Real-time subscriptions
+  // Real-time subscriptions with enhanced error handling
   static subscribeToAllSessions(callback: (payload: any) => void) {
     console.log('🔌 Setting up global sessions subscription');
     
-    return supabase
+    const channel = supabase
       .channel('all_chat_sessions')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'chat_sessions' }, 
         (payload) => {
-          console.log('🔄 Sessions subscription update:', payload);
+          console.log('🔄 Sessions subscription update:', payload.eventType, payload.new?.id);
           callback(payload);
         }
       )
       .subscribe((status) => {
         console.log('📡 Sessions subscription status:', status);
       });
+
+    return channel;
   }
 
   static subscribeToMessages(sessionId: string, callback: (payload: any) => void) {
     console.log('🔌 Setting up messages subscription for session:', sessionId);
     
-    return supabase
+    const channel = supabase
       .channel(`chat_messages_${sessionId}`)
       .on('postgres_changes', 
         { 
@@ -372,19 +411,21 @@ export class ChatService {
           filter: `session_id=eq.${sessionId}`
         }, 
         (payload) => {
-          console.log('📨 Messages subscription update:', payload);
+          console.log('📨 Messages subscription update:', payload.eventType, payload.new?.id);
           callback(payload);
         }
       )
       .subscribe((status) => {
         console.log('📡 Messages subscription status:', status);
       });
+
+    return channel;
   }
 
   static subscribeToParticipants(sessionId: string, callback: (payload: any) => void) {
     console.log('🔌 Setting up participants subscription for session:', sessionId);
     
-    return supabase
+    const channel = supabase
       .channel(`chat_participants_${sessionId}`)
       .on('postgres_changes', 
         { 
@@ -394,13 +435,15 @@ export class ChatService {
           filter: `session_id=eq.${sessionId}`
         }, 
         (payload) => {
-          console.log('👥 Participants subscription update:', payload);
+          console.log('👥 Participants subscription update:', payload.eventType, payload.new?.id);
           callback(payload);
         }
       )
       .subscribe((status) => {
         console.log('📡 Participants subscription status:', status);
       });
+
+    return channel;
   }
 
   // Get chat statistics
@@ -440,6 +483,49 @@ export class ChatService {
         resolvedToday: 0,
         averageResponseTime: 0
       };
+    }
+  }
+
+  // Authenticate support agent
+  static async authenticateSupportAgent(email: string, password: string): Promise<{
+    success: boolean;
+    agent?: any;
+    error?: string;
+  }> {
+    try {
+      console.log('🔐 Authenticating support agent:', email);
+      
+      // For demo purposes, accept any email/password combination
+      // In production, you would validate against the support_agents table
+      const agent = {
+        id: `agent_${Date.now()}`,
+        name: email.split('@')[0].replace(/[^a-zA-Z]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        email: email,
+        role: 'agent',
+        is_active: true,
+        last_login_at: new Date().toISOString()
+      };
+
+      // Set the agent context for this session
+      await this.setSupportAgentContext(email);
+
+      console.log('✅ Support agent authenticated:', agent.name);
+      return { success: true, agent };
+    } catch (error: any) {
+      console.error('❌ Error authenticating support agent:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Clean up subscriptions properly
+  static cleanupSubscription(subscription: any): void {
+    if (subscription && typeof subscription.unsubscribe === 'function') {
+      try {
+        subscription.unsubscribe();
+        console.log('🧹 Subscription cleaned up successfully');
+      } catch (error) {
+        console.warn('⚠️ Error cleaning up subscription:', error);
+      }
     }
   }
 }
