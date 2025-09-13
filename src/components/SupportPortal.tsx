@@ -1,86 +1,1248 @@
-// --- components/SupportPortal.tsx ---
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  MessageSquare, Users, Building, Search, Filter, Send, 
+  Paperclip, Image, File, X, Download, Eye, MoreVertical,
+  Clock, CheckCircle, AlertCircle, User, Phone, Mail,
+  Settings, LogOut, RefreshCw, Bell, Minimize2, Maximize2,
+  ArrowLeft, Plus, Star, Shield, Zap, Crown, Award,
+  Loader2, Upload, FileText, Camera, Mic, Video,
+  Hash, Calendar, Tag, Flag, UserCheck, MessageCircle,
+  Activity, TrendingUp, BarChart3, PieChart, Target,
+  Coffee, Headphones, Monitor, Wifi, WifiOff, Circle
+} from 'lucide-react';
+import { ChatService, ChatSession, ChatMessage, ChatParticipant } from '../services/chatService';
 
-import { useEffect, useState, useRef } from "react";
-import ChatService from "../services/chatService";
-import SupportUI from "./SupportUI";
+interface SupportAgent {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  is_active: boolean;
+  last_login_at?: string;
+}
 
-function SupportPortal() {
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [selectedSession, setSelectedSession] = useState<any | null>(null);
-  const sessionChannelRef = useRef<any>(null);
+const SupportPortal: React.FC = () => {
+  // Authentication state
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentAgent, setCurrentAgent] = useState<SupportAgent | null>(null);
+  const [loginForm, setLoginForm] = useState({ email: '', password: '', name: '' });
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState('');
 
-  // Initial fetch + real-time sync
+  // Chat state
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [participants, setParticipants] = useState<ChatParticipant[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // UI state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [restaurantFilter, setRestaurantFilter] = useState('all');
+  const [showJoinModal, setShowJoinModal] = useState(false);
+  const [sessionToJoin, setSessionToJoin] = useState<ChatSession | null>(null);
+  const [agentName, setAgentName] = useState('');
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('disconnected');
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const [lastMessageTimes, setLastMessageTimes] = useState<Record<string, number>>({});
+
+  // File upload state
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+
+  // Refs for real-time subscriptions and auto-scroll
+  const sessionsSubscriptionRef = useRef<any>(null);
+  const messagesSubscriptionRef = useRef<any>(null);
+  const participantsSubscriptionRef = useRef<any>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
+
+  const navigate = useNavigate();
+
+  // Auto-scroll to bottom when new messages arrive
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
   useEffect(() => {
-    let isMounted = true;
+    scrollToBottom();
+  }, [messages]);
 
-    // 1. Load initial sessions
-    const fetchSessions = async () => {
-      console.log("📥 Fetching initial chat sessions");
-      const data = await ChatService.getChatSessions();
-      if (isMounted && data) setSessions(data);
-    };
-
-    fetchSessions();
-
-    // 2. Subscribe to sessions
-    const channel = ChatService.subscribeToAllSessions((payload) => {
-      console.log("🔄 Session event:", payload);
-
-      if (payload.eventType === "INSERT" && payload.new) {
-        setSessions((prev) => [...prev, payload.new]);
-      } else if (payload.eventType === "UPDATE" && payload.new) {
-        setSessions((prev) =>
-          prev.map((s) => (s.id === payload.new.id ? payload.new : s))
-        );
-      } else if (payload.eventType === "DELETE" && payload.old) {
-        setSessions((prev) => prev.filter((s) => s.id !== payload.old.id));
-      }
-    });
-
-    sessionChannelRef.current = channel;
-
-    // Cleanup
-    return () => {
-      isMounted = false;
-      console.log("🔴 Cleaning up session subscription");
-      if (sessionChannelRef.current) {
-        sessionChannelRef.current.unsubscribe();
-        sessionChannelRef.current = null;
-      }
-    };
+  useEffect(() => {
+    checkAuthentication();
   }, []);
 
-  return (
-    <div className="support-portal flex">
-      {/* Sidebar with sessions */}
-      <div className="sessions-list w-1/3 border-r p-4">
-        <h2 className="text-lg font-bold mb-2">Active Chats</h2>
-        {sessions.length === 0 && <p>No active chats yet</p>}
-        {sessions.map((session) => (
-          <div
-            key={session.id}
-            className={`p-2 border rounded mb-2 cursor-pointer ${
-              selectedSession?.id === session.id ? "bg-gray-200" : ""
-            }`}
-            onClick={() => setSelectedSession(session)}
-          >
-            <strong>{session.title || "Support Chat"}</strong>
-            <br />
-            <span className="text-sm text-gray-600">Status: {session.status}</span>
+  useEffect(() => {
+    if (isAuthenticated && currentAgent) {
+      loadSessions();
+      setupGlobalSubscriptions();
+    }
+
+    return () => {
+      cleanupAllSubscriptions();
+    };
+  }, [isAuthenticated, currentAgent]);
+
+  useEffect(() => {
+    if (selectedSession) {
+      loadMessages();
+      loadParticipants();
+      setupSessionSubscriptions();
+      
+      // Mark messages as read for this session
+      setUnreadCounts(prev => ({ ...prev, [selectedSession.id]: 0 }));
+    } else {
+      cleanupSessionSubscriptions();
+    }
+  }, [selectedSession]);
+
+  const checkAuthentication = () => {
+    const agentData = localStorage.getItem('support_agent_data');
+    const loginTime = localStorage.getItem('support_agent_login_time');
+    
+    if (agentData && loginTime) {
+      const loginDate = new Date(loginTime);
+      const now = new Date();
+      const hoursSinceLogin = (now.getTime() - loginDate.getTime()) / (1000 * 60 * 60);
+      
+      if (hoursSinceLogin < 24) {
+        const agent = JSON.parse(agentData);
+        setCurrentAgent(agent);
+        setIsAuthenticated(true);
+        return;
+      }
+    }
+    
+    // Clear expired session
+    localStorage.removeItem('support_agent_data');
+    localStorage.removeItem('support_agent_login_time');
+    setIsAuthenticated(false);
+  };
+
+  const handleLogin = async () => {
+    if (!loginForm.email || !loginForm.password || !loginForm.name) {
+      setLoginError('Please fill in all fields');
+      return;
+    }
+
+    setLoginLoading(true);
+    setLoginError('');
+
+    try {
+      // Authenticate with the chat service
+      const result = await ChatService.authenticateSupportAgent(loginForm.email, loginForm.password);
+      
+      if (!result.success) {
+        setLoginError(result.error || 'Authentication failed');
+        return;
+      }
+
+      const agent = {
+        ...result.agent,
+        name: loginForm.name // Use the name from the form
+      };
+
+      localStorage.setItem('support_agent_data', JSON.stringify(agent));
+      localStorage.setItem('support_agent_login_time', new Date().toISOString());
+      
+      setCurrentAgent(agent);
+      setIsAuthenticated(true);
+      
+      console.log('✅ Support agent logged in:', agent.name);
+    } catch (err: any) {
+      console.error('❌ Login error:', err);
+      setLoginError('Login failed. Please try again.');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('support_agent_data');
+    localStorage.removeItem('support_agent_login_time');
+    cleanupAllSubscriptions();
+    setIsAuthenticated(false);
+    setCurrentAgent(null);
+    setSessions([]);
+    setSelectedSession(null);
+    setMessages([]);
+    setParticipants([]);
+  };
+
+  const loadSessions = async () => {
+    try {
+      setLoading(true);
+      setConnectionStatus('connecting');
+      
+      // Set agent context before fetching sessions
+      if (currentAgent) {
+        await ChatService.setSupportAgentContext(currentAgent.email);
+      }
+      
+      const sessionsData = await ChatService.getAllChatSessions();
+      setSessions(sessionsData);
+      setConnectionStatus('connected');
+      
+      console.log('✅ Loaded sessions for support portal:', sessionsData.length);
+    } catch (err: any) {
+      console.error('❌ Error loading sessions:', err);
+      setError('Failed to load chat sessions');
+      setConnectionStatus('disconnected');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMessages = async () => {
+    if (!selectedSession) return;
+
+    try {
+      const messagesData = await ChatService.getChatMessages(selectedSession.id);
+      setMessages(messagesData.sort((a, b) => 
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      ));
+      
+      // Update last message time for this session
+      if (messagesData.length > 0) {
+        const lastMessage = messagesData[messagesData.length - 1];
+        setLastMessageTimes(prev => ({
+          ...prev,
+          [selectedSession.id]: new Date(lastMessage.created_at).getTime()
+        }));
+      }
+    } catch (err: any) {
+      console.error('❌ Error loading messages:', err);
+    }
+  };
+
+  const loadParticipants = async () => {
+    if (!selectedSession) return;
+
+    try {
+      const participantsData = await ChatService.getChatParticipants(selectedSession.id);
+      setParticipants(participantsData);
+    } catch (err: any) {
+      console.error('❌ Error loading participants:', err);
+    }
+  };
+
+  const setupGlobalSubscriptions = () => {
+    cleanupGlobalSubscriptions();
+    setConnectionStatus('connecting');
+
+    try {
+      console.log('🔌 Setting up global subscriptions for support portal');
+      
+      // Subscribe to all chat sessions
+      sessionsSubscriptionRef.current = ChatService.subscribeToAllSessions((payload) => {
+        console.log('🔄 Global sessions update:', payload.eventType, payload.new?.id);
+        setConnectionStatus('connected');
+        
+        if (payload.eventType === 'INSERT' && payload.new) {
+          setSessions(prev => {
+            const exists = prev.some(s => s.id === payload.new.id);
+            if (exists) return prev;
+            
+            const newSessions = [payload.new, ...prev].sort((a, b) => 
+              new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
+            );
+            
+            // Show notification for new session
+            if (payload.new.restaurant?.name) {
+              console.log('🔔 New chat session from:', payload.new.restaurant.name);
+            }
+            
+            return newSessions;
+          });
+        } else if (payload.eventType === 'UPDATE' && payload.new) {
+          setSessions(prev => prev.map(s => 
+            s.id === payload.new.id ? { ...s, ...payload.new } : s
+          ));
+        }
+      });
+
+      console.log('✅ Global subscriptions established');
+    } catch (err) {
+      console.error('❌ Failed to setup global subscriptions:', err);
+      setConnectionStatus('disconnected');
+    }
+  };
+
+  const setupSessionSubscriptions = () => {
+    if (!selectedSession) return;
+
+    cleanupSessionSubscriptions();
+
+    try {
+      console.log('🔌 Setting up session subscriptions for:', selectedSession.id);
+      
+      // Subscribe to messages for selected session
+      messagesSubscriptionRef.current = ChatService.subscribeToMessages(
+        selectedSession.id,
+        (payload) => {
+          console.log('📨 Message update:', payload.eventType, payload.new?.id);
+          
+          if (payload.eventType === 'INSERT' && payload.new) {
+            setMessages(prev => {
+              const exists = prev.some(m => m.id === payload.new.id);
+              if (exists) return prev;
+              
+              const newMessages = [...prev, payload.new].sort((a, b) => 
+                new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+              );
+              
+              // Auto-scroll to bottom for new messages
+              setTimeout(() => scrollToBottom(), 100);
+              
+              return newMessages;
+            });
+            
+            // Update last message time
+            setLastMessageTimes(prev => ({
+              ...prev,
+              [selectedSession.id]: new Date(payload.new.created_at).getTime()
+            }));
+          }
+        }
+      );
+
+      // Subscribe to participants for selected session
+      participantsSubscriptionRef.current = ChatService.subscribeToParticipants(
+        selectedSession.id,
+        (payload) => {
+          console.log('👥 Participants update:', payload.eventType, payload.new?.id);
+          
+          if (payload.eventType === 'INSERT' && payload.new) {
+            setParticipants(prev => {
+              const exists = prev.some(p => p.id === payload.new.id);
+              if (exists) return prev;
+              return [...prev, payload.new];
+            });
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
+            setParticipants(prev => prev.map(p => 
+              p.id === payload.new.id ? payload.new : p
+            ));
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            setParticipants(prev => prev.filter(p => p.id !== payload.old.id));
+          }
+        }
+      );
+
+      console.log('✅ Session subscriptions established');
+    } catch (err) {
+      console.error('❌ Failed to setup session subscriptions:', err);
+    }
+  };
+
+  const cleanupAllSubscriptions = () => {
+    cleanupGlobalSubscriptions();
+    cleanupSessionSubscriptions();
+  };
+
+  const cleanupGlobalSubscriptions = () => {
+    if (sessionsSubscriptionRef.current) {
+      ChatService.cleanupSubscription(sessionsSubscriptionRef.current);
+      sessionsSubscriptionRef.current = null;
+    }
+  };
+
+  const cleanupSessionSubscriptions = () => {
+    if (messagesSubscriptionRef.current) {
+      ChatService.cleanupSubscription(messagesSubscriptionRef.current);
+      messagesSubscriptionRef.current = null;
+    }
+
+    if (participantsSubscriptionRef.current) {
+      ChatService.cleanupSubscription(participantsSubscriptionRef.current);
+      participantsSubscriptionRef.current = null;
+    }
+  };
+
+  const handleJoinSession = (session: ChatSession) => {
+    setSessionToJoin(session);
+    setAgentName(currentAgent?.name || '');
+    setShowJoinModal(true);
+  };
+
+  const confirmJoinSession = async () => {
+    if (!sessionToJoin || !currentAgent || !agentName.trim()) return;
+
+    try {
+      console.log('🤝 Joining session:', {
+        sessionId: sessionToJoin.id,
+        agentName: agentName.trim(),
+        agentId: currentAgent.id
+      });
+
+      // Update session with agent assignment
+      await ChatService.assignAgentToSession(sessionToJoin.id, agentName.trim(), currentAgent.id);
+      
+      // Add agent as participant with correct user_type
+      await ChatService.addParticipant(sessionToJoin.id, {
+        user_type: 'support_agent', // This must match the database constraint
+        user_id: currentAgent.id,
+        user_name: agentName.trim()
+      });
+
+      // Send system message
+      await ChatService.sendMessage({
+        session_id: sessionToJoin.id,
+        sender_type: 'support_agent',
+        sender_id: currentAgent.id,
+        sender_name: agentName.trim(),
+        message: `${agentName.trim()} has joined the chat and is ready to help`,
+        is_system_message: true
+      });
+
+      setSelectedSession(sessionToJoin);
+      setShowJoinModal(false);
+      setSessionToJoin(null);
+      
+      // Refresh sessions to show updated assignment
+      await loadSessions();
+      
+      console.log('✅ Successfully joined session');
+    } catch (err: any) {
+      console.error('❌ Error joining session:', err);
+      setError(`Failed to join chat: ${err.message}`);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!selectedSession || !currentAgent || !newMessage.trim()) return;
+
+    const messageText = newMessage.trim();
+    const tempId = `temp_${Date.now()}`;
+    
+    // Optimistically add message to UI
+    const optimisticMessage: ChatMessage = {
+      id: tempId,
+      session_id: selectedSession.id,
+      sender_type: 'support_agent',
+      sender_id: currentAgent.id,
+      sender_name: currentAgent.name,
+      message: messageText,
+      message_type: 'text',
+      has_attachments: false,
+      is_system_message: false,
+      created_at: new Date().toISOString()
+    };
+
+    setMessages(prev => [...prev, optimisticMessage]);
+    setNewMessage('');
+    setSendingMessage(true);
+    scrollToBottom();
+
+    try {
+      const sentMessage = await ChatService.sendMessage({
+        session_id: selectedSession.id,
+        sender_type: 'support_agent',
+        sender_id: currentAgent.id,
+        sender_name: currentAgent.name,
+        message: messageText
+      });
+
+      // Replace optimistic message with real one
+      setMessages(prev => prev.map(msg => 
+        msg.id === tempId ? sentMessage : msg
+      ));
+
+      console.log('✅ Message sent successfully');
+    } catch (err: any) {
+      console.error('❌ Error sending message:', err);
+      
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.id !== tempId));
+      setNewMessage(messageText); // Restore message text
+      setError('Failed to send message');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  const handleFileUpload = async (files: FileList) => {
+    if (!selectedSession || !currentAgent || files.length === 0) return;
+
+    setUploadingFiles(true);
+    try {
+      for (const file of Array.from(files)) {
+        // Validate file
+        if (file.size > 10 * 1024 * 1024) { // 10MB limit
+          throw new Error(`File ${file.name} is too large. Maximum size is 10MB.`);
+        }
+
+        // For demo, we'll just send a message about the file
+        await ChatService.sendMessage({
+          session_id: selectedSession.id,
+          sender_type: 'support_agent',
+          sender_id: currentAgent.id,
+          sender_name: currentAgent.name,
+          message: `📎 Uploaded file: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`,
+          message_type: 'file'
+        });
+      }
+    } catch (err: any) {
+      console.error('❌ Error uploading files:', err);
+      setError(err.message || 'Failed to upload files');
+    } finally {
+      setUploadingFiles(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    
+    if (e.dataTransfer.files.length > 0) {
+      handleFileUpload(e.dataTransfer.files);
+    }
+  };
+
+  const getUniqueRestaurants = () => {
+    const restaurants = new Set();
+    sessions.forEach(session => {
+      if (session.restaurant?.name) {
+        restaurants.add(session.restaurant.name);
+      }
+    });
+    return Array.from(restaurants) as string[];
+  };
+
+  const filteredSessions = sessions.filter(session => {
+    const matchesSearch = session.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         session.restaurant?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || session.status === statusFilter;
+    const matchesPriority = priorityFilter === 'all' || session.priority === priorityFilter;
+    const matchesRestaurant = restaurantFilter === 'all' || session.restaurant?.name === restaurantFilter;
+    
+    return matchesSearch && matchesStatus && matchesPriority && matchesRestaurant;
+  });
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-100 text-green-800 border-green-200';
+      case 'resolved': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'closed': return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'urgent': return 'bg-red-100 text-red-800 border-red-200';
+      case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'low': return 'bg-green-100 text-green-800 border-green-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Login Screen
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-8">
+            <div className="text-center mb-8">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-xl">
+                <Headphones className="h-10 w-10 text-white" />
+              </div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2 font-['Space_Grotesk']">
+                VOYA Support Portal
+              </h1>
+              <p className="text-gray-600">
+                Professional customer support dashboard
+              </p>
+            </div>
+
+            {loginError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm mb-6 flex items-center gap-3">
+                <AlertCircle className="h-5 w-5" />
+                {loginError}
+              </div>
+            )}
+
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Agent Name
+                </label>
+                <div className="relative">
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="text"
+                    value={loginForm.name}
+                    onChange={(e) => setLoginForm({ ...loginForm, name: e.target.value })}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 focus:bg-white transition-all"
+                    placeholder="Your display name"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="email"
+                    value={loginForm.email}
+                    onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 focus:bg-white transition-all"
+                    placeholder="agent@voya.com"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <Shield className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    type="password"
+                    value={loginForm.password}
+                    onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                    onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 focus:bg-white transition-all"
+                    placeholder="Enter your password"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleLogin}
+                disabled={loginLoading}
+                className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-medium py-3 px-6 rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loginLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Headphones className="h-4 w-4" />
+                    Access Support Portal
+                  </>
+                )}
+              </button>
+            </div>
+
+            <div className="mt-6 p-4 bg-gray-50 rounded-xl">
+              <p className="text-xs text-gray-600 text-center mb-2">
+                <strong>Demo Access:</strong> Use any email/password combination
+              </p>
+              <div className="text-xs text-gray-500 space-y-1">
+                <p><strong>Suggested:</strong> support@voya.com / password123</p>
+                <p><strong>Name:</strong> Any display name you prefer</p>
+              </div>
+            </div>
           </div>
-        ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Main Support Portal Interface
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Professional Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+              <Headphones className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900 font-['Space_Grotesk']">
+                VOYA Support Portal
+              </h1>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600">Agent: {currentAgent?.name}</span>
+                <div className="flex items-center gap-1">
+                  <div className={`w-2 h-2 rounded-full ${
+                    connectionStatus === 'connected' ? 'bg-green-500' :
+                    connectionStatus === 'connecting' ? 'bg-yellow-500' :
+                    'bg-red-500'
+                  }`}></div>
+                  <span className="text-xs text-gray-500 capitalize">{connectionStatus}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+              <Activity className="h-4 w-4" />
+              {sessions.filter(s => s.status === 'active').length} active
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+              <Building className="h-4 w-4" />
+              {getUniqueRestaurants().length} restaurants
+            </div>
+            <button
+              onClick={loadSessions}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Refresh"
+            >
+              <RefreshCw className="h-5 w-5" />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 border-b border-red-200 text-red-700 px-6 py-3 flex items-center gap-3">
+          <AlertCircle className="h-5 w-5" />
+          {error}
+          <button
+            onClick={() => setError('')}
+            className="ml-auto p-1 hover:bg-red-100 rounded"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      <div className="flex h-[calc(100vh-80px)]">
+        {/* Enhanced Sessions Sidebar */}
+        <div className="w-96 bg-white border-r border-gray-200 flex flex-col">
+          {/* Advanced Filters */}
+          <div className="p-4 border-b border-gray-200 space-y-3 bg-gray-50">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search chats or restaurants..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </select>
+              
+              <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="all">All Priority</option>
+                <option value="urgent">Urgent</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+
+            <select
+              value={restaurantFilter}
+              onChange={(e) => setRestaurantFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Restaurants ({getUniqueRestaurants().length})</option>
+              {getUniqueRestaurants().map(restaurant => (
+                <option key={restaurant} value={restaurant}>{restaurant}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Sessions List */}
+          <div className="flex-1 overflow-y-auto">
+            {loading ? (
+              <div className="p-4 text-center">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-600" />
+                <p className="text-gray-500">Loading chats...</p>
+              </div>
+            ) : filteredSessions.length === 0 ? (
+              <div className="p-4 text-center">
+                <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                <p className="text-gray-500">No chat sessions found</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {sessions.length === 0 ? 'Waiting for customers to start chats' : 'Try adjusting your filters'}
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {filteredSessions.map((session) => {
+                  const isAssigned = session.assigned_agent_name;
+                  const isAssignedToMe = session.assigned_agent_id === currentAgent?.id;
+                  const unreadCount = unreadCounts[session.id] || 0;
+                  const hasNewMessages = lastMessageTimes[session.id] && 
+                    lastMessageTimes[session.id] > (Date.now() - 60000); // New in last minute
+
+                  return (
+                    <button
+                      key={session.id}
+                      onClick={() => setSelectedSession(session)}
+                      className={`w-full p-4 text-left hover:bg-gray-50 transition-colors relative ${
+                        selectedSession?.id === session.id ? 'bg-blue-50 border-r-4 border-blue-500' : ''
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-medium text-gray-900 text-sm truncate">
+                              {session.title}
+                            </h3>
+                            {unreadCount > 0 && (
+                              <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                                {unreadCount}
+                              </span>
+                            )}
+                            {hasNewMessages && (
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Building className="h-3 w-3 text-gray-400" />
+                            <span className="text-xs text-gray-600 font-medium">
+                              {session.restaurant?.name || 'Unknown Restaurant'}
+                            </span>
+                          </div>
+                          {isAssigned && (
+                            <p className="text-xs text-blue-600 font-medium">
+                              {isAssignedToMe ? '👤 Assigned to you' : `👤 ${session.assigned_agent_name}`}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-1 items-end">
+                          <span className={`text-xs px-2 py-1 rounded-full border font-medium ${getStatusColor(session.status)}`}>
+                            {session.status}
+                          </span>
+                          <span className={`text-xs px-2 py-1 rounded-full border font-medium ${getPriorityColor(session.priority)}`}>
+                            {session.priority}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500">
+                          {formatDate(session.last_message_at)}
+                        </span>
+                        {!isAssigned && session.status === 'active' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleJoinSession(session);
+                            }}
+                            className="text-xs px-3 py-1 bg-green-100 text-green-800 rounded-full hover:bg-green-200 transition-colors font-medium border border-green-200"
+                          >
+                            Join Chat
+                          </button>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Enhanced Chat Area */}
+        <div className="flex-1 flex flex-col bg-white">
+          {selectedSession ? (
+            <>
+              {/* Professional Chat Header */}
+              <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
+                      {selectedSession.restaurant?.name?.[0] || 'R'}
+                    </div>
+                    <div>
+                      <h2 className="font-semibold text-gray-900 text-lg">{selectedSession.title}</h2>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1">
+                          <Building className="h-3 w-3 text-gray-400" />
+                          <span className="text-sm text-gray-600 font-medium">{selectedSession.restaurant?.name}</span>
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded-full border font-medium ${getStatusColor(selectedSession.status)}`}>
+                          {selectedSession.status}
+                        </span>
+                        <span className={`text-xs px-2 py-1 rounded-full border font-medium ${getPriorityColor(selectedSession.priority)}`}>
+                          {selectedSession.priority}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    {/* Online Participants */}
+                    <div className="flex items-center gap-2">
+                      {participants.map((participant) => (
+                        <div
+                          key={participant.id}
+                          className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                            participant.user_type === 'support_agent'
+                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : 'bg-green-100 text-green-800 border border-green-200'
+                          }`}
+                        >
+                          <div className={`w-2 h-2 rounded-full ${
+                            participant.is_online ? 'bg-green-500' : 'bg-gray-400'
+                          }`}></div>
+                          {participant.user_name}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        setSelectedSession(null);
+                        cleanupSessionSubscriptions();
+                      }}
+                      className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Messages Area with Professional Styling */}
+              <div 
+                className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-gray-50 to-white"
+                onDrop={handleDrop}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+              >
+                {dragOver && (
+                  <div className="absolute inset-0 bg-blue-500/20 border-2 border-dashed border-blue-500 rounded-lg flex items-center justify-center z-10">
+                    <div className="text-center">
+                      <Upload className="h-12 w-12 text-blue-600 mx-auto mb-2" />
+                      <p className="text-blue-700 font-medium">Drop files to upload</p>
+                    </div>
+                  </div>
+                )}
+
+                {messages.map((message, index) => {
+                  const isAgent = message.sender_type === 'support_agent';
+                  const isSystem = message.is_system_message;
+                  const showAvatar = index === 0 || messages[index - 1].sender_id !== message.sender_id;
+
+                  if (isSystem) {
+                    return (
+                      <div key={message.id} className="flex justify-center">
+                        <div className="bg-gray-100 text-gray-600 px-4 py-2 rounded-full text-xs font-medium">
+                          {message.message}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={message.id}
+                      className={`flex ${isAgent ? 'justify-end' : 'justify-start'} ${showAvatar ? 'mt-4' : 'mt-1'}`}
+                    >
+                      <div className={`max-w-xs lg:max-w-md ${
+                        isAgent
+                          ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white'
+                          : 'bg-white border border-gray-200 shadow-sm'
+                      } rounded-2xl px-4 py-3`}>
+                        {showAvatar && (
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                              isAgent ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {message.sender_name[0]?.toUpperCase()}
+                            </div>
+                            <span className={`text-xs font-medium ${
+                              isAgent ? 'text-white/80' : 'text-gray-600'
+                            }`}>
+                              {message.sender_name}
+                            </span>
+                            <span className={`text-xs ${
+                              isAgent ? 'text-white/60' : 'text-gray-400'
+                            }`}>
+                              {formatTime(message.created_at)}
+                            </span>
+                          </div>
+                        )}
+                        <p className="text-sm leading-relaxed">{message.message}</p>
+                        
+                        {message.has_attachments && (
+                          <div className="mt-2 p-2 bg-white/10 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <Paperclip className="h-4 w-4" />
+                              <span className="text-xs">Attachment</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Professional Message Input */}
+              <div className="p-4 border-t border-gray-200 bg-white">
+                {!selectedSession.assigned_agent_name ? (
+                  <div className="text-center py-6">
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200 mb-4">
+                      <MessageSquare className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                      <p className="text-green-800 font-medium mb-2">Ready to help this customer?</p>
+                      <p className="text-green-700 text-sm">Join this chat to start providing support</p>
+                    </div>
+                    <button
+                      onClick={() => handleJoinSession(selectedSession)}
+                      className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 flex items-center gap-2 mx-auto font-medium"
+                    >
+                      <UserCheck className="h-4 w-4" />
+                      Join This Chat
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        accept="image/*,.pdf,.doc,.docx,.txt"
+                        onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+                        className="hidden"
+                      />
+                      
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingFiles}
+                        className="p-3 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 border border-gray-200"
+                        title="Attach files"
+                      >
+                        {uploadingFiles ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Paperclip className="h-4 w-4" />
+                        )}
+                      </button>
+                      
+                      <input
+                        ref={messageInputRef}
+                        type="text"
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey && !sendingMessage) {
+                            e.preventDefault();
+                            handleSendMessage();
+                          }
+                        }}
+                        placeholder="Type your message..."
+                        className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        disabled={sendingMessage}
+                      />
+                      
+                      <button
+                        onClick={handleSendMessage}
+                        disabled={sendingMessage || !newMessage.trim()}
+                        className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
+                      >
+                        {sendingMessage ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                    
+                    {/* Quick Actions */}
+                    <div className="flex items-center gap-2">
+                      <button className="text-xs px-3 py-1 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors">
+                        📋 Common Responses
+                      </button>
+                      <button className="text-xs px-3 py-1 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors">
+                        🔄 Mark Resolved
+                      </button>
+                      <button className="text-xs px-3 py-1 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 transition-colors">
+                        📞 Escalate
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center bg-gradient-to-b from-gray-50 to-white">
+              <div className="text-center max-w-md">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                  <MessageCircle className="h-10 w-10 text-blue-600" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Select a Chat Session</h3>
+                <p className="text-gray-500 mb-6">
+                  Choose a chat session from the sidebar to start helping customers
+                </p>
+                
+                {/* Support Portal Stats */}
+                <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
+                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <Activity className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-gray-900">
+                      {sessions.filter(s => s.status === 'active').length}
+                    </p>
+                    <p className="text-xs text-gray-600">Active Chats</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                    <Building className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-gray-900">
+                      {getUniqueRestaurants().length}
+                    </p>
+                    <p className="text-xs text-gray-600">Restaurants</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Chat view */}
-      <div className="chat-view w-2/3 p-4">
-        {selectedSession ? (
-          <SupportUI selectedSession={selectedSession} />
-        ) : (
-          <p className="text-gray-500">Select a session to view messages</p>
-        )}
-      </div>
+      {/* Professional Join Session Modal */}
+      {showJoinModal && sessionToJoin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl border border-gray-200">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-gray-900">Join Support Chat</h3>
+              <button
+                onClick={() => {
+                  setShowJoinModal(false);
+                  setSessionToJoin(null);
+                  setAgentName('');
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {/* Chat Details */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Building className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-blue-900">{sessionToJoin.restaurant?.name}</h4>
+                    <p className="text-blue-700 text-sm">{sessionToJoin.title}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs px-2 py-1 rounded-full border font-medium ${getStatusColor(sessionToJoin.status)}`}>
+                    {sessionToJoin.status}
+                  </span>
+                  <span className={`text-xs px-2 py-1 rounded-full border font-medium ${getPriorityColor(sessionToJoin.priority)}`}>
+                    {sessionToJoin.priority}
+                  </span>
+                  <span className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded-full font-medium">
+                    {sessionToJoin.category}
+                  </span>
+                </div>
+              </div>
+
+              {/* Agent Name Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Your Name (visible to customer)
+                </label>
+                <input
+                  type="text"
+                  value={agentName}
+                  onChange={(e) => setAgentName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., Sarah (Support Team)"
+                  autoFocus
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This name will be shown to the restaurant manager
+                </p>
+              </div>
+
+              {/* Professional Tips */}
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <h5 className="font-medium text-green-900 mb-2">💡 Support Tips</h5>
+                <ul className="text-green-800 text-xs space-y-1">
+                  <li>• Introduce yourself professionally</li>
+                  <li>• Ask clarifying questions to understand the issue</li>
+                  <li>• Provide step-by-step solutions</li>
+                  <li>• Follow up to ensure satisfaction</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowJoinModal(false);
+                  setSessionToJoin(null);
+                  setAgentName('');
+                }}
+                className="flex-1 py-3 px-4 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmJoinSession}
+                disabled={!agentName.trim()}
+                className="flex-1 py-3 px-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
+              >
+                <UserCheck className="h-4 w-4" />
+                Join Chat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
 
 export default SupportPortal;
