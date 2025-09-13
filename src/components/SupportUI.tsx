@@ -737,79 +737,88 @@ const SupportUI: React.FC = () => {
                 </div>
               </div>
 
-              {/* Messages */}
-              <div 
-                className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"
-                onDrop={handleDrop}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragOver(true);
-                }}
-                    {selectedSession.restaurant?.name?.[0] || restaurant?.name?.[0] || 'R'}
-              >
-                {dragOver && (
-                  <div className="absolute inset-0 bg-blue-500/20 border-2 border-dashed border-blue-500 rounded-lg flex items-center justify-center z-10">
-                    <div className="flex items-center gap-2 mt-1">
-                      <Building className="h-3 w-3 text-gray-400" />
-                      <span className="text-sm text-gray-600">
-                        {selectedSession.restaurant?.name || restaurant?.name || 'Unknown Restaurant'}
-                      </span>
-                      <Upload className="h-12 w-12 text-blue-600 mx-auto mb-2" />
-                      <p className="text-blue-700 font-medium">Drop files to upload</p>
-                    </div>
-                  </div>
-                )}
+{/* Messages */}
+<div 
+  className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"
+  onDrop={handleDrop}
+  onDragOver={(e) => {
+    e.preventDefault();
+    setDragOver(true);
+  }}
+>
+  {selectedSession.restaurant?.name?.[0] || restaurant?.name?.[0] || 'R'}
 
-                {messages.map((message) => (
-                  const isPending = message.id.startsWith('temp_');
-                  
-                  <div
-                    key={message.id}
-                    className={`flex ${message.sender_type === 'restaurant_manager' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`max-w-xs lg:max-w-md ${
-                      message.sender_type === 'restaurant_manager'
-                        ? 'bg-gradient-to-r from-[#E6A85C] to-[#E85A9B] text-white'
-                        : 'bg-white border border-gray-200'
-                    } rounded-2xl px-4 py-3 shadow-sm ${isPending ? 'opacity-70' : ''}`}>
-                      {message.is_system_message ? (
-                        <p className="text-center text-xs text-gray-500 italic">
-                          {message.message}
-                        </p>
-                      ) : (
-                        <>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-xs font-medium ${
-                              message.sender_type === 'restaurant_manager' ? 'text-white/80' : 'text-gray-600'
-                            }`}>
-                              {message.sender_name}
-                            </span>
-                            <span className={`text-xs ${
-                              message.sender_type === 'restaurant_manager' ? 'text-white/60' : 'text-gray-400'
-                            }`}>
-                              {formatTime(message.created_at)}
-                            </span>
-                            {isPending && (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            )}
-                          </div>
-                          <p className="text-sm leading-relaxed">{message.message}</p>
-                          
-                          {message.has_attachments && (
-                            <div className="mt-2 p-2 bg-white/10 rounded-lg">
-                              <div className="flex items-center gap-2">
-                                <Paperclip className="h-4 w-4" />
-                                <span className="text-xs">Attachment</span>
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
+  {dragOver && (
+    <div className="absolute inset-0 bg-blue-500/20 border-2 border-dashed border-blue-500 rounded-lg flex items-center justify-center z-10">
+      <div className="flex items-center gap-2 mt-1">
+        <Building className="h-3 w-3 text-gray-400" />
+        <span className="text-sm text-gray-600">
+          {selectedSession.restaurant?.name || restaurant?.name || 'Unknown Restaurant'}
+        </span>
+        <Upload className="h-12 w-12 text-blue-600 mx-auto mb-2" />
+        <p className="text-blue-700 font-medium">Drop files to upload</p>
+      </div>
+    </div>
+  )}
+
+  {messages.map((message) => {
+    const isPending = message.id.startsWith('temp_');
+
+    return (
+      <div
+        key={message.id}
+        className={`flex ${message.sender_type === 'restaurant_manager' ? 'justify-end' : 'justify-start'}`}
+      >
+        <div
+          className={`max-w-xs lg:max-w-md ${
+            message.sender_type === 'restaurant_manager'
+              ? 'bg-gradient-to-r from-[#E6A85C] to-[#E85A9B] text-white'
+              : 'bg-white border border-gray-200'
+          } rounded-2xl px-4 py-3 shadow-sm ${isPending ? 'opacity-70' : ''}`}
+        >
+          {message.is_system_message ? (
+            <p className="text-center text-xs text-gray-500 italic">
+              {message.message}
+            </p>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 mb-1">
+                <span
+                  className={`text-xs font-medium ${
+                    message.sender_type === 'restaurant_manager' ? 'text-white/80' : 'text-gray-600'
+                  }`}
+                >
+                  {message.sender_name}
+                </span>
+                <span
+                  className={`text-xs ${
+                    message.sender_type === 'restaurant_manager' ? 'text-white/60' : 'text-gray-400'
+                  }`}
+                >
+                  {formatTime(message.created_at)}
+                </span>
+                {isPending && (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                )}
               </div>
+              <p className="text-sm leading-relaxed">{message.message}</p>
+
+              {message.has_attachments && (
+                <div className="mt-2 p-2 bg-white/10 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <Paperclip className="h-4 w-4" />
+                    <span className="text-xs">Attachment</span>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  })}
+  <div ref={messagesEndRef} />
+</div>
 
               {/* Message Input */}
               <div className="p-4 border-t border-gray-200">
