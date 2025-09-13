@@ -1,7 +1,7 @@
 // --- components/SupportPortal.tsx ---
 
 import { useEffect, useState, useRef } from "react";
-import ChatService from "../services/ChatService";
+import ChatService from "../services/chatService";
 import SupportUI from "./SupportUI";
 
 function SupportPortal() {
