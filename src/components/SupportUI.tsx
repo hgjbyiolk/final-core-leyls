@@ -30,7 +30,6 @@ const SupportUI: React.FC = () => {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('disconnected');
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [optimisticMessages, setOptimisticMessages] = useState<ChatMessage[]>([]);
   
   // Refs for subscriptions and auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -156,7 +155,7 @@ const SupportUI: React.FC = () => {
     console.log('🔌 Setting up session subscriptions for:', selectedSession.id);
     
     try {
-      // Subscribe to messages
+      // Subscribe to messages - FIXED: Simplified message handling
       messagesSubscriptionRef.current = ChatService.subscribeToMessages(
         selectedSession.id,
         (payload) => {
@@ -167,13 +166,8 @@ const SupportUI: React.FC = () => {
               const exists = prev.some(msg => msg.id === payload.new.id);
               if (exists) return prev;
               
-              // Don't add if it's our optimistic message
-              if (payload.new.sender_id === user?.id && 
-                  Math.abs(new Date(payload.new.created_at).getTime() - Date.now()) < 5000) {
-                // This might be our own message, let optimistic update handle it
-                return prev;
-              }
-              
+              // FIXED: Always add new messages from real-time subscription
+              // Remove the problematic optimistic message filtering
               const newMessages = [...prev, payload.new].sort((a, b) => 
                 new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
               );
@@ -212,10 +206,6 @@ const SupportUI: React.FC = () => {
       console.error('❌ Failed to setup session subscriptions:', err);
     }
   };
-
-  // const scrollToBottom = () => {
-  //   messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  // }; 
 
   const fetchSessions = async () => {
     if (!restaurant) return;
@@ -304,7 +294,7 @@ const SupportUI: React.FC = () => {
     if (!selectedSession || !user || !newMessage.trim()) return;
 
     const messageText = newMessage.trim();
-    const tempId = `temp_${Date.now()}`;
+    const tempId = `temp_${Date.now()}_${user.id}`;
     
     // Optimistically add message to UI immediately
     const optimisticMessage: ChatMessage = {
@@ -334,7 +324,8 @@ const SupportUI: React.FC = () => {
         message: messageText
       });
 
-      // Replace optimistic message with real one
+      // FIXED: Replace optimistic message with real one
+      // Use a more specific check to match the correct optimistic message
       setMessages(prev => prev.map(msg => 
         msg.id === tempId ? sentMessage : msg
       ));
@@ -872,4 +863,4 @@ const SupportUI: React.FC = () => {
   );
 };
 
-export default SupportUI;
+export default SupportUI; 
