@@ -387,19 +387,31 @@ export class ChatService {
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'chat_sessions' }, 
         (payload) => {
-          console.log('🔄 Sessions subscription update:', payload.eventType, payload.new?.id);
+          console.log('🔄 [REALTIME] Sessions payload received:', {
+            eventType: payload.eventType,
+            sessionId: payload.new?.id,
+            restaurantId: payload.new?.restaurant_id,
+            title: payload.new?.title,
+            status: payload.new?.status,
+            timestamp: new Date().toISOString()
+          });
           callback(payload);
         }
       )
       .subscribe((status) => {
-        console.log('📡 Sessions subscription status:', status);
+        console.log('📡 [REALTIME] Global sessions subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ [REALTIME] Global sessions subscription active');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ [REALTIME] Global sessions subscription error');
+        }
       });
 
     return channel;
   }
 
   static subscribeToMessages(sessionId: string, callback: (payload: any) => void) {
-    console.log('🔌 Setting up messages subscription for session:', sessionId);
+    console.log('🔌 [REALTIME] Setting up messages subscription for session:', sessionId);
     
     const channel = supabase
       .channel(`chat_messages_${sessionId}`)
@@ -411,19 +423,32 @@ export class ChatService {
           filter: `session_id=eq.${sessionId}`
         }, 
         (payload) => {
-          console.log('📨 Messages subscription update:', payload.eventType, payload.new?.id);
+          console.log('📨 [REALTIME] Message payload received:', {
+            eventType: payload.eventType,
+            messageId: payload.new?.id,
+            senderId: payload.new?.sender_id,
+            senderType: payload.new?.sender_type,
+            sessionId: payload.new?.session_id,
+            timestamp: new Date().toISOString(),
+            messagePreview: payload.new?.message?.substring(0, 50) + '...'
+          });
           callback(payload);
         }
       )
       .subscribe((status) => {
-        console.log('📡 Messages subscription status:', status);
+        console.log('📡 [REALTIME] Messages subscription status for session', sessionId, ':', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ [REALTIME] Messages subscription active for session:', sessionId);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ [REALTIME] Messages subscription error for session:', sessionId);
+        }
       });
 
     return channel;
   }
 
   static subscribeToParticipants(sessionId: string, callback: (payload: any) => void) {
-    console.log('🔌 Setting up participants subscription for session:', sessionId);
+    console.log('🔌 [REALTIME] Setting up participants subscription for session:', sessionId);
     
     const channel = supabase
       .channel(`chat_participants_${sessionId}`)
@@ -435,45 +460,40 @@ export class ChatService {
           filter: `session_id=eq.${sessionId}`
         }, 
         (payload) => {
-          console.log('👥 Participants subscription update:', payload.eventType, payload.new?.id);
+          console.log('👥 [REALTIME] Participants payload received:', {
+            eventType: payload.eventType,
+            participantId: payload.new?.id,
+            userType: payload.new?.user_type,
+            userName: payload.new?.user_name,
+            isOnline: payload.new?.is_online
+          });
           callback(payload);
         }
       )
       .subscribe((status) => {
-        console.log('📡 Participants subscription status:', status);
+        console.log('📡 [REALTIME] Participants subscription status for session', sessionId, ':', status);
       });
 
     return channel;
   }
 
   // Get chat statistics
-  static async getChatStats(): Promise<{
-    totalSessions: number;
-    activeSessions: number;
-    resolvedToday: number;
-    averageResponseTime: number;
-  }> {
+  static async getChatStats(): Promise<any> {
     try {
-      const { data: sessions, error } = await supabase
-        .from('chat_sessions')
-        .select('status, created_at');
+      console.log('📊 Fetching comprehensive chat statistics');
+      
+      const { data, error } = await supabase.rpc('get_chat_statistics');
 
       if (error) throw error;
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const totalSessions = sessions?.length || 0;
-      const activeSessions = sessions?.filter(s => s.status === 'active').length || 0;
-      const resolvedToday = sessions?.filter(s => 
-        s.status === 'resolved' && new Date(s.created_at) >= today
-      ).length || 0;
-
-      return {
-        totalSessions,
-        activeSessions,
-        resolvedToday,
-        averageResponseTime: 0 // Would calculate from message timestamps
+      console.log('✅ Chat statistics loaded:', data);
+      return data || {
+        totalSessions: 0,
+        activeSessions: 0,
+        resolvedToday: 0,
+        averageResponseTime: 0,
+        totalRestaurants: 0,
+        agentsOnline: 0
       };
     } catch (error: any) {
       console.error('Error fetching chat stats:', error);
@@ -481,7 +501,9 @@ export class ChatService {
         totalSessions: 0,
         activeSessions: 0,
         resolvedToday: 0,
-        averageResponseTime: 0
+        averageResponseTime: 0,
+        totalRestaurants: 0,
+        agentsOnline: 0
       };
     }
   }

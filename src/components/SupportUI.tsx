@@ -30,6 +30,9 @@ const SupportUI: React.FC = () => {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('disconnected');
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [pendingMessages, setPendingMessages] = useState<Map<string, ChatMessage>>(new Map());
+  const [lastMessageRefresh, setLastMessageRefresh] = useState<number>(0);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   
   // Refs for subscriptions and auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -67,14 +70,51 @@ const SupportUI: React.FC = () => {
       fetchMessages();
       fetchParticipants();
       setupSessionSubscriptions();
+      startPollingFallback();
     } else {
       cleanupSessionSubscriptions();
+      stopPollingFallback();
     }
   }, [selectedSession]);
+
+  // Enhanced polling fallback for real-time issues
+  const startPollingFallback = () => {
+    stopPollingFallback(); // Clear any existing interval
+    
+    const interval = setInterval(async () => {
+      if (selectedSession && Date.now() - lastMessageRefresh > 2000) {
+        try {
+          const freshMessages = await ChatService.getChatMessages(selectedSession.id);
+          const sortedMessages = freshMessages.sort((a, b) => 
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+          
+          // Only update if we have new messages
+          if (sortedMessages.length !== messages.length) {
+            console.log('🔄 [POLLING] Detected new messages, updating...');
+            setMessages(sortedMessages);
+            setLastMessageRefresh(Date.now());
+          }
+        } catch (error) {
+          console.warn('⚠️ Polling fallback error:', error);
+        }
+      }
+    }, 3000); // Poll every 3 seconds
+    
+    setPollingInterval(interval);
+  };
+
+  const stopPollingFallback = () => {
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
+    }
+  };
 
   const cleanupAllSubscriptions = () => {
     cleanupGlobalSubscriptions();
     cleanupSessionSubscriptions();
+    stopPollingFallback();
   };
 
   const cleanupGlobalSubscriptions = () => {
@@ -152,40 +192,70 @@ const SupportUI: React.FC = () => {
     
     cleanupSessionSubscriptions();
     
-    console.log('🔌 Setting up session subscriptions for:', selectedSession.id);
+    console.log('🔌 [REALTIME] Setting up enhanced session subscriptions for:', selectedSession.id);
     
     try {
-      // Subscribe to messages - FIXED: Simplified message handling
+      // Enhanced messages subscription with better deduplication
       messagesSubscriptionRef.current = ChatService.subscribeToMessages(
         selectedSession.id,
         (payload) => {
-          console.log('📨 Message update:', payload);
+          console.log('📨 [REALTIME] Message update received:', {
+            eventType: payload.eventType,
+            messageId: payload.new?.id,
+            senderId: payload.new?.sender_id,
+            senderType: payload.new?.sender_type,
+            sessionId: payload.new?.session_id,
+            timestamp: new Date().toISOString(),
+            messagePreview: payload.new?.message?.substring(0, 50) + '...'
+          });
           
           if (payload.eventType === 'INSERT' && payload.new) {
             setMessages(prev => {
-              const exists = prev.some(msg => msg.id === payload.new.id);
+              // Enhanced deduplication - check by ID instead of timestamp
+                console.log('⚠️ Message already exists, skipping duplicate:', payload.new.id);
+                return prev;
               if (exists) return prev;
               
-              // FIXED: Always add new messages from real-time subscription
-              // Remove the problematic optimistic message filtering
+              // Remove any pending message with same content (optimistic update cleanup)
+              const withoutPending = prev.filter(msg => {
+                if (msg.id.startsWith('temp_') && 
+                    msg.message === payload.new.message && 
+                    msg.sender_id === payload.new.sender_id) {
+                  console.log('🧹 Removing optimistic message:', msg.id);
+                  return false;
+                }
+                return true;
+              });
+              
               const newMessages = [...prev, payload.new].sort((a, b) => 
                 new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
               );
               
-              // Auto-scroll to bottom for new messages
+              console.log('✅ Added new message to list, total:', newMessages.length);
+              
+              // Auto-scroll for new messages
               setTimeout(() => scrollToBottom(), 100);
               
               return newMessages;
             });
+            
+            // Update last refresh time
+            setLastMessageRefresh(Date.now());
           }
         }
       );
 
-      // Subscribe to participants
+      // Enhanced participants subscription
       participantsSubscriptionRef.current = ChatService.subscribeToParticipants(
         selectedSession.id,
         (payload) => {
-          console.log('👥 Participants update:', payload);
+          console.log('👥 [REALTIME] Participants update received:', {
+            eventType: payload.eventType,
+            participantId: payload.new?.id,
+            userType: payload.new?.user_type,
+            userName: payload.new?.user_name,
+            isOnline: payload.new?.is_online
+          });
           
           if (payload.eventType === 'INSERT' && payload.new) {
             setParticipants(prev => {
@@ -201,9 +271,9 @@ const SupportUI: React.FC = () => {
         }
       );
       
-      console.log('✅ Session subscriptions established');
+      console.log('✅ Enhanced session subscriptions established');
     } catch (err) {
-      console.error('❌ Failed to setup session subscriptions:', err);
+      console.error('❌ Failed to setup enhanced session subscriptions:', err);
     }
   };
 
@@ -228,12 +298,23 @@ const SupportUI: React.FC = () => {
     if (!selectedSession) return;
     
     try {
+      console.log('📨 Fetching messages for session:', selectedSession.id);
       const messagesData = await ChatService.getChatMessages(selectedSession.id);
-      setMessages(messagesData.sort((a, b) => 
+      
+      // Sort messages by creation time
+      const sortedMessages = messagesData.sort((a, b) => 
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      ));
+      );
+      
+      setMessages(sortedMessages);
+      setLastMessageRefresh(Date.now());
+      
+      // Clear any pending messages for this session
+      setPendingMessages(new Map());
+      
+      console.log('✅ Messages loaded:', sortedMessages.length);
     } catch (error) {
-      console.error('Error fetching messages:', error);
+      console.error('❌ Error fetching messages:', error);
     }
   };
 
@@ -294,9 +375,9 @@ const SupportUI: React.FC = () => {
     if (!selectedSession || !user || !newMessage.trim()) return;
 
     const messageText = newMessage.trim();
-    const tempId = `temp_${Date.now()}_${user.id}`;
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Optimistically add message to UI immediately
+    // Enhanced optimistic message with better tracking
     const optimisticMessage: ChatMessage = {
       id: tempId,
       session_id: selectedSession.id,
@@ -310,12 +391,23 @@ const SupportUI: React.FC = () => {
       created_at: new Date().toISOString()
     };
 
+    // Add to pending messages for tracking
+    setPendingMessages(prev => new Map(prev.set(tempId, optimisticMessage)));
+    
+    // Add optimistic message to UI
     setMessages(prev => [...prev, optimisticMessage]);
     setNewMessage('');
     setSendingMessage(true);
     scrollToBottom();
 
     try {
+      console.log('📤 Sending message from restaurant manager:', {
+        sessionId: selectedSession.id,
+        userName: user.email?.split('@')[0],
+        messageLength: messageText.length,
+        tempId
+      });
+
       const sentMessage = await ChatService.sendMessage({
         session_id: selectedSession.id,
         sender_type: 'restaurant_manager',
@@ -324,20 +416,35 @@ const SupportUI: React.FC = () => {
         message: messageText
       });
 
-      // FIXED: Replace optimistic message with real one
-      // Use a more specific check to match the correct optimistic message
+      console.log('✅ Message sent successfully:', sentMessage.id);
+
+      // Replace optimistic message with real one
       setMessages(prev => prev.map(msg => 
         msg.id === tempId ? sentMessage : msg
       ));
+      
+      // Remove from pending
+      setPendingMessages(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(tempId);
+        return newMap;
+      });
 
-      console.log('✅ Message sent successfully');
+      // Update last refresh time
+      setLastMessageRefresh(Date.now());
+
     } catch (error) {
       console.error('Error sending message:', error);
       
       // Remove optimistic message on error and restore text
       setMessages(prev => prev.filter(msg => msg.id !== tempId));
+      setPendingMessages(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(tempId);
+        return newMap;
+      });
       setNewMessage(messageText);
-      alert('Failed to send message');
+      alert('Failed to send message. Please try again.');
     } finally {
       setSendingMessage(false);
     }
@@ -609,9 +716,18 @@ const SupportUI: React.FC = () => {
                     </div>
                     
                     <button
+                      onClick={fetchMessages}
+                      className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                      title="Refresh Messages"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </button>
+                    
+                    <button
                       onClick={() => {
                         setSelectedSession(null);
                         cleanupSessionSubscriptions();
+                        stopPollingFallback();
                       }}
                       className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
                     >
@@ -629,11 +745,15 @@ const SupportUI: React.FC = () => {
                   e.preventDefault();
                   setDragOver(true);
                 }}
-                onDragLeave={() => setDragOver(false)}
+                    {selectedSession.restaurant?.name?.[0] || restaurant?.name?.[0] || 'R'}
               >
                 {dragOver && (
                   <div className="absolute inset-0 bg-blue-500/20 border-2 border-dashed border-blue-500 rounded-lg flex items-center justify-center z-10">
                     <div className="flex items-center gap-2 mt-1">
+                      <Building className="h-3 w-3 text-gray-400" />
+                      <span className="text-sm text-gray-600">
+                        {selectedSession.restaurant?.name || restaurant?.name || 'Unknown Restaurant'}
+                      </span>
                       <Upload className="h-12 w-12 text-blue-600 mx-auto mb-2" />
                       <p className="text-blue-700 font-medium">Drop files to upload</p>
                     </div>
@@ -641,6 +761,8 @@ const SupportUI: React.FC = () => {
                 )}
 
                 {messages.map((message) => (
+                  const isPending = message.id.startsWith('temp_');
+                  
                   <div
                     key={message.id}
                     className={`flex ${message.sender_type === 'restaurant_manager' ? 'justify-end' : 'justify-start'}`}
@@ -649,7 +771,7 @@ const SupportUI: React.FC = () => {
                       message.sender_type === 'restaurant_manager'
                         ? 'bg-gradient-to-r from-[#E6A85C] to-[#E85A9B] text-white'
                         : 'bg-white border border-gray-200'
-                    } rounded-2xl px-4 py-3 shadow-sm`}>
+                    } rounded-2xl px-4 py-3 shadow-sm ${isPending ? 'opacity-70' : ''}`}>
                       {message.is_system_message ? (
                         <p className="text-center text-xs text-gray-500 italic">
                           {message.message}
@@ -667,6 +789,9 @@ const SupportUI: React.FC = () => {
                             }`}>
                               {formatTime(message.created_at)}
                             </span>
+                            {isPending && (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            )}
                           </div>
                           <p className="text-sm leading-relaxed">{message.message}</p>
                           
