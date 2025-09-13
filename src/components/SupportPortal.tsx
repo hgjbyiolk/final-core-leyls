@@ -242,7 +242,7 @@ const SupportPortal: React.FC = () => {
     try {
       console.log('🔌 Setting up global subscriptions for support portal');
       
-      // Subscribe to all chat sessions
+      // Subscribe to all chat sessions - FIXED: Remove restaurant filtering for support agents
       sessionsSubscriptionRef.current = ChatService.subscribeToAllSessions((payload) => {
         console.log('🔄 Global sessions update:', payload.eventType, payload.new?.id);
         setConnectionStatus('connected');
@@ -252,6 +252,7 @@ const SupportPortal: React.FC = () => {
             const exists = prev.some(s => s.id === payload.new.id);
             if (exists) return prev;
             
+            // FIXED: Accept ALL sessions regardless of restaurant
             const newSessions = [payload.new, ...prev].sort((a, b) => 
               new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
             );
@@ -296,6 +297,8 @@ const SupportPortal: React.FC = () => {
               const exists = prev.some(m => m.id === payload.new.id);
               if (exists) return prev;
               
+              // FIXED: Always add new messages from real-time subscription
+              // Don't filter based on sender - we want all messages to appear immediately
               const newMessages = [...prev, payload.new].sort((a, b) => 
                 new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
               );
