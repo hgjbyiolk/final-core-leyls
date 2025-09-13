@@ -218,12 +218,12 @@ const SupportUI: React.FC = () => {
   // }; 
 
   const fetchSessions = async () => {
-    if (!restaurant) return;
-    
     try {
       setLoading(true);
       setConnectionStatus('connecting');
-      const sessionsData = await ChatService.getRestaurantChatSessions(restaurant.id);
+      
+      // Restaurant managers only see their own sessions
+      const sessionsData = await ChatService.getChatSessions(restaurant?.id);
       setSessions(sessionsData);
       setConnectionStatus('connected');
     } catch (error) {

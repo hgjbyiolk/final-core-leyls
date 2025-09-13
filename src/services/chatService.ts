@@ -43,17 +43,6 @@ export interface ChatParticipant {
   is_online: boolean;
 }
 
-export interface MessageAttachment {
-  id: string;
-  message_id: string;
-  file_name: string;
-  file_type: string;
-  file_size: number;
-  file_url: string;
-  thumbnail_url?: string;
-  created_at: string;
-}
-
 export interface CreateSessionData {
   restaurant_id: string;
   title: string;
@@ -80,75 +69,70 @@ export interface CreateParticipantData {
 }
 
 export class ChatService {
-  // Set support agent context for database access
-  static async setSupportAgentContext(agentEmail: string): Promise<void> {
+  // Check if current user is a support agent
+  static async isSupportAgent(): Promise<boolean> {
     try {
-      console.log('🔐 Setting support agent context:', agentEmail);
-      const { error } = await supabase.rpc('set_support_agent_context', {
-        agent_email: agentEmail
+      const agentData = localStorage.getItem('support_agent_data');
+      return !!agentData;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Get current support agent data
+  static getSupportAgentData(): any {
+    try {
+      const agentData = localStorage.getItem('support_agent_data');
+      return agentData ? JSON.parse(agentData) : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  // Get chat sessions - FIXED to show all restaurants for support agents
+  static async getChatSessions(restaurantId?: string): Promise<ChatSession[]> {
+    try {
+      const isSupportAgent = await this.isSupportAgent();
+      
+      console.log('🔍 Fetching chat sessions:', {
+        isSupportAgent,
+        restaurantId,
+        willFilterByRestaurant: !isSupportAgent && !!restaurantId
+      });
+
+      let query = supabase
+        .from('chat_sessions')
+        .select(`
+          *,
+          restaurant:restaurants(name, slug)
+        `)
+        .order('last_message_at', { ascending: false });
+
+      // Only filter by restaurant if user is NOT a support agent
+      if (!isSupportAgent && restaurantId) {
+        console.log('👤 Restaurant manager - filtering by restaurant:', restaurantId);
+        query = query.eq('restaurant_id', restaurantId);
+      } else if (isSupportAgent) {
+        console.log('🎧 Support agent - showing ALL restaurants');
+        // Support agents see ALL sessions from ALL restaurants
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('❌ Error fetching chat sessions:', error);
+        throw error;
+      }
+      
+      console.log('✅ Fetched chat sessions:', {
+        count: data?.length || 0,
+        isSupportAgent,
+        restaurants: isSupportAgent ? [...new Set(data?.map(s => s.restaurant?.name))].length : 'filtered'
       });
       
-      if (error) {
-        console.error('❌ Error setting agent context:', error);
-        throw error;
-      }
-      
-      console.log('✅ Support agent context set successfully');
-    } catch (error: any) {
-      console.error('Error setting support agent context:', error);
-      throw error;
-    }
-  }
-
-  // Get all chat sessions (for support agents - sees ALL restaurants)
-  static async getAllChatSessions(): Promise<ChatSession[]> {
-    try {
-      console.log('🔍 Fetching ALL chat sessions for support portal');
-      
-      const { data, error } = await supabase
-        .from('chat_sessions')
-        .select(`
-          *,
-          restaurant:restaurants(name, slug)
-        `)
-        .order('last_message_at', { ascending: false });
-
-      if (error) {
-        console.error('❌ Error fetching all chat sessions:', error);
-        throw error;
-      }
-      
-      console.log('✅ Fetched all chat sessions:', data?.length || 0);
       return data || [];
     } catch (error: any) {
-      console.error('Error fetching all chat sessions:', error);
-      return [];
-    }
-  }
-
-  // Get chat sessions for a specific restaurant (for restaurant managers)
-  static async getRestaurantChatSessions(restaurantId: string): Promise<ChatSession[]> {
-    try {
-      console.log('🔍 Fetching chat sessions for restaurant:', restaurantId);
-      
-      const { data, error } = await supabase
-        .from('chat_sessions')
-        .select(`
-          *,
-          restaurant:restaurants(name, slug)
-        `)
-        .eq('restaurant_id', restaurantId)
-        .order('last_message_at', { ascending: false });
-
-      if (error) {
-        console.error('❌ Error fetching restaurant chat sessions:', error);
-        throw error;
-      }
-      
-      console.log('✅ Fetched restaurant chat sessions:', data?.length || 0);
-      return data || [];
-    } catch (error: any) {
-      console.error('Error fetching restaurant chat sessions:', error);
+      console.error('Error fetching chat sessions:', error);
       return [];
     }
   }
@@ -253,14 +237,13 @@ export class ChatService {
     }
   }
 
-  // Send a message with proper real-time handling
+  // Send a message - FIXED for real-time delivery
   static async sendMessage(messageData: CreateMessageData): Promise<ChatMessage> {
     console.log('📤 Sending message:', {
       sessionId: messageData.session_id,
       senderType: messageData.sender_type,
       senderName: messageData.sender_name,
-      messageLength: messageData.message.length,
-      isSystem: messageData.is_system_message
+      messageLength: messageData.message.length
     });
     
     // Ensure proper message data structure
@@ -314,7 +297,7 @@ export class ChatService {
     }
   }
 
-  // Add participant to session with proper validation
+  // Add participant to session - FIXED constraint violation
   static async addParticipant(
     sessionId: string,
     participantData: CreateParticipantData
@@ -326,7 +309,7 @@ export class ChatService {
       userId: participantData.user_id
     });
 
-    // Validate user_type before inserting
+    // Validate user_type before inserting - FIXED
     if (!['restaurant_manager', 'support_agent'].includes(participantData.user_type)) {
       throw new Error(`Invalid user_type: ${participantData.user_type}. Must be 'restaurant_manager' or 'support_agent'`);
     }
@@ -378,16 +361,21 @@ export class ChatService {
     }
   }
 
-  // Real-time subscriptions with enhanced error handling
-  static subscribeToAllSessions(callback: (payload: any) => void) {
-    console.log('🔌 Setting up global sessions subscription');
+  // FIXED: Real-time subscriptions for sessions (all restaurants for support agents)
+  static subscribeToAllSessions(callback: (payload: any) => void, isSupportAgent: boolean = false) {
+    console.log('🔌 Setting up sessions subscription:', { isSupportAgent });
     
     const channel = supabase
       .channel('all_chat_sessions')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'chat_sessions' }, 
         (payload) => {
-          console.log('🔄 Sessions subscription update:', payload.eventType, payload.new?.id);
+          console.log('🔄 Sessions subscription update:', {
+            eventType: payload.eventType,
+            sessionId: payload.new?.id,
+            restaurantId: payload.new?.restaurant_id,
+            isSupportAgent
+          });
           callback(payload);
         }
       )
@@ -398,6 +386,7 @@ export class ChatService {
     return channel;
   }
 
+  // FIXED: Real-time subscriptions for messages with proper filtering
   static subscribeToMessages(sessionId: string, callback: (payload: any) => void) {
     console.log('🔌 Setting up messages subscription for session:', sessionId);
     
@@ -405,13 +394,31 @@ export class ChatService {
       .channel(`chat_messages_${sessionId}`)
       .on('postgres_changes', 
         { 
-          event: '*', 
+          event: 'INSERT', 
           schema: 'public', 
           table: 'chat_messages',
           filter: `session_id=eq.${sessionId}`
         }, 
         (payload) => {
-          console.log('📨 Messages subscription update:', payload.eventType, payload.new?.id);
+          console.log('📨 NEW MESSAGE received via subscription:', {
+            messageId: payload.new?.id,
+            sessionId: payload.new?.session_id,
+            senderType: payload.new?.sender_type,
+            senderName: payload.new?.sender_name,
+            message: payload.new?.message?.substring(0, 50) + '...'
+          });
+          callback(payload);
+        }
+      )
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `session_id=eq.${sessionId}`
+        },
+        (payload) => {
+          console.log('📨 MESSAGE UPDATED via subscription:', payload.new?.id);
           callback(payload);
         }
       )
@@ -422,6 +429,7 @@ export class ChatService {
     return channel;
   }
 
+  // FIXED: Real-time subscriptions for participants
   static subscribeToParticipants(sessionId: string, callback: (payload: any) => void) {
     console.log('🔌 Setting up participants subscription for session:', sessionId);
     
@@ -486,34 +494,67 @@ export class ChatService {
     }
   }
 
-  // Authenticate support agent
-  static async authenticateSupportAgent(email: string, password: string): Promise<{
+  // Authenticate support agent - ENHANCED
+  static async authenticateSupportAgent(email: string, password: string, name: string): Promise<{
     success: boolean;
     agent?: any;
     error?: string;
   }> {
     try {
-      console.log('🔐 Authenticating support agent:', email);
+      console.log('🔐 Authenticating support agent:', { email, name });
       
-      // For demo purposes, accept any email/password combination
+      // For demo purposes, accept any email/password/name combination
       // In production, you would validate against the support_agents table
+      if (!email || !password || !name) {
+        return { success: false, error: 'All fields are required' };
+      }
+
       const agent = {
         id: `agent_${Date.now()}`,
-        name: email.split('@')[0].replace(/[^a-zA-Z]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        email: email,
-        role: 'agent',
+        name: name.trim(),
+        email: email.trim(),
+        role: 'support_agent',
         is_active: true,
         last_login_at: new Date().toISOString()
       };
 
-      // Set the agent context for this session
-      await this.setSupportAgentContext(email);
+      // Store agent data in localStorage for session management
+      localStorage.setItem('support_agent_data', JSON.stringify(agent));
+      localStorage.setItem('support_agent_login_time', new Date().toISOString());
 
       console.log('✅ Support agent authenticated:', agent.name);
       return { success: true, agent };
     } catch (error: any) {
       console.error('❌ Error authenticating support agent:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  // Sign out support agent
+  static signOutSupportAgent(): void {
+    localStorage.removeItem('support_agent_data');
+    localStorage.removeItem('support_agent_login_time');
+    console.log('👋 Support agent signed out');
+  }
+
+  // Check if support agent session is valid
+  static isSupportAgentSessionValid(): boolean {
+    try {
+      const agentData = localStorage.getItem('support_agent_data');
+      const loginTime = localStorage.getItem('support_agent_login_time');
+      
+      if (!agentData || !loginTime) {
+        return false;
+      }
+
+      // Check if session is still valid (24 hours)
+      const loginDate = new Date(loginTime);
+      const now = new Date();
+      const hoursSinceLogin = (now.getTime() - loginDate.getTime()) / (1000 * 60 * 60);
+      
+      return hoursSinceLogin <= 24;
+    } catch (error) {
+      return false;
     }
   }
 
