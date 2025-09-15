@@ -5,9 +5,11 @@ import {
   Loader2, RefreshCw, Tag, Calendar, Users, Settings, 
   MessageCircle, Phone, Mail, FileText, Zap, Star,
   Paperclip, Upload, Eye, Download, Building, Crown,
-  Headphones, Shield, LogOut, Bell, Globe, Activity
+  Headphones, Shield, LogOut, Bell, Globe, Activity,
+  Camera, Archive, UserX, Copy, MoreVertical, Smile,
+  Wifi, WifiOff
 } from 'lucide-react';
-import { ChatService, ChatSession, ChatMessage, ChatParticipant } from '../services/chatService';
+import { ChatService, ChatSession, ChatMessage, ChatParticipant, QuickResponse } from '../services/chatService';
 
 const SupportPortal: React.FC = () => {
   const [currentAgent, setCurrentAgent] = useState<any>(null);
@@ -25,11 +27,14 @@ const SupportPortal: React.FC = () => {
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [chatStats, setChatStats] = useState<any>(null);
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [showQuickResponses, setShowQuickResponses] = useState(false);
+  const [quickResponses, setQuickResponses] = useState<QuickResponse[]>([]);
+  const [showCloseChatModal, setShowCloseChatModal] = useState(false);
+  const [closingChat, setClosingChat] = useState(false);
   
-  // Enhanced message tracking for better deduplication
-  const [pendingMessages, setPendingMessages] = useState<Map<string, ChatMessage>>(new Map());
-  const [lastMessageRefresh, setLastMessageRefresh] = useState<number>(0);
+  // Real-time state
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [lastSeen, setLastSeen] = useState<Date>(new Date());
   
   // Refs for subscriptions
   const sessionsSubscriptionRef = useRef<any>(null);
@@ -37,6 +42,7 @@ const SupportPortal: React.FC = () => {
   const participantsSubscriptionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -48,6 +54,48 @@ const SupportPortal: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Online/offline detection
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setConnectionStatus('connected');
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+      setConnectionStatus('disconnected');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Heartbeat for presence
+  useEffect(() => {
+    if (selectedSession && currentAgent) {
+      // Update presence every 30 seconds
+      heartbeatIntervalRef.current = setInterval(() => {
+        ChatService.updateParticipantStatus(selectedSession.id, currentAgent.id, true);
+        setLastSeen(new Date());
+      }, 30000);
+
+      return () => {
+        if (heartbeatIntervalRef.current) {
+          clearInterval(heartbeatIntervalRef.current);
+        }
+        // Mark as offline when leaving
+        if (selectedSession && currentAgent) {
+          ChatService.updateParticipantStatus(selectedSession.id, currentAgent.id, false);
+        }
+      };
+    }
+  }, [selectedSession, currentAgent]);
 
   useEffect(() => {
     // Check if support agent is authenticated
@@ -79,9 +127,6 @@ const SupportPortal: React.FC = () => {
 
     return () => {
       cleanupAllSubscriptions();
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
     };
   }, []);
 
@@ -91,11 +136,12 @@ const SupportPortal: React.FC = () => {
       fetchParticipants();
       setupSessionSubscriptions();
       
-      // Start polling as fallback for real-time issues
-      startPollingFallback();
+      // Mark agent as online in this session
+      if (currentAgent) {
+        ChatService.updateParticipantStatus(selectedSession.id, currentAgent.id, true);
+      }
     } else {
       cleanupSessionSubscriptions();
-      stopPollingFallback();
     }
   }, [selectedSession]);
 
@@ -112,10 +158,11 @@ const SupportPortal: React.FC = () => {
       // Load initial data
       await Promise.all([
         fetchAllSessions(),
-        fetchChatStats()
+        fetchChatStats(),
+        fetchQuickResponses()
       ]);
       
-      // Setup global subscriptions with enhanced error handling
+      // Setup global subscriptions
       setupGlobalSubscriptions();
       
       setConnectionStatus('connected');
@@ -148,6 +195,15 @@ const SupportPortal: React.FC = () => {
     }
   };
 
+  const fetchQuickResponses = async () => {
+    try {
+      const responses = await ChatService.getQuickResponses();
+      setQuickResponses(responses);
+    } catch (error) {
+      console.error('Error fetching quick responses:', error);
+    }
+  };
+
   const fetchMessages = async () => {
     if (!selectedSession) return;
     
@@ -155,17 +211,11 @@ const SupportPortal: React.FC = () => {
       console.log('📨 Fetching messages for session:', selectedSession.id);
       const messagesData = await ChatService.getChatMessages(selectedSession.id);
       
-      // Sort messages by creation time
       const sortedMessages = messagesData.sort((a, b) => 
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
       
       setMessages(sortedMessages);
-      setLastMessageRefresh(Date.now());
-      
-      // Clear any pending messages for this session
-      setPendingMessages(new Map());
-      
       console.log('✅ Messages loaded:', sortedMessages.length);
     } catch (error) {
       console.error('❌ Error fetching messages:', error);
@@ -180,40 +230,6 @@ const SupportPortal: React.FC = () => {
       setParticipants(participantsData);
     } catch (error) {
       console.error('❌ Error fetching participants:', error);
-    }
-  };
-
-  // Enhanced polling fallback for real-time issues
-  const startPollingFallback = () => {
-    stopPollingFallback(); // Clear any existing interval
-    
-    const interval = setInterval(async () => {
-      if (selectedSession && Date.now() - lastMessageRefresh > 2000) {
-        try {
-          const freshMessages = await ChatService.getChatMessages(selectedSession.id);
-          const sortedMessages = freshMessages.sort((a, b) => 
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          );
-          
-          // Only update if we have new messages
-          if (sortedMessages.length !== messages.length) {
-            console.log('🔄 Polling detected new messages, updating...');
-            setMessages(sortedMessages);
-            setLastMessageRefresh(Date.now());
-          }
-        } catch (error) {
-          console.warn('⚠️ Polling fallback error:', error);
-        }
-      }
-    }, 3000); // Poll every 3 seconds
-    
-    setPollingInterval(interval);
-  };
-
-  const stopPollingFallback = () => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      setPollingInterval(null);
     }
   };
 
@@ -263,8 +279,8 @@ const SupportPortal: React.FC = () => {
       sessionsSubscriptionRef.current = ChatService.subscribeToAllSessions((payload) => {
         console.log('🔄 [REALTIME] Sessions update received:', {
           eventType: payload.eventType,
-          sessionId: payload.new?.id,
-          restaurantId: payload.new?.restaurant_id,
+          sessionId: payload.new?.id || payload.old?.id,
+          restaurantId: payload.new?.restaurant_id || payload.old?.restaurant_id,
           timestamp: new Date().toISOString()
         });
         
@@ -288,6 +304,18 @@ const SupportPortal: React.FC = () => {
           setSessions(prev => prev.map(session => 
             session.id === payload.new.id ? payload.new : session
           ));
+          
+          // Update selected session if it's the one being updated
+          if (selectedSession?.id === payload.new.id) {
+            setSelectedSession(payload.new);
+          }
+        } else if (payload.eventType === 'DELETE' && payload.old) {
+          setSessions(prev => prev.filter(session => session.id !== payload.old.id));
+          
+          // Clear selected session if it was deleted
+          if (selectedSession?.id === payload.old.id) {
+            setSelectedSession(null);
+          }
         }
       });
       
@@ -306,69 +334,44 @@ const SupportPortal: React.FC = () => {
     console.log('🔌 Setting up enhanced session subscriptions for:', selectedSession.id);
     
     try {
-      // Enhanced messages subscription with better deduplication
+      // Messages subscription
       messagesSubscriptionRef.current = ChatService.subscribeToMessages(
         selectedSession.id,
         (payload) => {
-          console.log('📨 [REALTIME] Message update received:', {
-            eventType: payload.eventType,
-            messageId: payload.new?.id,
-            senderId: payload.new?.sender_id,
-            senderType: payload.new?.sender_type,
-            sessionId: payload.new?.session_id,
-            timestamp: new Date().toISOString(),
-            messagePreview: payload.new?.message?.substring(0, 50) + '...'
-          });
+          console.log('📨 [REALTIME] Message update received:', payload);
           
           if (payload.eventType === 'INSERT' && payload.new) {
             setMessages(prev => {
-              // Enhanced deduplication - check by ID instead of timestamp
               const exists = prev.some(msg => msg.id === payload.new.id);
               if (exists) {
                 console.log('⚠️ Message already exists, skipping duplicate:', payload.new.id);
                 return prev;
               }
               
-              // Remove any pending message with same content (optimistic update cleanup)
-              const withoutPending = prev.filter(msg => {
-                if (msg.id.startsWith('temp_') && 
-                    msg.message === payload.new.message && 
-                    msg.sender_id === payload.new.sender_id) {
-                  console.log('🧹 Removing optimistic message:', msg.id);
-                  return false;
-                }
-                return true;
-              });
-              
-              const newMessages = [...withoutPending, payload.new].sort((a, b) => 
+              const newMessages = [...prev, payload.new].sort((a, b) => 
                 new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
               );
               
               console.log('✅ Added new message to list, total:', newMessages.length);
-              
-              // Auto-scroll for new messages
               setTimeout(() => scrollToBottom(), 100);
               
               return newMessages;
             });
-            
-            // Update last refresh time
-            setLastMessageRefresh(Date.now());
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
+            setMessages(prev => prev.map(msg => 
+              msg.id === payload.new.id ? payload.new : msg
+            ));
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
           }
         }
       );
 
-      // Enhanced participants subscription
+      // Participants subscription
       participantsSubscriptionRef.current = ChatService.subscribeToParticipants(
         selectedSession.id,
         (payload) => {
-          console.log('👥 [REALTIME] Participants update received:', {
-            eventType: payload.eventType,
-            participantId: payload.new?.id,
-            userType: payload.new?.user_type,
-            userName: payload.new?.user_name,
-            isOnline: payload.new?.is_online
-          });
+          console.log('👥 [REALTIME] Participants update received:', payload);
           
           if (payload.eventType === 'INSERT' && payload.new) {
             setParticipants(prev => {
@@ -380,6 +383,8 @@ const SupportPortal: React.FC = () => {
             setParticipants(prev => prev.map(p => 
               p.id === payload.new.id ? payload.new : p
             ));
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            setParticipants(prev => prev.filter(p => p.id !== payload.old.id));
           }
         }
       );
@@ -396,7 +401,7 @@ const SupportPortal: React.FC = () => {
     const messageText = newMessage.trim();
     const tempId = `temp_${Date.now()}_${currentAgent.id}`;
     
-    // Enhanced optimistic message with better tracking
+    // Optimistic message
     const optimisticMessage: ChatMessage = {
       id: tempId,
       session_id: selectedSession.id,
@@ -410,9 +415,6 @@ const SupportPortal: React.FC = () => {
       created_at: new Date().toISOString()
     };
 
-    // Add to pending messages for tracking
-    setPendingMessages(prev => new Map(prev.set(tempId, optimisticMessage)));
-    
     // Add optimistic message to UI
     setMessages(prev => [...prev, optimisticMessage]);
     setNewMessage('');
@@ -420,13 +422,6 @@ const SupportPortal: React.FC = () => {
     scrollToBottom();
 
     try {
-      console.log('📤 Sending message from support agent:', {
-        sessionId: selectedSession.id,
-        agentName: currentAgent.name,
-        messageLength: messageText.length,
-        tempId
-      });
-
       const sentMessage = await ChatService.sendMessage({
         session_id: selectedSession.id,
         sender_type: 'support_agent',
@@ -435,33 +430,16 @@ const SupportPortal: React.FC = () => {
         message: messageText
       });
 
-      console.log('✅ Message sent successfully:', sentMessage.id);
-
       // Replace optimistic message with real one
       setMessages(prev => prev.map(msg => 
         msg.id === tempId ? sentMessage : msg
       ));
-      
-      // Remove from pending
-      setPendingMessages(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(tempId);
-        return newMap;
-      });
-
-      // Update last refresh time
-      setLastMessageRefresh(Date.now());
 
     } catch (error) {
       console.error('❌ Error sending message:', error);
       
       // Remove optimistic message on error and restore text
       setMessages(prev => prev.filter(msg => msg.id !== tempId));
-      setPendingMessages(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(tempId);
-        return newMap;
-      });
       setNewMessage(messageText);
       alert('Failed to send message. Please try again.');
     } finally {
@@ -490,7 +468,6 @@ const SupportPortal: React.FC = () => {
           user_name: currentAgent.name
         });
       } catch (participantError) {
-        // Ignore if participant already exists
         console.log('ℹ️ Participant may already exist:', participantError);
       }
 
@@ -504,8 +481,7 @@ const SupportPortal: React.FC = () => {
         is_system_message: true
       });
 
-      // Refresh sessions and select this one
-      await fetchAllSessions();
+      // Select this session
       setSelectedSession(session);
       
       console.log('✅ Session assigned successfully');
@@ -521,20 +497,30 @@ const SupportPortal: React.FC = () => {
     setUploadingFiles(true);
     try {
       for (const file of Array.from(files)) {
-        // Validate file
-        if (file.size > 10 * 1024 * 1024) { // 10MB limit
-          throw new Error(`File ${file.name} is too large. Maximum size is 10MB.`);
+        // Validate file type (only images)
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+          throw new Error(`File ${file.name} is not supported. Only images are allowed.`);
         }
 
-        // For demo, send a message about the file
-        await ChatService.sendMessage({
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          throw new Error(`File ${file.name} is too large. Maximum size is 5MB.`);
+        }
+
+        // Create message first
+        const message = await ChatService.sendMessage({
           session_id: selectedSession.id,
           sender_type: 'support_agent',
           sender_id: currentAgent.id,
           sender_name: currentAgent.name,
-          message: `📎 Uploaded file: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`,
-          message_type: 'file'
+          message: `📷 Shared an image: ${file.name}`,
+          message_type: 'image',
+          has_attachments: true
         });
+
+        // Upload attachment
+        await ChatService.uploadAttachment(file, message.id);
       }
     } catch (err: any) {
       console.error('❌ Error uploading files:', err);
@@ -550,6 +536,27 @@ const SupportPortal: React.FC = () => {
         
     if (e.dataTransfer.files.length > 0) {
       handleFileUpload(e.dataTransfer.files);
+    }
+  };
+
+  const handleQuickResponse = (response: QuickResponse) => {
+    setNewMessage(response.message);
+    setShowQuickResponses(false);
+  };
+
+  const handleCloseChat = async () => {
+    if (!selectedSession || !currentAgent) return;
+
+    try {
+      setClosingChat(true);
+      await ChatService.closeChatSession(selectedSession.id, currentAgent.name);
+      setShowCloseChatModal(false);
+      // Don't clear selected session - let real-time update handle it
+    } catch (error) {
+      console.error('Error closing chat:', error);
+      alert('Failed to close chat');
+    } finally {
+      setClosingChat(false);
     }
   };
 
@@ -633,10 +640,11 @@ const SupportPortal: React.FC = () => {
                   'bg-red-500'
                 }`}></div>
                 <span className="text-xs text-gray-500 capitalize">{connectionStatus}</span>
-                {pollingInterval && (
-                  <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                    Polling Active
-                  </span>
+                {!isOnline && (
+                  <div className="flex items-center gap-1 text-xs text-red-600">
+                    <WifiOff className="h-3 w-3" />
+                    <span>Offline</span>
+                  </div>
                 )}
               </div>
             </div>
@@ -652,6 +660,10 @@ const SupportPortal: React.FC = () => {
                 <div className="flex items-center gap-1">
                   <CheckCircle className="h-4 w-4" />
                   <span>{chatStats.resolvedToday} resolved today</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Building className="h-4 w-4" />
+                  <span>{chatStats.totalRestaurants} restaurants</span>
                 </div>
               </div>
             )}
@@ -760,6 +772,11 @@ const SupportPortal: React.FC = () => {
                               Agent: {session.assigned_agent_name}
                             </p>
                           )}
+                          {session.status === 'closed' && (
+                            <p className="text-xs text-gray-500 font-medium">
+                              Chat closed
+                            </p>
+                          )}
                         </div>
                         <div className="flex flex-col gap-1">
                           <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(session.status)}`}>
@@ -777,7 +794,7 @@ const SupportPortal: React.FC = () => {
                         </span>
                       </div>
                       
-                      {!hasAgent && (
+                      {!hasAgent && session.status === 'active' && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -844,6 +861,16 @@ const SupportPortal: React.FC = () => {
                       ))}
                     </div>
                     
+                    {/* Chat Actions */}
+                    {selectedSession.status === 'active' && (
+                      <button
+                        onClick={() => setShowCloseChatModal(true)}
+                        className="px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+                      >
+                        Close Chat
+                      </button>
+                    )}
+                    
                     <button
                       onClick={fetchMessages}
                       className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
@@ -856,7 +883,6 @@ const SupportPortal: React.FC = () => {
                       onClick={() => {
                         setSelectedSession(null);
                         cleanupSessionSubscriptions();
-                        stopPollingFallback();
                       }}
                       className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
                     >
@@ -865,6 +891,16 @@ const SupportPortal: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Chat Closed Notice */}
+              {selectedSession.status === 'closed' && (
+                <div className="p-4 bg-gray-100 border-b border-gray-200">
+                  <div className="flex items-center gap-3 text-center justify-center">
+                    <Archive className="h-5 w-5 text-gray-500" />
+                    <span className="text-gray-700 font-medium">This chat has been closed</span>
+                  </div>
+                </div>
+              )}
 
               {/* Messages */}
               <div 
@@ -880,7 +916,7 @@ const SupportPortal: React.FC = () => {
                   <div className="absolute inset-0 bg-blue-500/20 border-2 border-dashed border-blue-500 rounded-lg flex items-center justify-center z-10">
                     <div className="text-center">
                       <Upload className="h-12 w-12 text-blue-600 mx-auto mb-2" />
-                      <p className="text-blue-700 font-medium">Drop files to upload</p>
+                      <p className="text-blue-700 font-medium">Drop images to upload</p>
                     </div>
                   </div>
                 )}
@@ -921,12 +957,25 @@ const SupportPortal: React.FC = () => {
                             </div>
                             <p className="text-sm leading-relaxed">{message.message}</p>
                             
-                            {message.has_attachments && (
-                              <div className="mt-2 p-2 bg-white/10 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                  <Paperclip className="h-4 w-4" />
-                                  <span className="text-xs">Attachment</span>
-                                </div>
+                            {message.attachments && message.attachments.length > 0 && (
+                              <div className="mt-2 space-y-2">
+                                {message.attachments.map((attachment) => (
+                                  <div key={attachment.id} className="bg-white/10 rounded-lg p-2">
+                                    {attachment.file_type.startsWith('image/') ? (
+                                      <img
+                                        src={attachment.file_url}
+                                        alt={attachment.file_name}
+                                        className="max-w-full h-auto rounded-lg"
+                                        style={{ maxHeight: '200px' }}
+                                      />
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <Paperclip className="h-4 w-4" />
+                                        <span className="text-xs">{attachment.file_name}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
                             )}
                           </>
@@ -939,58 +988,95 @@ const SupportPortal: React.FC = () => {
               </div>
 
               {/* Enhanced Message Input */}
-              <div className="p-4 border-t border-gray-200">
-                <div className="flex gap-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    accept="image/*,.pdf,.doc,.docx,.txt"
-                    onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-                    className="hidden"
-                  />
-                  
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingFiles}
-                    className="p-3 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-                    title="Attach files"
-                  >
-                    {uploadingFiles ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Paperclip className="h-4 w-4" />
-                    )}
-                  </button>
-                  
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey && !sendingMessage) {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }
-                    }}
-                    placeholder="Type your message..."
-                    className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    disabled={sendingMessage}
-                  />
-                  
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={sendingMessage || !newMessage.trim()}
-                    className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {sendingMessage ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </button>
+              {selectedSession.status !== 'closed' && (
+                <div className="p-4 border-t border-gray-200">
+                  {/* Quick Responses */}
+                  {showQuickResponses && quickResponses.length > 0 && (
+                    <div className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Quick Responses</span>
+                        <button
+                          onClick={() => setShowQuickResponses(false)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="space-y-1">
+                        {quickResponses.slice(0, 5).map((response) => (
+                          <button
+                            key={response.id}
+                            onClick={() => handleQuickResponse(response)}
+                            className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                          >
+                            <span className="font-medium">{response.title}</span>
+                            <p className="text-xs text-gray-500 truncate">{response.message}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+                      className="hidden"
+                    />
+                    
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingFiles}
+                      className="p-3 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                      title="Upload image"
+                    >
+                      {uploadingFiles ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Camera className="h-4 w-4" />
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => setShowQuickResponses(!showQuickResponses)}
+                      className="p-3 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="Quick responses"
+                    >
+                      <Zap className="h-4 w-4" />
+                    </button>
+                    
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey && !sendingMessage) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      placeholder="Type your message..."
+                      className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={sendingMessage}
+                    />
+                    
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={sendingMessage || !newMessage.trim()}
+                      className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {sendingMessage ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
@@ -1000,7 +1086,7 @@ const SupportPortal: React.FC = () => {
                 <p className="text-gray-500 max-w-sm">
                   Choose a chat session to start helping customers across all restaurants
                 </p>
-                <div className="mt-6 grid grid-cols-2 gap-4 max-w-sm mx-auto">
+                <div className="mt-6 grid grid-cols-3 gap-4 max-w-lg mx-auto">
                   <div className="bg-white p-4 rounded-xl border border-gray-200">
                     <MessageSquare className="h-8 w-8 text-blue-600 mx-auto mb-2" />
                     <p className="text-sm font-medium text-gray-900">
@@ -1015,12 +1101,74 @@ const SupportPortal: React.FC = () => {
                     </p>
                     <p className="text-xs text-gray-600">Restaurants</p>
                   </div>
+                  <div className="bg-white p-4 rounded-xl border border-gray-200">
+                    <CheckCircle className="h-8 w-8 text-purple-600 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-gray-900">
+                      {sessions.filter(s => s.status === 'resolved').length}
+                    </p>
+                    <p className="text-xs text-gray-600">Resolved</p>
+                  </div>
                 </div>
               </div>
             </div>
           )}
         </div>
       </div>
+
+      {/* Close Chat Modal */}
+      {showCloseChatModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-gray-900">Close Chat</h3>
+              <button
+                onClick={() => setShowCloseChatModal(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <Archive className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-blue-900 mb-1">Close this chat?</p>
+                    <p className="text-blue-800 text-sm">
+                      This will mark the chat as resolved and notify the customer. 
+                      The conversation will be archived for future reference.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowCloseChatModal(false)}
+                className="flex-1 py-3 px-4 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                Keep Open
+              </button>
+              <button
+                onClick={handleCloseChat}
+                disabled={closingChat}
+                className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {closingChat ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Archive className="h-4 w-4" />
+                    Close Chat
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

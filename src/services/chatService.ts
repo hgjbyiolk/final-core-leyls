@@ -30,6 +30,7 @@ export interface ChatMessage {
   has_attachments: boolean;
   is_system_message: boolean;
   created_at: string;
+  attachments?: MessageAttachment[];
 }
 
 export interface ChatParticipant {
@@ -79,6 +80,26 @@ export interface CreateParticipantData {
   user_name: string;
 }
 
+export interface SupportAgent {
+  id: string;
+  name: string;
+  email: string;
+  password_hash: string;
+  role: string;
+  is_active: boolean;
+  last_login_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuickResponse {
+  id: string;
+  title: string;
+  message: string;
+  category: string;
+  is_active: boolean;
+}
+
 export class ChatService {
   // Set support agent context for database access
   static async setSupportAgentContext(agentEmail: string): Promise<void> {
@@ -94,11 +115,6 @@ export class ChatService {
       }
       
       console.log('✅ Support agent context set successfully:', data);
-      
-      // Test the context
-      const { data: testData } = await supabase.rpc('test_support_agent_context');
-      console.log('🧪 Context test result:', testData);
-      
     } catch (error: any) {
       console.error('Error setting support agent context:', error);
       throw error;
@@ -208,6 +224,34 @@ export class ChatService {
     }
   }
 
+  // Close chat session
+  static async closeChatSession(sessionId: string, agentName: string): Promise<void> {
+    try {
+      console.log('🔒 Closing chat session:', sessionId);
+      
+      // Update session status
+      await this.updateChatSession(sessionId, {
+        status: 'closed',
+        updated_at: new Date().toISOString()
+      });
+
+      // Send system message
+      await this.sendMessage({
+        session_id: sessionId,
+        sender_type: 'support_agent',
+        sender_id: 'system',
+        sender_name: 'System',
+        message: `Chat closed by ${agentName}. Thank you for contacting support!`,
+        is_system_message: true
+      });
+
+      console.log('✅ Chat session closed successfully');
+    } catch (error) {
+      console.error('❌ Error closing chat session:', error);
+      throw error;
+    }
+  }
+
   // Assign agent to session
   static async assignAgentToSession(
     sessionId: string,
@@ -241,7 +285,10 @@ export class ChatService {
       
       const { data, error } = await supabase
         .from('chat_messages')
-        .select('*')
+        .select(`
+          *,
+          attachments:message_attachments(*)
+        `)
         .eq('session_id', sessionId)
         .order('created_at', { ascending: true });
 
@@ -258,7 +305,7 @@ export class ChatService {
     }
   }
 
-  // Send a message with proper real-time handling
+  // Send a message with real-time handling
   static async sendMessage(messageData: CreateMessageData): Promise<ChatMessage> {
     console.log('📤 Sending message:', {
       sessionId: messageData.session_id,
@@ -268,7 +315,6 @@ export class ChatService {
       isSystem: messageData.is_system_message
     });
     
-    // Ensure proper message data structure
     const messageToInsert = {
       session_id: messageData.session_id,
       sender_type: messageData.sender_type,
@@ -283,7 +329,10 @@ export class ChatService {
     const { data, error } = await supabase
       .from('chat_messages')
       .insert(messageToInsert)
-      .select()
+      .select(`
+        *,
+        attachments:message_attachments(*)
+      `)
       .single();
 
     if (error) {
@@ -293,6 +342,66 @@ export class ChatService {
     
     console.log('✅ Message sent successfully:', data.id);
     return data;
+  }
+
+  // Upload file attachment
+  static async uploadAttachment(
+    file: File,
+    messageId: string
+  ): Promise<MessageAttachment> {
+    try {
+      console.log('📎 Uploading attachment:', file.name, file.size);
+
+      // Validate file type (only images and screenshots)
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      if (!allowedTypes.includes(file.type)) {
+        throw new Error('Only image files are allowed');
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('File size must be less than 5MB');
+      }
+
+      // Upload to Supabase Storage
+      const fileName = `${Date.now()}_${file.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('chat-attachments')
+        .upload(fileName, file);
+
+      if (uploadError) {
+        throw new Error(`Upload failed: ${uploadError.message}`);
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('chat-attachments')
+        .getPublicUrl(fileName);
+
+      // Create attachment record
+      const { data: attachment, error: attachmentError } = await supabase
+        .from('message_attachments')
+        .insert({
+          message_id: messageId,
+          file_name: file.name,
+          file_type: file.type,
+          file_size: file.size,
+          file_url: urlData.publicUrl,
+          thumbnail_url: urlData.publicUrl // For images, use same URL as thumbnail
+        })
+        .select()
+        .single();
+
+      if (attachmentError) {
+        throw new Error(`Failed to create attachment record: ${attachmentError.message}`);
+      }
+
+      console.log('✅ Attachment uploaded successfully:', attachment.id);
+      return attachment;
+    } catch (error: any) {
+      console.error('❌ Error uploading attachment:', error);
+      throw error;
+    }
   }
 
   // Get participants for a chat session
@@ -319,7 +428,7 @@ export class ChatService {
     }
   }
 
-  // Add participant to session with proper validation
+  // Add participant to session
   static async addParticipant(
     sessionId: string,
     participantData: CreateParticipantData
@@ -331,9 +440,8 @@ export class ChatService {
       userId: participantData.user_id
     });
 
-    // Validate user_type before inserting
     if (!['restaurant_manager', 'support_agent'].includes(participantData.user_type)) {
-      throw new Error(`Invalid user_type: ${participantData.user_type}. Must be 'restaurant_manager' or 'support_agent'`);
+      throw new Error(`Invalid user_type: ${participantData.user_type}`);
     }
     
     const participantToInsert = {
@@ -383,7 +491,7 @@ export class ChatService {
     }
   }
 
-  // Real-time subscriptions with enhanced error handling
+  // Real-time subscriptions
   static subscribeToAllSessions(callback: (payload: any) => void) {
     console.log('🔌 Setting up global sessions subscription');
     
@@ -392,24 +500,17 @@ export class ChatService {
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'chat_sessions' }, 
         (payload) => {
-          console.log('🔄 [REALTIME] Sessions payload received:', {
+          console.log('🔄 [REALTIME] Sessions update:', {
             eventType: payload.eventType,
-            sessionId: payload.new?.id,
-            restaurantId: payload.new?.restaurant_id,
-            title: payload.new?.title,
-            status: payload.new?.status,
-            timestamp: new Date().toISOString()
+            sessionId: payload.new?.id || payload.old?.id,
+            restaurantId: payload.new?.restaurant_id || payload.old?.restaurant_id,
+            status: payload.new?.status || payload.old?.status
           });
           callback(payload);
         }
       )
       .subscribe((status) => {
         console.log('📡 [REALTIME] Global sessions subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ [REALTIME] Global sessions subscription active');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ [REALTIME] Global sessions subscription error');
-        }
       });
 
     return channel;
@@ -428,25 +529,16 @@ export class ChatService {
           filter: `session_id=eq.${sessionId}`
         }, 
         (payload) => {
-          console.log('📨 [REALTIME] Message payload received:', {
+          console.log('📨 [REALTIME] Message update:', {
             eventType: payload.eventType,
-            messageId: payload.new?.id,
-            senderId: payload.new?.sender_id,
-            senderType: payload.new?.sender_type,
-            sessionId: payload.new?.session_id,
-            timestamp: new Date().toISOString(),
-            messagePreview: payload.new?.message?.substring(0, 50) + '...'
+            messageId: payload.new?.id || payload.old?.id,
+            senderType: payload.new?.sender_type || payload.old?.sender_type
           });
           callback(payload);
         }
       )
       .subscribe((status) => {
-        console.log('📡 [REALTIME] Messages subscription status for session', sessionId, ':', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ [REALTIME] Messages subscription active for session:', sessionId);
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ [REALTIME] Messages subscription error for session:', sessionId);
-        }
+        console.log('📡 [REALTIME] Messages subscription status:', status);
       });
 
     return channel;
@@ -465,18 +557,17 @@ export class ChatService {
           filter: `session_id=eq.${sessionId}`
         }, 
         (payload) => {
-          console.log('👥 [REALTIME] Participants payload received:', {
+          console.log('👥 [REALTIME] Participants update:', {
             eventType: payload.eventType,
-            participantId: payload.new?.id,
-            userType: payload.new?.user_type,
-            userName: payload.new?.user_name,
+            participantId: payload.new?.id || payload.old?.id,
+            userType: payload.new?.user_type || payload.old?.user_type,
             isOnline: payload.new?.is_online
           });
           callback(payload);
         }
       )
       .subscribe((status) => {
-        console.log('📡 [REALTIME] Participants subscription status for session', sessionId, ':', status);
+        console.log('📡 [REALTIME] Participants subscription status:', status);
       });
 
     return channel;
@@ -485,7 +576,7 @@ export class ChatService {
   // Get chat statistics
   static async getChatStats(): Promise<any> {
     try {
-      console.log('📊 Fetching comprehensive chat statistics');
+      console.log('📊 Fetching chat statistics');
       
       const { data, error } = await supabase.rpc('get_chat_statistics');
 
@@ -513,38 +604,153 @@ export class ChatService {
     }
   }
 
-  // Authenticate support agent
+  // Support Agent Management
   static async authenticateSupportAgent(email: string, password: string): Promise<{
     success: boolean;
-    agent?: any;
+    agent?: SupportAgent;
     error?: string;
   }> {
     try {
       console.log('🔐 Authenticating support agent:', email);
       
-      // For demo purposes, accept any email/password combination
-      // In production, you would validate against the support_agents table
-      const agent = {
-        id: `agent_${Date.now()}`,
-        name: email.split('@')[0].replace(/[^a-zA-Z]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        email: email,
-        role: 'agent',
-        is_active: true,
-        last_login_at: new Date().toISOString()
-      };
+      const { data, error } = await supabase.rpc('authenticate_support_agent', {
+        agent_email: email,
+        agent_password: password
+      });
 
-      // Set the agent context for this session
-      await this.setSupportAgentContext(email);
+      if (error) {
+        console.error('❌ Authentication error:', error);
+        return { success: false, error: error.message };
+      }
 
-      console.log('✅ Support agent authenticated:', agent.name);
-      return { success: true, agent };
+      if (!data) {
+        return { success: false, error: 'Invalid credentials' };
+      }
+
+      // Update last login
+      await supabase
+        .from('support_agents')
+        .update({ last_login_at: new Date().toISOString() })
+        .eq('email', email);
+
+      console.log('✅ Support agent authenticated:', data.name);
+      return { success: true, agent: data };
     } catch (error: any) {
       console.error('❌ Error authenticating support agent:', error);
       return { success: false, error: error.message };
     }
   }
 
-  // Clean up subscriptions properly
+  static async createSupportAgent(agentData: {
+    name: string;
+    email: string;
+    password: string;
+  }): Promise<SupportAgent> {
+    try {
+      console.log('👤 Creating support agent:', agentData.email);
+      
+      const { data, error } = await supabase.rpc('create_support_agent', {
+        agent_name: agentData.name,
+        agent_email: agentData.email,
+        agent_password: agentData.password
+      });
+
+      if (error) {
+        console.error('❌ Error creating support agent:', error);
+        throw error;
+      }
+
+      console.log('✅ Support agent created successfully:', data.id);
+      return data;
+    } catch (error: any) {
+      console.error('Error creating support agent:', error);
+      throw error;
+    }
+  }
+
+  static async getSupportAgents(): Promise<SupportAgent[]> {
+    try {
+      const { data, error } = await supabase
+        .from('support_agents')
+        .select('id, name, email, role, is_active, last_login_at, created_at')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Error fetching support agents:', error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error: any) {
+      console.error('Error fetching support agents:', error);
+      return [];
+    }
+  }
+
+  static async updateSupportAgent(
+    agentId: string,
+    updates: Partial<Pick<SupportAgent, 'name' | 'email' | 'is_active'>>
+  ): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('support_agents')
+        .update(updates)
+        .eq('id', agentId);
+
+      if (error) {
+        console.error('❌ Error updating support agent:', error);
+        throw error;
+      }
+
+      console.log('✅ Support agent updated successfully');
+    } catch (error: any) {
+      console.error('Error updating support agent:', error);
+      throw error;
+    }
+  }
+
+  static async deleteSupportAgent(agentId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('support_agents')
+        .delete()
+        .eq('id', agentId);
+
+      if (error) {
+        console.error('❌ Error deleting support agent:', error);
+        throw error;
+      }
+
+      console.log('✅ Support agent deleted successfully');
+    } catch (error: any) {
+      console.error('Error deleting support agent:', error);
+      throw error;
+    }
+  }
+
+  // Quick Responses
+  static async getQuickResponses(): Promise<QuickResponse[]> {
+    try {
+      const { data, error } = await supabase
+        .from('quick_responses')
+        .select('*')
+        .eq('is_active', true)
+        .order('category', { ascending: true })
+        .order('title', { ascending: true });
+
+      if (error) {
+        console.error('❌ Error fetching quick responses:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error: any) {
+      console.error('Error fetching quick responses:', error);
+      return [];
+    }
+  }
+
+  // Clean up subscriptions
   static cleanupSubscription(subscription: any): void {
     if (subscription && typeof subscription.unsubscribe === 'function') {
       try {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Users, Building, DollarSign, TrendingUp, BarChart3, 
@@ -6,13 +6,15 @@ import {
   Filter, Eye, MoreVertical, Crown, AlertCircle, CheckCircle,
   Clock, Star, ArrowRight, Send, X, Loader2, Plus,
   FileText, Download, Upload, Paperclip, Image, File,
-  User, Shield, Zap, Target, Gift, Calendar, Phone, Mail
+  User, Shield, Zap, Target, Gift, Calendar, Phone, Mail,
+  Edit3, Trash2, UserPlus, Key, Lock, EyeOff
 } from 'lucide-react';
 import { SupportService, SupportTicket, SupportMessage } from '../services/supportService';
 import { SubscriptionService } from '../services/subscriptionService';
+import { ChatService, SupportAgent } from '../services/chatService';
 
 const SuperAdminUI: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'support' | 'subscriptions' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'agents' | 'subscriptions' | 'analytics'>('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -20,6 +22,21 @@ const SuperAdminUI: React.FC = () => {
   // Stats state
   const [systemStats, setSystemStats] = useState<any>(null);
   const [subscriptionStats, setSubscriptionStats] = useState<any>(null);
+
+  // Support agents state
+  const [supportAgents, setSupportAgents] = useState<SupportAgent[]>([]);
+  const [showCreateAgentModal, setShowCreateAgentModal] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<SupportAgent | null>(null);
+  const [agentFormData, setAgentFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
+  const [agentFormLoading, setAgentFormLoading] = useState(false);
+  const [agentFormError, setAgentFormError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
     // Check if user is authenticated as super admin
@@ -44,10 +61,6 @@ const SuperAdminUI: React.FC = () => {
     }
 
     loadDashboardData();
-
-    return () => {
-      // Cleanup any subscriptions if needed
-    };
   }, [navigate]);
 
   const loadDashboardData = async () => {
@@ -55,17 +68,20 @@ const SuperAdminUI: React.FC = () => {
       setLoading(true);
       console.log('📊 Loading super admin dashboard data...');
 
-      const [systemData, subscriptionData] = await Promise.all([
+      const [systemData, subscriptionData, agentsData] = await Promise.all([
         SubscriptionService.getSystemWideStats(),
-        SubscriptionService.getSubscriptionStats()
+        SubscriptionService.getSubscriptionStats(),
+        ChatService.getSupportAgents()
       ]);
 
       setSystemStats(systemData);
       setSubscriptionStats(subscriptionData);
+      setSupportAgents(agentsData);
       
       console.log('✅ Dashboard data loaded:', {
         systemStats: systemData,
-        subscriptionStats: subscriptionData
+        subscriptionStats: subscriptionData,
+        supportAgents: agentsData.length
       });
     } catch (err: any) {
       console.error('❌ Error loading dashboard data:', err);
@@ -75,10 +91,124 @@ const SuperAdminUI: React.FC = () => {
     }
   };
 
+  const handleCreateAgent = async () => {
+    try {
+      setAgentFormLoading(true);
+      setAgentFormError('');
+
+      // Validation
+      if (!agentFormData.name.trim()) {
+        setAgentFormError('Name is required');
+        return;
+      }
+
+      if (!agentFormData.email.trim()) {
+        setAgentFormError('Email is required');
+        return;
+      }
+
+      if (!/\S+@\S+\.\S+/.test(agentFormData.email)) {
+        setAgentFormError('Please enter a valid email address');
+        return;
+      }
+
+      if (!agentFormData.password) {
+        setAgentFormError('Password is required');
+        return;
+      }
+
+      if (agentFormData.password.length < 8) {
+        setAgentFormError('Password must be at least 8 characters');
+        return;
+      }
+
+      if (agentFormData.password !== agentFormData.confirmPassword) {
+        setAgentFormError('Passwords do not match');
+        return;
+      }
+
+      // Check if email already exists
+      const existingAgent = supportAgents.find(agent => agent.email === agentFormData.email);
+      if (existingAgent) {
+        setAgentFormError('An agent with this email already exists');
+        return;
+      }
+
+      await ChatService.createSupportAgent({
+        name: agentFormData.name,
+        email: agentFormData.email,
+        password: agentFormData.password
+      });
+
+      // Refresh agents list
+      const updatedAgents = await ChatService.getSupportAgents();
+      setSupportAgents(updatedAgents);
+
+      // Reset form
+      setAgentFormData({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: ''
+      });
+      setShowCreateAgentModal(false);
+      setShowPassword(false);
+      setShowConfirmPassword(false);
+
+    } catch (err: any) {
+      console.error('Error creating support agent:', err);
+      setAgentFormError(err.message || 'Failed to create support agent');
+    } finally {
+      setAgentFormLoading(false);
+    }
+  };
+
+  const handleUpdateAgent = async (agentId: string, updates: any) => {
+    try {
+      await ChatService.updateSupportAgent(agentId, updates);
+      
+      // Refresh agents list
+      const updatedAgents = await ChatService.getSupportAgents();
+      setSupportAgents(updatedAgents);
+    } catch (err: any) {
+      console.error('Error updating support agent:', err);
+      alert(err.message || 'Failed to update support agent');
+    }
+  };
+
+  const handleDeleteAgent = async (agentId: string) => {
+    if (!confirm('Are you sure you want to delete this support agent? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await ChatService.deleteSupportAgent(agentId);
+      
+      // Refresh agents list
+      const updatedAgents = await ChatService.getSupportAgents();
+      setSupportAgents(updatedAgents);
+    } catch (err: any) {
+      console.error('Error deleting support agent:', err);
+      alert(err.message || 'Failed to delete support agent');
+    }
+  };
+
   const handleSignOut = () => {
     localStorage.removeItem('super_admin_authenticated');
     localStorage.removeItem('super_admin_login_time');
     navigate('/super-admin-login');
+  };
+
+  const resetAgentForm = () => {
+    setAgentFormData({
+      name: '',
+      email: '',
+      password: '',
+      confirmPassword: ''
+    });
+    setAgentFormError('');
+    setShowPassword(false);
+    setShowConfirmPassword(false);
   };
 
   if (loading) {
@@ -131,6 +261,7 @@ const SuperAdminUI: React.FC = () => {
           <div className="p-4 space-y-2">
             {[
               { id: 'overview', label: 'Overview', icon: BarChart3 },
+              { id: 'agents', label: 'Support Agents', icon: Users },
               { id: 'subscriptions', label: 'Subscriptions', icon: Crown },
               { id: 'analytics', label: 'Analytics', icon: TrendingUp },
               { id: 'support', label: 'Support Portal', icon: MessageSquare, external: true }
@@ -228,12 +359,12 @@ const SuperAdminUI: React.FC = () => {
                 <div className="bg-white rounded-2xl p-6 border border-gray-200">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
-                      <Building className="h-6 w-6 text-yellow-600" />
+                      <MessageSquare className="h-6 w-6 text-yellow-600" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Active Restaurants</p>
+                      <p className="text-sm text-gray-600">Support Agents</p>
                       <p className="text-2xl font-bold text-gray-900">
-                        {systemStats?.activeRestaurants || 0}
+                        {supportAgents.filter(a => a.is_active).length}
                       </p>
                     </div>
                   </div>
@@ -261,6 +392,106 @@ const SuperAdminUI: React.FC = () => {
                       <p className="text-2xl font-bold text-yellow-600">${subscriptionStats.revenue.toFixed(0)}</p>
                       <p className="text-sm text-yellow-700">Monthly Revenue</p>
                     </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Support Agents Tab */}
+          {activeTab === 'agents' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Support Agents</h2>
+                  <p className="text-gray-600">Manage support agents who can access the support portal</p>
+                </div>
+                <button
+                  onClick={() => setShowCreateAgentModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Create Agent
+                </button>
+              </div>
+
+              {/* Agents List */}
+              {supportAgents.length === 0 ? (
+                <div className="bg-white rounded-2xl p-12 border border-gray-200 text-center">
+                  <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No Support Agents</h3>
+                  <p className="text-gray-500 mb-6">Create your first support agent to start handling customer support</p>
+                  <button
+                    onClick={() => setShowCreateAgentModal(true)}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Create First Agent
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b border-gray-200">
+                        <tr>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Agent</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Email</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Status</th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-700">Last Login</th>
+                          <th className="text-right py-3 px-4 font-medium text-gray-700">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {supportAgents.map((agent) => (
+                          <tr key={agent.id} className="hover:bg-gray-50">
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <User className="h-4 w-4 text-blue-600" />
+                                </div>
+                                <span className="font-medium text-gray-900">{agent.name}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-gray-600">{agent.email}</td>
+                            <td className="py-3 px-4">
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                agent.is_active 
+                                  ? 'bg-green-100 text-green-800' 
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {agent.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-gray-600 text-sm">
+                              {agent.last_login_at 
+                                ? new Date(agent.last_login_at).toLocaleDateString()
+                                : 'Never'
+                              }
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <div className="flex items-center gap-2 justify-end">
+                                <button
+                                  onClick={() => handleUpdateAgent(agent.id, { is_active: !agent.is_active })}
+                                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                                    agent.is_active
+                                      ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                      : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                  }`}
+                                >
+                                  {agent.is_active ? 'Deactivate' : 'Activate'}
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteAgent(agent.id)}
+                                  className="p-2 text-red-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
@@ -308,6 +539,130 @@ const SuperAdminUI: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {/* Create Agent Modal */}
+      {showCreateAgentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-gray-900">Create Support Agent</h3>
+              <button
+                onClick={() => {
+                  setShowCreateAgentModal(false);
+                  resetAgentForm();
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {agentFormError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm mb-4">
+                {agentFormError}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  value={agentFormData.name}
+                  onChange={(e) => setAgentFormData({ ...agentFormData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., Sarah Johnson"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address *
+                </label>
+                <input
+                  type="email"
+                  value={agentFormData.email}
+                  onChange={(e) => setAgentFormData({ ...agentFormData, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="sarah@voya.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Password *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={agentFormData.password}
+                    onChange={(e) => setAgentFormData({ ...agentFormData, password: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+                    placeholder="Create a secure password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirm Password *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={agentFormData.confirmPassword}
+                    onChange={(e) => setAgentFormData({ ...agentFormData, confirmPassword: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent pr-10"
+                    placeholder="Confirm your password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowCreateAgentModal(false);
+                  resetAgentForm();
+                }}
+                className="flex-1 py-3 px-4 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateAgent}
+                disabled={agentFormLoading}
+                className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {agentFormLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4" />
+                    Create Agent
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

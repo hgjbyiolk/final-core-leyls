@@ -4,9 +4,11 @@ import {
   AlertCircle, User, Send, X, ChevronDown, ChevronUp,
   Loader2, RefreshCw, Tag, Calendar, Users, Settings, 
   MessageCircle, Phone, Mail, FileText, Zap, Star,
-  Paperclip, Upload, Eye, Download, Building, Crown
+  Paperclip, Upload, Eye, Download, Building, Crown,
+  Image, Camera, Smile, MoreVertical, Copy, Archive,
+  UserX, Shield, Activity, Wifi, WifiOff
 } from 'lucide-react';
-import { ChatService, ChatSession, ChatMessage, ChatParticipant } from '../services/chatService';
+import { ChatService, ChatSession, ChatMessage, ChatParticipant, QuickResponse } from '../services/chatService';
 import { useAuth } from '../contexts/AuthContext';
 
 const SupportUI: React.FC = () => {
@@ -30,9 +32,14 @@ const SupportUI: React.FC = () => {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('disconnected');
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const [pendingMessages, setPendingMessages] = useState<Map<string, ChatMessage>>(new Map());
-  const [lastMessageRefresh, setLastMessageRefresh] = useState<number>(0);
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [showQuickResponses, setShowQuickResponses] = useState(false);
+  const [quickResponses, setQuickResponses] = useState<QuickResponse[]>([]);
+  const [showCloseChatModal, setShowCloseChatModal] = useState(false);
+  const [closingChat, setClosingChat] = useState(false);
+  
+  // Real-time state
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [lastSeen, setLastSeen] = useState<Date>(new Date());
   
   // Refs for subscriptions and auto-scroll
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -40,6 +47,7 @@ const SupportUI: React.FC = () => {
   const messagesSubscriptionRef = useRef<any>(null);
   const participantsSubscriptionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const { user, restaurant } = useAuth();
 
@@ -54,9 +62,52 @@ const SupportUI: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Online/offline detection
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setConnectionStatus('connected');
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+      setConnectionStatus('disconnected');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Heartbeat for presence
+  useEffect(() => {
+    if (selectedSession && user) {
+      // Update presence every 30 seconds
+      heartbeatIntervalRef.current = setInterval(() => {
+        ChatService.updateParticipantStatus(selectedSession.id, user.id, true);
+        setLastSeen(new Date());
+      }, 30000);
+
+      return () => {
+        if (heartbeatIntervalRef.current) {
+          clearInterval(heartbeatIntervalRef.current);
+        }
+        // Mark as offline when leaving
+        if (selectedSession && user) {
+          ChatService.updateParticipantStatus(selectedSession.id, user.id, false);
+        }
+      };
+    }
+  }, [selectedSession, user]);
+
   useEffect(() => {
     if (restaurant) {
       fetchSessions();
+      fetchQuickResponses();
       setupGlobalSubscriptions();
     }
     
@@ -70,51 +121,19 @@ const SupportUI: React.FC = () => {
       fetchMessages();
       fetchParticipants();
       setupSessionSubscriptions();
-      startPollingFallback();
+      
+      // Mark participant as online
+      if (user) {
+        ChatService.updateParticipantStatus(selectedSession.id, user.id, true);
+      }
     } else {
       cleanupSessionSubscriptions();
-      stopPollingFallback();
     }
   }, [selectedSession]);
-
-  // Enhanced polling fallback for real-time issues
-  const startPollingFallback = () => {
-    stopPollingFallback(); // Clear any existing interval
-    
-    const interval = setInterval(async () => {
-      if (selectedSession && Date.now() - lastMessageRefresh > 2000) {
-        try {
-          const freshMessages = await ChatService.getChatMessages(selectedSession.id);
-          const sortedMessages = freshMessages.sort((a, b) => 
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-          );
-          
-          // Only update if we have new messages
-          if (sortedMessages.length !== messages.length) {
-            console.log('🔄 [POLLING] Detected new messages, updating...');
-            setMessages(sortedMessages);
-            setLastMessageRefresh(Date.now());
-          }
-        } catch (error) {
-          console.warn('⚠️ Polling fallback error:', error);
-        }
-      }
-    }, 3000); // Poll every 3 seconds
-    
-    setPollingInterval(interval);
-  };
-
-  const stopPollingFallback = () => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      setPollingInterval(null);
-    }
-  };
 
   const cleanupAllSubscriptions = () => {
     cleanupGlobalSubscriptions();
     cleanupSessionSubscriptions();
-    stopPollingFallback();
   };
 
   const cleanupGlobalSubscriptions = () => {
@@ -154,11 +173,11 @@ const SupportUI: React.FC = () => {
     cleanupGlobalSubscriptions();
     setConnectionStatus('connecting');
     
-    console.log('🔌 Setting up sessions subscription for restaurant:', restaurant.id);
+    console.log('🔌 Setting up real-time sessions subscription');
     
     try {
       sessionsSubscriptionRef.current = ChatService.subscribeToAllSessions((payload) => {
-        console.log('🔄 Sessions update:', payload);
+        console.log('🔄 Sessions real-time update:', payload);
         setConnectionStatus('connected');
         
         if (payload.eventType === 'INSERT' && payload.new) {
@@ -177,12 +196,24 @@ const SupportUI: React.FC = () => {
           setSessions(prev => prev.map(session => 
             session.id === payload.new.id ? payload.new : session
           ));
+          
+          // Update selected session if it's the one being updated
+          if (selectedSession?.id === payload.new.id) {
+            setSelectedSession(payload.new);
+          }
+        } else if (payload.eventType === 'DELETE' && payload.old) {
+          setSessions(prev => prev.filter(session => session.id !== payload.old.id));
+          
+          // Clear selected session if it was deleted
+          if (selectedSession?.id === payload.old.id) {
+            setSelectedSession(null);
+          }
         }
       });
       
-      console.log('✅ Global sessions subscription established');
+      console.log('✅ Real-time sessions subscription established');
     } catch (err) {
-      console.error('❌ Failed to setup global subscriptions:', err);
+      console.error('❌ Failed to setup real-time subscriptions:', err);
       setConnectionStatus('disconnected');
     }
   };
@@ -192,72 +223,42 @@ const SupportUI: React.FC = () => {
     
     cleanupSessionSubscriptions();
     
-    console.log('🔌 [REALTIME] Setting up enhanced session subscriptions for:', selectedSession.id);
+    console.log('🔌 [REALTIME] Setting up session subscriptions for:', selectedSession.id);
     
     try {
-      // Enhanced messages subscription with better deduplication
+      // Messages subscription
       messagesSubscriptionRef.current = ChatService.subscribeToMessages(
         selectedSession.id,
         (payload) => {
-          console.log('📨 [REALTIME] Message update received:', {
-            eventType: payload.eventType,
-            messageId: payload.new?.id,
-            senderId: payload.new?.sender_id,
-            senderType: payload.new?.sender_type,
-            sessionId: payload.new?.session_id,
-            timestamp: new Date().toISOString(),
-            messagePreview: payload.new?.message?.substring(0, 50) + '...'
-          });
+          console.log('📨 [REALTIME] Message update:', payload);
           
           if (payload.eventType === 'INSERT' && payload.new) {
             setMessages(prev => {
-              // Enhanced deduplication - check by ID instead of timestamp
               const exists = prev.some(msg => msg.id === payload.new.id);
-              if (exists) {
-                console.log('⚠️ Message already exists, skipping duplicate:', payload.new.id);
-                return prev;
-              }
-              
-              // Remove any pending message with same content (optimistic update cleanup)
-              const withoutPending = prev.filter(msg => {
-                if (msg.id.startsWith('temp_') && 
-                    msg.message === payload.new.message && 
-                    msg.sender_id === payload.new.sender_id) {
-                  console.log('🧹 Removing optimistic message:', msg.id);
-                  return false;
-                }
-                return true;
-              });
+              if (exists) return prev;
               
               const newMessages = [...prev, payload.new].sort((a, b) => 
                 new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
               );
               
-              console.log('✅ Added new message to list, total:', newMessages.length);
-              
-              // Auto-scroll for new messages
               setTimeout(() => scrollToBottom(), 100);
-              
               return newMessages;
             });
-            
-            // Update last refresh time
-            setLastMessageRefresh(Date.now());
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
+            setMessages(prev => prev.map(msg => 
+              msg.id === payload.new.id ? payload.new : msg
+            ));
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            setMessages(prev => prev.filter(msg => msg.id !== payload.old.id));
           }
         }
       );
 
-      // Enhanced participants subscription
+      // Participants subscription
       participantsSubscriptionRef.current = ChatService.subscribeToParticipants(
         selectedSession.id,
         (payload) => {
-          console.log('👥 [REALTIME] Participants update received:', {
-            eventType: payload.eventType,
-            participantId: payload.new?.id,
-            userType: payload.new?.user_type,
-            userName: payload.new?.user_name,
-            isOnline: payload.new?.is_online
-          });
+          console.log('👥 [REALTIME] Participants update:', payload);
           
           if (payload.eventType === 'INSERT' && payload.new) {
             setParticipants(prev => {
@@ -269,13 +270,15 @@ const SupportUI: React.FC = () => {
             setParticipants(prev => prev.map(p => 
               p.id === payload.new.id ? payload.new : p
             ));
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            setParticipants(prev => prev.filter(p => p.id !== payload.old.id));
           }
         }
       );
       
-      console.log('✅ Enhanced session subscriptions established');
+      console.log('✅ Session subscriptions established');
     } catch (err) {
-      console.error('❌ Failed to setup enhanced session subscriptions:', err);
+      console.error('❌ Failed to setup session subscriptions:', err);
     }
   };
 
@@ -303,17 +306,11 @@ const SupportUI: React.FC = () => {
       console.log('📨 Fetching messages for session:', selectedSession.id);
       const messagesData = await ChatService.getChatMessages(selectedSession.id);
       
-      // Sort messages by creation time
       const sortedMessages = messagesData.sort((a, b) => 
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
       
       setMessages(sortedMessages);
-      setLastMessageRefresh(Date.now());
-      
-      // Clear any pending messages for this session
-      setPendingMessages(new Map());
-      
       console.log('✅ Messages loaded:', sortedMessages.length);
     } catch (error) {
       console.error('❌ Error fetching messages:', error);
@@ -328,6 +325,15 @@ const SupportUI: React.FC = () => {
       setParticipants(participantsData);
     } catch (error) {
       console.error('Error fetching participants:', error);
+    }
+  };
+
+  const fetchQuickResponses = async () => {
+    try {
+      const responses = await ChatService.getQuickResponses();
+      setQuickResponses(responses);
+    } catch (error) {
+      console.error('Error fetching quick responses:', error);
     }
   };
 
@@ -363,7 +369,6 @@ const SupportUI: React.FC = () => {
         category: 'general'
       });
       setShowCreateSession(false);
-      await fetchSessions();
       setSelectedSession(session);
     } catch (error) {
       console.error('Error creating session:', error);
@@ -379,7 +384,7 @@ const SupportUI: React.FC = () => {
     const messageText = newMessage.trim();
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    // Enhanced optimistic message with better tracking
+    // Optimistic message
     const optimisticMessage: ChatMessage = {
       id: tempId,
       session_id: selectedSession.id,
@@ -393,9 +398,6 @@ const SupportUI: React.FC = () => {
       created_at: new Date().toISOString()
     };
 
-    // Add to pending messages for tracking
-    setPendingMessages(prev => new Map(prev.set(tempId, optimisticMessage)));
-    
     // Add optimistic message to UI
     setMessages(prev => [...prev, optimisticMessage]);
     setNewMessage('');
@@ -403,13 +405,6 @@ const SupportUI: React.FC = () => {
     scrollToBottom();
 
     try {
-      console.log('📤 Sending message from restaurant manager:', {
-        sessionId: selectedSession.id,
-        userName: user.email?.split('@')[0],
-        messageLength: messageText.length,
-        tempId
-      });
-
       const sentMessage = await ChatService.sendMessage({
         session_id: selectedSession.id,
         sender_type: 'restaurant_manager',
@@ -418,33 +413,16 @@ const SupportUI: React.FC = () => {
         message: messageText
       });
 
-      console.log('✅ Message sent successfully:', sentMessage.id);
-
       // Replace optimistic message with real one
       setMessages(prev => prev.map(msg => 
         msg.id === tempId ? sentMessage : msg
       ));
-      
-      // Remove from pending
-      setPendingMessages(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(tempId);
-        return newMap;
-      });
-
-      // Update last refresh time
-      setLastMessageRefresh(Date.now());
 
     } catch (error) {
       console.error('Error sending message:', error);
       
       // Remove optimistic message on error and restore text
       setMessages(prev => prev.filter(msg => msg.id !== tempId));
-      setPendingMessages(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(tempId);
-        return newMap;
-      });
       setNewMessage(messageText);
       alert('Failed to send message. Please try again.');
     } finally {
@@ -458,20 +436,30 @@ const SupportUI: React.FC = () => {
     setUploadingFiles(true);
     try {
       for (const file of Array.from(files)) {
-        // Validate file
-        if (file.size > 10 * 1024 * 1024) { // 10MB limit
-          throw new Error(`File ${file.name} is too large. Maximum size is 10MB.`);
+        // Validate file type (only images)
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+          throw new Error(`File ${file.name} is not supported. Only images are allowed.`);
         }
 
-        // For demo, we'll just send a message about the file
-        await ChatService.sendMessage({
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          throw new Error(`File ${file.name} is too large. Maximum size is 5MB.`);
+        }
+
+        // Create message first
+        const message = await ChatService.sendMessage({
           session_id: selectedSession.id,
           sender_type: 'restaurant_manager',
           sender_id: user.id,
           sender_name: user.email?.split('@')[0] || 'Restaurant Manager',
-          message: `📎 Uploaded file: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`,
-          message_type: 'file'
+          message: `📷 Shared an image: ${file.name}`,
+          message_type: 'image',
+          has_attachments: true
         });
+
+        // Upload attachment
+        await ChatService.uploadAttachment(file, message.id);
       }
     } catch (err: any) {
       console.error('Error uploading files:', err);
@@ -490,12 +478,37 @@ const SupportUI: React.FC = () => {
     }
   };
 
+  const handleQuickResponse = (response: QuickResponse) => {
+    setNewMessage(response.message);
+    setShowQuickResponses(false);
+  };
+
+  const handleCloseChat = async () => {
+    if (!selectedSession || !user) return;
+
+    try {
+      setClosingChat(true);
+      await ChatService.closeChatSession(
+        selectedSession.id, 
+        user.email?.split('@')[0] || 'Restaurant Manager'
+      );
+      
+      setShowCloseChatModal(false);
+      // Don't clear selected session immediately - let real-time update handle it
+    } catch (error) {
+      console.error('Error closing chat:', error);
+      alert('Failed to close chat');
+    } finally {
+      setClosingChat(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800 border-green-200';
-      case 'resolved': return 'bg-green-100 text-green-800';
-      case 'closed': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'resolved': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'closed': return 'bg-gray-100 text-gray-800 border-gray-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
@@ -505,12 +518,21 @@ const SupportUI: React.FC = () => {
       case 'high': return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'low': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const formatTime = (dateString: string) => {
     return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -524,14 +546,8 @@ const SupportUI: React.FC = () => {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const activeSessions = sessions.filter(s => s.status === 'active');
+  const sessionsWithAgent = sessions.filter(s => s.assigned_agent_name);
 
   return (
     <div className="space-y-6">
@@ -547,9 +563,21 @@ const SupportUI: React.FC = () => {
               'bg-red-500'
             }`}></div>
             <span className="text-xs text-gray-500 capitalize">{connectionStatus}</span>
+            {!isOnline && (
+              <div className="flex items-center gap-1 text-xs text-red-600">
+                <WifiOff className="h-3 w-3" />
+                <span>Offline</span>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4 text-sm text-gray-600">
+            <div className="flex items-center gap-1">
+              <Activity className="h-4 w-4 text-green-500" />
+              <span>{activeSessions.length} active</span>
+            </div>
+          </div>
           <button
             onClick={fetchSessions}
             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
@@ -627,40 +655,45 @@ const SupportUI: React.FC = () => {
                   const hasAgent = session.assigned_agent_name;
                   
                   return (
-                  <button
-                    key={session.id}
-                    onClick={() => setSelectedSession(session)}
-                    className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${
-                      selectedSession?.id === session.id ? 'bg-gradient-to-r from-[#E6A85C]/10 via-[#E85A9B]/10 to-[#D946EF]/10 border-r-2 border-[#E6A85C]' : ''
-                    }`}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-gray-900 text-sm truncate">
-                          {session.title}
-                        </h3>
-                        {hasAgent && (
-                          <p className="text-xs text-blue-600 font-medium mt-1">
-                            Agent: {session.assigned_agent_name}
-                          </p>
-                        )}
+                    <button
+                      key={session.id}
+                      onClick={() => setSelectedSession(session)}
+                      className={`w-full p-4 text-left hover:bg-gray-50 transition-colors ${
+                        selectedSession?.id === session.id ? 'bg-gradient-to-r from-[#E6A85C]/10 via-[#E85A9B]/10 to-[#D946EF]/10 border-r-2 border-[#E6A85C]' : ''
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-gray-900 text-sm truncate">
+                            {session.title}
+                          </h3>
+                          {hasAgent && (
+                            <p className="text-xs text-blue-600 font-medium mt-1">
+                              Agent: {session.assigned_agent_name}
+                            </p>
+                          )}
+                          {session.status === 'closed' && (
+                            <p className="text-xs text-gray-500 font-medium mt-1">
+                              Chat closed
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-1">
+                          <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(session.status)}`}>
+                            {session.status}
+                          </span>
+                        </div>
                       </div>
-                      <div className="flex gap-1">
-                        <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(session.status)}`}>
-                          {session.status}
+                      
+                      <div className="flex items-center justify-between">
+                        <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(session.priority)}`}>
+                          {session.priority}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {formatDate(session.last_message_at)}
                         </span>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(session.priority)}`}>
-                        {session.priority}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {formatDate(session.last_message_at)}
-                      </span>
-                    </div>
-                  </button>
+                    </button>
                   );
                 })}
               </div>
@@ -717,6 +750,16 @@ const SupportUI: React.FC = () => {
                       ))}
                     </div>
                     
+                    {/* Chat Actions */}
+                    {selectedSession.status === 'active' && (
+                      <button
+                        onClick={() => setShowCloseChatModal(true)}
+                        className="px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+                      >
+                        Close Chat
+                      </button>
+                    )}
+                    
                     <button
                       onClick={fetchMessages}
                       className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
@@ -729,7 +772,6 @@ const SupportUI: React.FC = () => {
                       onClick={() => {
                         setSelectedSession(null);
                         cleanupSessionSubscriptions();
-                        stopPollingFallback();
                       }}
                       className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
                     >
@@ -739,137 +781,196 @@ const SupportUI: React.FC = () => {
                 </div>
               </div>
 
-{/* Messages */}
-<div 
-  className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"
-  onDrop={handleDrop}
-  onDragOver={(e) => {
-    e.preventDefault();
-    setDragOver(true);
-  }}
-  onDragLeave={() => setDragOver(false)}
->
-  {dragOver && (
-    <div className="absolute inset-0 bg-blue-500/20 border-2 border-dashed border-blue-500 rounded-lg flex items-center justify-center z-10">
-      <div className="text-center">
-        <Upload className="h-12 w-12 text-blue-600 mx-auto mb-2" />
-        <p className="text-blue-700 font-medium">Drop files to upload</p>
-      </div>
-    </div>
-  )}
-
-  {messages.map((message) => {
-    const isPending = message.id.startsWith('temp_');
-
-    return (
-      <div
-        key={message.id}
-        className={`flex ${message.sender_type === 'restaurant_manager' ? 'justify-end' : 'justify-start'}`}
-      >
-        <div
-          className={`max-w-xs lg:max-w-md ${
-            message.sender_type === 'restaurant_manager'
-              ? 'bg-gradient-to-r from-[#E6A85C] to-[#E85A9B] text-white'
-              : 'bg-white border border-gray-200'
-          } rounded-2xl px-4 py-3 shadow-sm ${isPending ? 'opacity-70' : ''}`}
-        >
-          {message.is_system_message ? (
-            <p className="text-center text-xs text-gray-500 italic">
-              {message.message}
-            </p>
-          ) : (
-            <>
-              <div className="flex items-center gap-2 mb-1">
-                <span
-                  className={`text-xs font-medium ${
-                    message.sender_type === 'restaurant_manager' ? 'text-white/80' : 'text-gray-600'
-                  }`}
-                >
-                  {message.sender_name}
-                </span>
-                <span
-                  className={`text-xs ${
-                    message.sender_type === 'restaurant_manager' ? 'text-white/60' : 'text-gray-400'
-                  }`}
-                >
-                  {formatTime(message.created_at)}
-                </span>
-                {isPending && (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                )}
-              </div>
-              <p className="text-sm leading-relaxed">{message.message}</p>
-
-              {message.has_attachments && (
-                <div className="mt-2 p-2 bg-white/10 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Paperclip className="h-4 w-4" />
-                    <span className="text-xs">Attachment</span>
+              {/* Chat Closed Notice */}
+              {selectedSession.status === 'closed' && (
+                <div className="p-4 bg-gray-100 border-b border-gray-200">
+                  <div className="flex items-center gap-3 text-center justify-center">
+                    <Archive className="h-5 w-5 text-gray-500" />
+                    <span className="text-gray-700 font-medium">This chat has been closed</span>
                   </div>
                 </div>
               )}
-            </>
-          )}
-        </div>
-      </div>
-    );
-  })}
-  <div ref={messagesEndRef} />
-</div>
+
+              {/* Messages */}
+              <div 
+                className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"
+                onDrop={handleDrop}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+              >
+                {dragOver && (
+                  <div className="absolute inset-0 bg-blue-500/20 border-2 border-dashed border-blue-500 rounded-lg flex items-center justify-center z-10">
+                    <div className="text-center">
+                      <Upload className="h-12 w-12 text-blue-600 mx-auto mb-2" />
+                      <p className="text-blue-700 font-medium">Drop images to upload</p>
+                    </div>
+                  </div>
+                )}
+
+                {messages.map((message) => {
+                  const isPending = message.id.startsWith('temp_');
+
+                  return (
+                    <div
+                      key={message.id}
+                      className={`flex ${message.sender_type === 'restaurant_manager' ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-xs lg:max-w-md ${
+                          message.sender_type === 'restaurant_manager'
+                            ? 'bg-gradient-to-r from-[#E6A85C] to-[#E85A9B] text-white'
+                            : 'bg-white border border-gray-200'
+                        } rounded-2xl px-4 py-3 shadow-sm ${isPending ? 'opacity-70' : ''}`}
+                      >
+                        {message.is_system_message ? (
+                          <p className="text-center text-xs text-gray-500 italic">
+                            {message.message}
+                          </p>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span
+                                className={`text-xs font-medium ${
+                                  message.sender_type === 'restaurant_manager' ? 'text-white/80' : 'text-gray-600'
+                                }`}
+                              >
+                                {message.sender_name}
+                              </span>
+                              <span
+                                className={`text-xs ${
+                                  message.sender_type === 'restaurant_manager' ? 'text-white/60' : 'text-gray-400'
+                                }`}
+                              >
+                                {formatTime(message.created_at)}
+                              </span>
+                              {isPending && (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              )}
+                            </div>
+                            <p className="text-sm leading-relaxed">{message.message}</p>
+
+                            {message.attachments && message.attachments.length > 0 && (
+                              <div className="mt-2 space-y-2">
+                                {message.attachments.map((attachment) => (
+                                  <div key={attachment.id} className="bg-white/10 rounded-lg p-2">
+                                    {attachment.file_type.startsWith('image/') ? (
+                                      <img
+                                        src={attachment.file_url}
+                                        alt={attachment.file_name}
+                                        className="max-w-full h-auto rounded-lg"
+                                        style={{ maxHeight: '200px' }}
+                                      />
+                                    ) : (
+                                      <div className="flex items-center gap-2">
+                                        <Paperclip className="h-4 w-4" />
+                                        <span className="text-xs">{attachment.file_name}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </div>
 
               {/* Message Input */}
-              <div className="p-4 border-t border-gray-200">
-                <div className="flex gap-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    multiple
-                    accept="image/*,.pdf,.doc,.docx,.txt"
-                    onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-                    className="hidden"
-                  />
-                  
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadingFiles}
-                    className="p-3 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-                    title="Attach files"
-                  >
-                    {uploadingFiles ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Paperclip className="h-4 w-4" />
-                    )}
-                  </button>
-                  
-                  <input
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey && !sendingMessage) {
-                        e.preventDefault();
-                        handleSendMessage();
-                      }
-                    }}
-                    placeholder="Type your message..."
-                    className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E6A85C] focus:border-transparent"
-                    disabled={sendingMessage}
-                  />
-                  
-                  <button
-                    onClick={handleSendMessage}
-                    disabled={sendingMessage || !newMessage.trim()}
-                    className="px-6 py-3 bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] text-white rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {sendingMessage ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </button>
+              {selectedSession.status !== 'closed' && (
+                <div className="p-4 border-t border-gray-200">
+                  {/* Quick Responses */}
+                  {showQuickResponses && quickResponses.length > 0 && (
+                    <div className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Quick Responses</span>
+                        <button
+                          onClick={() => setShowQuickResponses(false)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="space-y-1">
+                        {quickResponses.slice(0, 3).map((response) => (
+                          <button
+                            key={response.id}
+                            onClick={() => handleQuickResponse(response)}
+                            className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                          >
+                            {response.title}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+                      className="hidden"
+                    />
+                    
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploadingFiles}
+                      className="p-3 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+                      title="Upload image"
+                    >
+                      {uploadingFiles ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Camera className="h-4 w-4" />
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => setShowQuickResponses(!showQuickResponses)}
+                      className="p-3 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="Quick responses"
+                    >
+                      <Zap className="h-4 w-4" />
+                    </button>
+                    
+                    <input
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey && !sendingMessage) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      placeholder="Type your message..."
+                      className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#E6A85C] focus:border-transparent"
+                      disabled={sendingMessage}
+                    />
+                    
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={sendingMessage || !newMessage.trim()}
+                      className="px-6 py-3 bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] text-white rounded-xl hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {sendingMessage ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
@@ -883,14 +984,14 @@ const SupportUI: React.FC = () => {
                   <div className="bg-white p-4 rounded-xl border border-gray-200">
                     <MessageSquare className="h-8 w-8 text-blue-600 mx-auto mb-2" />
                     <p className="text-sm font-medium text-gray-900">
-                      {sessions.filter(s => s.status === 'active').length}
+                      {activeSessions.length}
                     </p>
                     <p className="text-xs text-gray-600">Active Chats</p>
                   </div>
                   <div className="bg-white p-4 rounded-xl border border-gray-200">
-                    <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
+                    <Users className="h-8 w-8 text-green-600 mx-auto mb-2" />
                     <p className="text-sm font-medium text-gray-900">
-                      {sessions.filter(s => s.assigned_agent_name).length}
+                      {sessionsWithAgent.length}
                     </p>
                     <p className="text-xs text-gray-600">With Agent</p>
                   </div>
@@ -983,6 +1084,61 @@ const SupportUI: React.FC = () => {
                   <>
                     <Plus className="h-4 w-4" />
                     Start Chat
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Close Chat Modal */}
+      {showCloseChatModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-gray-900">Close Chat</h3>
+              <button
+                onClick={() => setShowCloseChatModal(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-yellow-900 mb-1">Close this chat?</p>
+                    <p className="text-yellow-800 text-sm">
+                      This will mark the chat as closed and notify the support team. 
+                      You can always start a new chat if you need further assistance.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowCloseChatModal(false)}
+                className="flex-1 py-3 px-4 border border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                Keep Open
+              </button>
+              <button
+                onClick={handleCloseChat}
+                disabled={closingChat}
+                className="flex-1 py-3 px-4 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {closingChat ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Archive className="h-4 w-4" />
+                    Close Chat
                   </>
                 )}
               </button>
