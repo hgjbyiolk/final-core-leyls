@@ -212,9 +212,11 @@ const SupportUI: React.FC = () => {
           if (payload.eventType === 'INSERT' && payload.new) {
             setMessages(prev => {
               // Enhanced deduplication - check by ID instead of timestamp
+              const exists = prev.some(msg => msg.id === payload.new.id);
+              if (exists) {
                 console.log('⚠️ Message already exists, skipping duplicate:', payload.new.id);
                 return prev;
-              if (exists) return prev;
+              }
               
               // Remove any pending message with same content (optimistic update cleanup)
               const withoutPending = prev.filter(msg => {
@@ -745,16 +747,11 @@ const SupportUI: React.FC = () => {
     e.preventDefault();
     setDragOver(true);
   }}
+  onDragLeave={() => setDragOver(false)}
 >
-  {selectedSession.restaurant?.name?.[0] || restaurant?.name?.[0] || 'R'}
-
   {dragOver && (
     <div className="absolute inset-0 bg-blue-500/20 border-2 border-dashed border-blue-500 rounded-lg flex items-center justify-center z-10">
-      <div className="flex items-center gap-2 mt-1">
-        <Building className="h-3 w-3 text-gray-400" />
-        <span className="text-sm text-gray-600">
-          {selectedSession.restaurant?.name || restaurant?.name || 'Unknown Restaurant'}
-        </span>
+      <div className="text-center">
         <Upload className="h-12 w-12 text-blue-600 mx-auto mb-2" />
         <p className="text-blue-700 font-medium">Drop files to upload</p>
       </div>
@@ -997,4 +994,4 @@ const SupportUI: React.FC = () => {
   );
 };
  
-export default SupportUI; 
+export default SupportUI;
