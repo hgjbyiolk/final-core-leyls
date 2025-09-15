@@ -84,7 +84,7 @@ export class ChatService {
   static async setSupportAgentContext(agentEmail: string): Promise<void> {
     try {
       console.log('🔐 Setting support agent context:', agentEmail);
-      const { error } = await supabase.rpc('set_support_agent_context', {
+      const { data, error } = await supabase.rpc('set_support_agent_context', {
         agent_email: agentEmail
       });
       
@@ -93,7 +93,12 @@ export class ChatService {
         throw error;
       }
       
-      console.log('✅ Support agent context set successfully');
+      console.log('✅ Support agent context set successfully:', data);
+      
+      // Test the context
+      const { data: testData } = await supabase.rpc('test_support_agent_context');
+      console.log('🧪 Context test result:', testData);
+      
     } catch (error: any) {
       console.error('Error setting support agent context:', error);
       throw error;
