@@ -611,54 +611,45 @@ export class ChatService {
   }
 
   // Support Agent Management
-  static async authenticateSupportAgent(email: string, password: string): Promise<{
-    success: boolean;
-    agent?: SupportAgent;
-    error?: string;
-  }> {
-    try {
-      console.log('🔐 Authenticating support agent:', email);
-      
-      // First check if agent exists in our database
-      const { data: existingAgent, error: checkError } = await supabase
-        .from('support_agents')
-        .select('*')
-        .eq('email', email)
-        .eq('is_active', true)
-        .single();
+// Support Agent Management
+static async authenticateSupportAgent(email: string, password: string): Promise<{
+  success: boolean;
+  agent?: SupportAgent;
+  error?: string;
+}> {
+  try {
+    console.log('🔐 Authenticating support agent:', email);
 
-      if (checkError || !existingAgent) {
-        console.log('❌ Agent not found in database:', email);
-        return { success: false, error: 'Invalid credentials or agent not found' };
-      }
-
-      const { data, error } = await supabase.rpc('authenticate_support_agent', {
+    const { data: agent, error } = await supabase
+      .rpc('authenticate_support_agent', {
         agent_email: email,
         agent_password: password
-      });
+      })
+      .single(); // safe now because RPC returns exactly one row
 
-      if (error) {
-        console.error('❌ Authentication error:', error);
-        return { success: false, error: error.message };
-      }
-
-      if (!data) {
-        return { success: false, error: 'Invalid credentials or agent not found' };
-      }
-
-      // Update last login
-      await supabase
-        .from('support_agents')
-        .update({ last_login_at: new Date().toISOString() })
-        .eq('email', email);
-
-      console.log('✅ Support agent authenticated:', data.name);
-      return { success: true, agent: data };
-    } catch (error: any) {
-      console.error('❌ Error authenticating support agent:', error);
+    if (error) {
+      console.error('❌ Authentication error:', error);
       return { success: false, error: error.message };
     }
+
+    if (!agent) {
+      return { success: false, error: 'Invalid credentials' };
+    }
+
+    // Update last login timestamp
+    await supabase
+      .from('support_agents')
+      .update({ last_login_at: new Date().toISOString() })
+      .eq('email', email);
+
+    console.log('✅ Support agent authenticated:', agent.name);
+    return { success: true, agent };
+  } catch (error: any) {
+    console.error('❌ Error authenticating support agent:', error);
+    return { success: false, error: error.message };
   }
+}
+
 
   static async createSupportAgent(agentData: {
     name: string;
