@@ -611,20 +611,21 @@ export class ChatService {
   }
 
   // Support Agent Management
-static async authenticateSupportAgent(email: string, password: string): Promise<{
-  success: boolean;
-  agent?: SupportAgent;
-  error?: string;
-}> {
+static async authenticateSupportAgent(
+  email: string,
+  password: string
+): Promise<{ success: boolean; agent?: SupportAgent; error?: string }> {
   try {
     console.log('🔐 Authenticating support agent:', email);
 
-    const { data, error } = await supabase.rpc('authenticate_support_agent', {
-      agent_email: email,
-      agent_password: password
-    });
+    // Force Supabase to return exactly one row or null
+    const { data, error } = await supabase
+      .rpc('authenticate_support_agent', {
+        agent_email: email,
+        agent_password: password
+      })
+      .single();
 
-    // Handle Supabase errors or null result
     if (error) {
       console.error('❌ Authentication error:', error);
       return { success: false, error: 'Invalid credentials' };
@@ -648,6 +649,7 @@ static async authenticateSupportAgent(email: string, password: string): Promise<
     return { success: false, error: 'Authentication failed' };
   }
 }
+
 
 
   static async createSupportAgent(agentData: {
