@@ -17,16 +17,37 @@ const SupportPortalLogin: React.FC = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+ const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setError('');
 
-    try {
-      if (!credentials.email || !credentials.password) {
-        setError('Please fill in all fields');
-        return;
-      }
+  try {
+    if (!credentials.email || !credentials.password) {
+      setError('Please fill in all fields');
+      return;
+    }
+
+    const result = await ChatService.authenticateSupportAgent(
+      credentials.email,
+      credentials.password
+    );
+
+    // ✅ Only proceed if result.success AND agent has a valid id
+    if (result.success && result.agent && result.agent.id) {
+      localStorage.setItem('support_agent_data', JSON.stringify(result.agent));
+      localStorage.setItem('support_agent_login_time', new Date().toISOString());
+      navigate('/support-portal');
+    } else {
+      setError(result.error || 'Invalid credentials');
+    }
+  } catch (err: any) {
+    setError(err.message || 'Authentication failed');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
       const result = await ChatService.authenticateSupportAgent(credentials.email, credentials.password);
 
