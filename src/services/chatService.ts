@@ -611,39 +611,33 @@ export class ChatService {
   }
 
   // Support Agent Management
-// Support Agent Management
-static async authenticateSupportAgent(email: string, password: string): Promise<{
-  success: boolean;
-  agent?: SupportAgent;
-  error?: string;
-}> {
+static async authenticateSupportAgent(email: string, password: string) {
   try {
     console.log('🔐 Authenticating support agent:', email);
 
-    const { data: agent, error } = await supabase
-      .rpc('authenticate_support_agent', {
-        agent_email: email,
-        agent_password: password
-      })
-      .single(); // safe now because RPC returns exactly one row
+    const { data, error } = await supabase.rpc('authenticate_support_agent', {
+      agent_email: email,
+      agent_password: password,
+    });
 
     if (error) {
       console.error('❌ Authentication error:', error);
       return { success: false, error: error.message };
     }
 
-    if (!agent) {
+    if (!data) {
+      // ❌ no user returned
       return { success: false, error: 'Invalid credentials' };
     }
 
-    // Update last login timestamp
+    // Update last login
     await supabase
       .from('support_agents')
       .update({ last_login_at: new Date().toISOString() })
       .eq('email', email);
 
-    console.log('✅ Support agent authenticated:', agent.name);
-    return { success: true, agent };
+    console.log('✅ Support agent authenticated:', data.name);
+    return { success: true, agent: data };
   } catch (error: any) {
     console.error('❌ Error authenticating support agent:', error);
     return { success: false, error: error.message };
