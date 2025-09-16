@@ -28,18 +28,23 @@ const SupportPortalLogin: React.FC = () => {
         return;
       }
 
+      console.log('🔐 Attempting support agent login:', credentials.email);
       const result = await ChatService.authenticateSupportAgent(credentials.email, credentials.password);
+      console.log('🔐 Login result:', result);
 
       if (result.success && result.agent) {
+        console.log('✅ Support agent authenticated successfully:', result.agent.name);
         // Store support agent session
         localStorage.setItem('support_agent_data', JSON.stringify(result.agent));
         localStorage.setItem('support_agent_login_time', new Date().toISOString());
         
         navigate('/support-portal');
       } else {
+        console.error('❌ Authentication failed:', result.error);
         setError(result.error || 'Invalid credentials');
       }
     } catch (err: any) {
+      console.error('❌ Login error:', err);
       setError(err.message || 'Authentication failed');
     } finally {
       setLoading(false);

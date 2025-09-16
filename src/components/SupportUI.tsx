@@ -479,8 +479,22 @@ const SupportUI: React.FC = () => {
   };
 
   const handleQuickResponse = (response: QuickResponse) => {
-    setNewMessage(response.message);
+    console.log('⚡ Using quick response:', response.title);
+    setNewMessage(prev => {
+      // If there's already text, add the response on a new line
+      const separator = prev.trim() ? '\n\n' : '';
+      return prev + separator + response.message;
+    });
     setShowQuickResponses(false);
+    
+    // Focus the input field
+    setTimeout(() => {
+      const messageInput = document.querySelector('input[placeholder="Type your message..."]') as HTMLInputElement;
+      if (messageInput) {
+        messageInput.focus();
+        messageInput.setSelectionRange(messageInput.value.length, messageInput.value.length);
+      }
+    }, 100);
   };
 
   const handleCloseChat = async () => {
@@ -857,12 +871,19 @@ const SupportUI: React.FC = () => {
                                 {message.attachments.map((attachment) => (
                                   <div key={attachment.id} className="bg-white/10 rounded-lg p-2">
                                     {attachment.file_type.startsWith('image/') ? (
-                                      <img
-                                        src={attachment.file_url}
-                                        alt={attachment.file_name}
-                                        className="max-w-full h-auto rounded-lg"
-                                        style={{ maxHeight: '200px' }}
-                                      />
+                                      <div className="space-y-2">
+                                        <img
+                                          src={attachment.file_url}
+                                          alt={attachment.file_name}
+                                          className="max-w-full h-auto rounded-lg shadow-sm"
+                                          style={{ maxHeight: '200px' }}
+                                          onError={(e) => {
+                                            console.error('❌ Failed to load image:', attachment.file_url);
+                                            e.currentTarget.style.display = 'none';
+                                          }}
+                                        />
+                                        <p className="text-xs opacity-75">{attachment.file_name}</p>
+                                      </div>
                                     ) : (
                                       <div className="flex items-center gap-2">
                                         <Paperclip className="h-4 w-4" />
@@ -898,13 +919,14 @@ const SupportUI: React.FC = () => {
                         </button>
                       </div>
                       <div className="space-y-1">
-                        {quickResponses.slice(0, 3).map((response) => (
+                        {quickResponses.filter(r => r.is_active).slice(0, 5).map((response) => (
                           <button
                             key={response.id}
                             onClick={() => handleQuickResponse(response)}
-                            className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                            className="w-full text-left p-3 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-100 hover:border-gray-200"
                           >
-                            {response.title}
+                            <div className="font-medium text-gray-900 mb-1">{response.title}</div>
+                            <div className="text-xs text-gray-600 line-clamp-2">{response.message}</div>
                           </button>
                         ))}
                       </div>
@@ -936,7 +958,11 @@ const SupportUI: React.FC = () => {
 
                     <button
                       onClick={() => setShowQuickResponses(!showQuickResponses)}
-                      className="p-3 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      className={`p-3 rounded-lg transition-colors ${
+                        showQuickResponses 
+                          ? 'bg-blue-100 text-blue-600' 
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
                       title="Quick responses"
                     >
                       <Zap className="h-4 w-4" />

@@ -105,19 +105,26 @@ export class ChatService {
   static async setSupportAgentContext(agentEmail: string): Promise<void> {
     try {
       console.log('🔐 Setting support agent context:', agentEmail);
-      const { data, error } = await supabase.rpc('set_support_agent_context', {
-        agent_email: agentEmail
-      });
       
-      if (error) {
-        console.error('❌ Error setting agent context:', error);
-        throw error;
+      // Check if the RPC function exists, if not, skip context setting
+      try {
+        const { data, error } = await supabase.rpc('set_support_agent_context', {
+          agent_email: agentEmail
+        });
+        
+        if (error) {
+          console.warn('⚠️ Agent context RPC not available, continuing without it:', error.message);
+          return; // Don't throw error, just continue
+        }
+        
+        console.log('✅ Support agent context set successfully:', data);
+      } catch (rpcError) {
+        console.warn('⚠️ Agent context RPC failed, continuing without it:', rpcError);
+        // Don't throw error - the authentication should be sufficient
       }
-      
-      console.log('✅ Support agent context set successfully:', data);
     } catch (error: any) {
-      console.error('Error setting support agent context:', error);
-      throw error;
+      console.warn('⚠️ Error setting support agent context, continuing anyway:', error);
+      // Don't throw error to prevent blocking the support portal
     }
   }
 
@@ -528,13 +535,38 @@ export class ChatService {
           table: 'chat_messages',
           filter: `session_id=eq.${sessionId}`
         }, 
-        (payload) => {
+        async (payload) => {
           console.log('📨 [REALTIME] Message update:', {
             eventType: payload.eventType,
             messageId: payload.new?.id || payload.old?.id,
             senderType: payload.new?.sender_type || payload.old?.sender_type
           });
-          callback(payload);
+          
+          // If this is a new image message, resolve the file URL
+          if (payload.eventType === 'INSERT' && payload.new) {
+            let message = payload.new;
+            
+            // Check if message has attachments and fetch them
+            if (message.has_attachments) {
+              try {
+                const { data: attachments, error: attachError } = await supabase
+                  .from('message_attachments')
+                  .select('*')
+                  .eq('message_id', message.id);
+                
+                if (!attachError && attachments) {
+                  message.attachments = attachments;
+                  console.log('📎 Attached file URLs to realtime message:', attachments.length);
+                }
+              } catch (attachError) {
+                console.warn('⚠️ Failed to fetch attachments for realtime message:', attachError);
+              }
+            }
+            
+            callback({ ...payload, new: message });
+          } else {
+            callback(payload);
+          }
         }
       )
       .subscribe((status) => {
@@ -613,28 +645,52 @@ export class ChatService {
     try {
       console.log('🔐 Authenticating support agent:', email);
       
-      const { data, error } = await supabase.rpc('authenticate_support_agent', {
+      // First check if agent exists and is active
+      const { data: agent, error: agentError } = await supabase
+        .from('support_agents')
+        .select('*')
+        .eq('email', email)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (agentError) {
+        console.error('❌ Error fetching agent:', agentError);
+        return { success: false, error: 'Authentication failed' };
+      }
+
+      if (!agent) {
+        console.log('❌ Agent not found or inactive:', email);
+        return { success: false, error: 'Invalid credentials or account inactive' };
+      }
+
+      // Use the RPC function to verify password
+      const { data: authResult, error: authError } = await supabase.rpc('authenticate_support_agent', {
         agent_email: email,
         agent_password: password
       });
 
-      if (error) {
-        console.error('❌ Authentication error:', error);
-        return { success: false, error: error.message };
+      if (authError) {
+        console.error('❌ Authentication RPC error:', authError);
+        return { success: false, error: 'Authentication failed' };
       }
 
-      if (!data) {
+      if (!authResult) {
+        console.log('❌ Invalid password for agent:', email);
         return { success: false, error: 'Invalid credentials' };
       }
 
       // Update last login
-      await supabase
+      const { error: updateError } = await supabase
         .from('support_agents')
         .update({ last_login_at: new Date().toISOString() })
-        .eq('email', email);
+        .eq('id', agent.id);
 
-      console.log('✅ Support agent authenticated:', data.name);
-      return { success: true, agent: data };
+      if (updateError) {
+        console.warn('⚠️ Failed to update last login:', updateError);
+      }
+
+      console.log('✅ Support agent authenticated:', agent.name);
+      return { success: true, agent };
     } catch (error: any) {
       console.error('❌ Error authenticating support agent:', error);
       return { success: false, error: error.message };

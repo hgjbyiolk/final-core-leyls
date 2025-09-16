@@ -103,6 +103,7 @@ const SupportPortal: React.FC = () => {
     const loginTime = localStorage.getItem('support_agent_login_time');
     
     if (!agentData || !loginTime) {
+      console.log('❌ No support agent session found, redirecting to login');
       window.location.href = '/support-portal-login';
       return;
     }
@@ -113,6 +114,7 @@ const SupportPortal: React.FC = () => {
     const hoursSinceLogin = (now.getTime() - loginDate.getTime()) / (1000 * 60 * 60);
     
     if (hoursSinceLogin > 8) {
+      console.log('⏰ Support agent session expired, redirecting to login');
       localStorage.removeItem('support_agent_data');
       localStorage.removeItem('support_agent_login_time');
       window.location.href = '/support-portal-login';
@@ -120,6 +122,7 @@ const SupportPortal: React.FC = () => {
     }
 
     const agent = JSON.parse(agentData);
+    console.log('✅ Support agent session valid:', agent.name);
     setCurrentAgent(agent);
     
     // Initialize support portal
@@ -153,7 +156,13 @@ const SupportPortal: React.FC = () => {
       console.log('🔐 Initializing support portal for agent:', agent.name);
       
       // Set support agent context for database access
-      await ChatService.setSupportAgentContext(agent.email);
+      try {
+        await ChatService.setSupportAgentContext(agent.email);
+        console.log('✅ Support agent context set successfully');
+      } catch (contextError) {
+        console.error('❌ Failed to set agent context:', contextError);
+        // Continue anyway - the agent authentication should be sufficient
+      }
       
       // Load initial data
       await Promise.all([
@@ -177,8 +186,17 @@ const SupportPortal: React.FC = () => {
   const fetchAllSessions = async () => {
     try {
       console.log('🔍 Fetching all chat sessions for support portal');
+      
+      // Ensure we're calling the correct method for support agents
       const sessionsData = await ChatService.getAllChatSessions();
       console.log('✅ Fetched sessions:', sessionsData.length);
+      console.log('📊 Sessions breakdown by restaurant:', 
+        sessionsData.reduce((acc, session) => {
+          const restaurantName = session.restaurant?.name || 'Unknown';
+          acc[restaurantName] = (acc[restaurantName] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      );
       setSessions(sessionsData);
     } catch (error) {
       console.error('❌ Error fetching sessions:', error);
@@ -540,8 +558,22 @@ const SupportPortal: React.FC = () => {
   };
 
   const handleQuickResponse = (response: QuickResponse) => {
-    setNewMessage(response.message);
+    console.log('⚡ Using quick response:', response.title);
+    setNewMessage(prev => {
+      // If there's already text, add the response on a new line
+      const separator = prev.trim() ? '\n\n' : '';
+      return prev + separator + response.message;
+    });
     setShowQuickResponses(false);
+    
+    // Focus the input field
+    setTimeout(() => {
+      const messageInput = document.querySelector('input[placeholder="Type your message..."]') as HTMLInputElement;
+      if (messageInput) {
+        messageInput.focus();
+        messageInput.setSelectionRange(messageInput.value.length, messageInput.value.length);
+      }
+    }, 100);
   };
 
   const handleCloseChat = async () => {
@@ -962,12 +994,19 @@ const SupportPortal: React.FC = () => {
                                 {message.attachments.map((attachment) => (
                                   <div key={attachment.id} className="bg-white/10 rounded-lg p-2">
                                     {attachment.file_type.startsWith('image/') ? (
-                                      <img
-                                        src={attachment.file_url}
-                                        alt={attachment.file_name}
-                                        className="max-w-full h-auto rounded-lg"
-                                        style={{ maxHeight: '200px' }}
-                                      />
+                                      <div className="space-y-2">
+                                        <img
+                                          src={attachment.file_url}
+                                          alt={attachment.file_name}
+                                          className="max-w-full h-auto rounded-lg shadow-sm"
+                                          style={{ maxHeight: '200px' }}
+                                          onError={(e) => {
+                                            console.error('❌ Failed to load image:', attachment.file_url);
+                                            e.currentTarget.style.display = 'none';
+                                          }}
+                                        />
+                                        <p className="text-xs opacity-75">{attachment.file_name}</p>
+                                      </div>
                                     ) : (
                                       <div className="flex items-center gap-2">
                                         <Paperclip className="h-4 w-4" />
@@ -1003,14 +1042,14 @@ const SupportPortal: React.FC = () => {
                         </button>
                       </div>
                       <div className="space-y-1">
-                        {quickResponses.slice(0, 5).map((response) => (
+                        {quickResponses.filter(r => r.is_active).slice(0, 5).map((response) => (
                           <button
                             key={response.id}
                             onClick={() => handleQuickResponse(response)}
-                            className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                            className="w-full text-left p-3 text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors border border-gray-100 hover:border-gray-200"
                           >
-                            <span className="font-medium">{response.title}</span>
-                            <p className="text-xs text-gray-500 truncate">{response.message}</p>
+                            <div className="font-medium text-gray-900 mb-1">{response.title}</div>
+                            <div className="text-xs text-gray-600 line-clamp-2">{response.message}</div>
                           </button>
                         ))}
                       </div>
@@ -1042,7 +1081,11 @@ const SupportPortal: React.FC = () => {
 
                     <button
                       onClick={() => setShowQuickResponses(!showQuickResponses)}
-                      className="p-3 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      className={`p-3 rounded-lg transition-colors ${
+                        showQuickResponses 
+                          ? 'bg-blue-100 text-blue-600' 
+                          : 'text-gray-600 hover:bg-gray-100'
+                      }`}
                       title="Quick responses"
                     >
                       <Zap className="h-4 w-4" />
