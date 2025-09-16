@@ -611,36 +611,42 @@ export class ChatService {
   }
 
   // Support Agent Management
-static async authenticateSupportAgent(email: string, password: string) {
+// Support Agent Authentication
+static async authenticateSupportAgent(email: string, password: string): Promise<{
+  success: boolean;
+  agent?: SupportAgent;
+  error?: string;
+}> {
   try {
     console.log('🔐 Authenticating support agent:', email);
 
     const { data, error } = await supabase.rpc('authenticate_support_agent', {
       agent_email: email,
-      agent_password: password,
+      agent_password: password
     });
 
     if (error) {
-      console.error('❌ Authentication error:', error);
+      console.error('❌ RPC error during authentication:', error);
       return { success: false, error: error.message };
     }
 
+    // 🔒 Explicitly check for null
     if (!data) {
-      // ❌ no user returned
+      console.warn('⚠️ Invalid login attempt for:', email);
       return { success: false, error: 'Invalid credentials' };
     }
 
-    // Update last login
+    // Update last login timestamp
     await supabase
       .from('support_agents')
       .update({ last_login_at: new Date().toISOString() })
-      .eq('email', email);
+      .eq('id', data.id);
 
-    console.log('✅ Support agent authenticated:', data.name);
+    console.log('✅ Support agent authenticated:', data.email);
     return { success: true, agent: data };
   } catch (error: any) {
-    console.error('❌ Error authenticating support agent:', error);
-    return { success: false, error: error.message };
+    console.error('❌ Unexpected error authenticating support agent:', error);
+    return { success: false, error: error.message || 'Authentication failed' };
   }
 }
 
