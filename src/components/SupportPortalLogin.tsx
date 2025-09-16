@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Headphones, Shield, User, Mail, Lock, Eye, EyeOff,
-  AlertCircle, Loader2, Crown, Star, Building, Users,
-  MessageSquare, Coffee, Monitor, Zap, CheckCircle
+  AlertCircle, Loader2, Building, MessageSquare
 } from 'lucide-react';
 import { ChatService } from '../services/chatService';
 
@@ -17,39 +16,24 @@ const SupportPortalLogin: React.FC = () => {
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
- const handleLogin = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  setError('');
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
 
-  try {
-    if (!credentials.email || !credentials.password) {
-      setError('Please fill in all fields');
-      return;
-    }
+    try {
+      if (!credentials.email || !credentials.password) {
+        setError('Please fill in all fields');
+        setLoading(false);
+        return;
+      }
 
-    const result = await ChatService.authenticateSupportAgent(
-      credentials.email,
-      credentials.password
-    );
+      console.log("Inside handleLogin, about to authenticate...");
 
-    // ✅ Only proceed if result.success AND agent has a valid id
-    if (result.success && result.agent && result.agent.id) {
-      localStorage.setItem('support_agent_data', JSON.stringify(result.agent));
-      localStorage.setItem('support_agent_login_time', new Date().toISOString());
-      navigate('/support-portal');
-    } else {
-      setError(result.error || 'Invalid credentials');
-    }
-  } catch (err: any) {
-    setError(err.message || 'Authentication failed');
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-      const result = await ChatService.authenticateSupportAgent(credentials.email, credentials.password);
+      const result = await ChatService.authenticateSupportAgent(
+        credentials.email,
+        credentials.password
+      );
 
       if (result.success && result.agent) {
         // Store support agent session
@@ -70,12 +54,12 @@ const SupportPortalLogin: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
-        {/* Professional Header */}
+        {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl mb-6 shadow-2xl">
             <Headphones className="h-12 w-12 text-white" />
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-800 bg-clip-text text-transparent font-['Space_Grotesk'] mb-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-800 bg-clip-text text-transparent mb-2">
             VOYA Support Portal
           </h1>
           <p className="text-gray-600 text-lg">
