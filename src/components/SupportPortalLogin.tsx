@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Headphones, Shield, User, Mail, Lock, Eye, EyeOff,
-  AlertCircle, Loader2, Building, MessageSquare
+  AlertCircle, Loader2, Crown, Star, Building, Users,
+  MessageSquare, Coffee, Monitor, Zap, CheckCircle
 } from 'lucide-react';
 import { ChatService } from '../services/chatService';
 
@@ -24,16 +25,10 @@ const SupportPortalLogin: React.FC = () => {
     try {
       if (!credentials.email || !credentials.password) {
         setError('Please fill in all fields');
-        setLoading(false);
         return;
       }
 
-      console.log("Inside handleLogin, about to authenticate...");
-
-      const result = await ChatService.authenticateSupportAgent(
-        credentials.email,
-        credentials.password
-      );
+      const result = await ChatService.authenticateSupportAgent(credentials.email, credentials.password);
 
       if (result.success && result.agent) {
         // Store support agent session
@@ -54,12 +49,12 @@ const SupportPortalLogin: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
-        {/* Header */}
+        {/* Professional Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl mb-6 shadow-2xl">
             <Headphones className="h-12 w-12 text-white" />
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-800 bg-clip-text text-transparent mb-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-800 bg-clip-text text-transparent font-['Space_Grotesk'] mb-2">
             VOYA Support Portal
           </h1>
           <p className="text-gray-600 text-lg">
@@ -150,13 +145,32 @@ const SupportPortalLogin: React.FC = () => {
             </button>
           </form>
 
-          {/* Access Notice */}
+          {/* Features Preview */}
+          <div className="mt-6 grid grid-cols-3 gap-4">
+            <div className="text-center p-3 bg-gray-50 rounded-lg">
+              <MessageSquare className="h-6 w-6 text-gray-600 mx-auto mb-1" />
+              <p className="text-xs font-medium text-gray-900">Real-Time</p>
+              <p className="text-xs text-gray-600">Messaging</p>
+            </div>
+            <div className="text-center p-3 bg-gray-50 rounded-lg">
+              <Users className="h-6 w-6 text-gray-600 mx-auto mb-1" />
+              <p className="text-xs font-medium text-gray-900">Multi-User</p>
+              <p className="text-xs text-gray-600">Support</p>
+            </div>
+            <div className="text-center p-3 bg-gray-50 rounded-lg">
+              <Building className="h-6 w-6 text-gray-600 mx-auto mb-1" />
+              <p className="text-xs font-medium text-gray-900">All</p>
+              <p className="text-xs text-gray-600">Restaurants</p>
+            </div>
+          </div>
+
+          {/* Contact Super Admin */}
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
             <div className="text-center">
               <Shield className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-blue-900 mb-1">Authorized Access Only</p>
+              <p className="text-sm font-medium text-blue-900 mb-1">Need Access?</p>
               <p className="text-xs text-blue-700">
-                Only registered support agents can access this portal
+                Contact your super admin to create your support agent account
               </p>
             </div>
           </div>

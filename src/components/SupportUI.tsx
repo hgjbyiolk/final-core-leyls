@@ -25,7 +25,7 @@ const SupportUI: React.FC = () => {
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [newSessionData, setNewSessionData] = useState({
     title: '',
-    priority: 'medium' as 'medium',
+    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
     category: 'general'
   });
   const [createLoading, setCreateLoading] = useState(false);
@@ -107,6 +107,7 @@ const SupportUI: React.FC = () => {
   useEffect(() => {
     if (restaurant) {
       fetchSessions();
+      fetchQuickResponses();
       setupGlobalSubscriptions();
     }
     
@@ -287,10 +288,7 @@ const SupportUI: React.FC = () => {
     try {
       setLoading(true);
       setConnectionStatus('connecting');
-      // Only show active sessions for restaurants
-      const allSessions = await ChatService.getRestaurantChatSessions(restaurant.id);
-      const activeSessions = allSessions.filter(session => session.status === 'active');
-      setSessions(activeSessions);
+      const sessionsData = await ChatService.getRestaurantChatSessions(restaurant.id);
       setSessions(sessionsData);
       setConnectionStatus('connected');
     } catch (error) {
@@ -327,6 +325,15 @@ const SupportUI: React.FC = () => {
       setParticipants(participantsData);
     } catch (error) {
       console.error('Error fetching participants:', error);
+    }
+  };
+
+  const fetchQuickResponses = async () => {
+    try {
+      const responses = await ChatService.getQuickResponses();
+      setQuickResponses(responses);
+    } catch (error) {
+      console.error('Error fetching quick responses:', error);
     }
   };
 
@@ -716,7 +723,7 @@ const SupportUI: React.FC = () => {
                         </span>
                         {selectedSession.assigned_agent_name && (
                           <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full border border-blue-200">
-                            {selectedSession.assigned_agent_name}
+                            Agent: {selectedSession.assigned_agent_name}
                           </span>
                         )}
                       </div>
@@ -830,7 +837,7 @@ const SupportUI: React.FC = () => {
                                   message.sender_type === 'restaurant_manager' ? 'text-white/80' : 'text-gray-600'
                                 }`}
                               >
-                                {message.sender_type === 'restaurant_manager' ? 'You' : message.sender_name}
+                                {message.sender_name}
                               </span>
                               <span
                                 className={`text-xs ${
@@ -878,6 +885,32 @@ const SupportUI: React.FC = () => {
               {/* Message Input */}
               {selectedSession.status !== 'closed' && (
                 <div className="p-4 border-t border-gray-200">
+                  {/* Quick Responses */}
+                  {showQuickResponses && quickResponses.length > 0 && (
+                    <div className="mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Quick Responses</span>
+                        <button
+                          onClick={() => setShowQuickResponses(false)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="space-y-1">
+                        {quickResponses.slice(0, 3).map((response) => (
+                          <button
+                            key={response.id}
+                            onClick={() => handleQuickResponse(response)}
+                            className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-100 rounded transition-colors"
+                          >
+                            {response.title}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex gap-2">
                     <input
                       ref={fileInputRef}
@@ -899,6 +932,14 @@ const SupportUI: React.FC = () => {
                       ) : (
                         <Camera className="h-4 w-4" />
                       )}
+                    </button>
+
+                    <button
+                      onClick={() => setShowQuickResponses(!showQuickResponses)}
+                      className="p-3 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="Quick responses"
+                    >
+                      <Zap className="h-4 w-4" />
                     </button>
                     
                     <input
@@ -994,10 +1035,16 @@ const SupportUI: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Priority
                   </label>
-                  <div className="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-600">
-                    Medium
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">Priority is automatically set to medium</p>
+                  <select
+                    value={newSessionData.priority}
+                    onChange={(e) => setNewSessionData({ ...newSessionData, priority: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#E6A85C] focus:border-transparent"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
                 </div>
 
                 <div>
