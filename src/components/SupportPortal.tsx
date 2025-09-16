@@ -520,7 +520,14 @@ const SupportPortal: React.FC = () => {
         });
 
         // Upload attachment
-        await ChatService.uploadAttachment(file, message.id);
+        const attachment = await ChatService.uploadAttachment(file, message.id);
+        
+        // Update the message with attachment info for real-time display
+        setMessages(prev => prev.map(msg => 
+          msg.id === message.id 
+            ? { ...msg, attachments: [attachment] }
+            : msg
+        ));
       }
     } catch (err: any) {
       console.error('❌ Error uploading files:', err);

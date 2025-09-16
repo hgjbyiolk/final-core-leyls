@@ -145,32 +145,13 @@ const SupportPortalLogin: React.FC = () => {
             </button>
           </form>
 
-          {/* Features Preview */}
-          <div className="mt-6 grid grid-cols-3 gap-4">
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <MessageSquare className="h-6 w-6 text-gray-600 mx-auto mb-1" />
-              <p className="text-xs font-medium text-gray-900">Real-Time</p>
-              <p className="text-xs text-gray-600">Messaging</p>
-            </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <Users className="h-6 w-6 text-gray-600 mx-auto mb-1" />
-              <p className="text-xs font-medium text-gray-900">Multi-User</p>
-              <p className="text-xs text-gray-600">Support</p>
-            </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <Building className="h-6 w-6 text-gray-600 mx-auto mb-1" />
-              <p className="text-xs font-medium text-gray-900">All</p>
-              <p className="text-xs text-gray-600">Restaurants</p>
-            </div>
-          </div>
-
-          {/* Contact Super Admin */}
+          {/* Access Notice */}
           <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
             <div className="text-center">
               <Shield className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-blue-900 mb-1">Need Access?</p>
+              <p className="text-sm font-medium text-blue-900 mb-1">Authorized Access Only</p>
               <p className="text-xs text-blue-700">
-                Contact your super admin to create your support agent account
+                Only registered support agents can access this portal
               </p>
             </div>
           </div>
