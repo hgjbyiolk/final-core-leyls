@@ -611,7 +611,6 @@ export class ChatService {
   }
 
   // Support Agent Management
-// Support Agent Authentication
 static async authenticateSupportAgent(email: string, password: string): Promise<{
   success: boolean;
   agent?: SupportAgent;
@@ -625,14 +624,14 @@ static async authenticateSupportAgent(email: string, password: string): Promise<
       agent_password: password
     });
 
+    // Handle Supabase errors or null result
     if (error) {
-      console.error('❌ RPC error during authentication:', error);
-      return { success: false, error: error.message };
+      console.error('❌ Authentication error:', error);
+      return { success: false, error: 'Invalid credentials' };
     }
 
-    // 🔒 Explicitly check for null
     if (!data) {
-      console.warn('⚠️ Invalid login attempt for:', email);
+      console.warn('⚠️ No agent found for credentials:', email);
       return { success: false, error: 'Invalid credentials' };
     }
 
@@ -642,11 +641,11 @@ static async authenticateSupportAgent(email: string, password: string): Promise<
       .update({ last_login_at: new Date().toISOString() })
       .eq('id', data.id);
 
-    console.log('✅ Support agent authenticated:', data.email);
+    console.log('✅ Support agent authenticated:', data.name);
     return { success: true, agent: data };
-  } catch (error: any) {
-    console.error('❌ Unexpected error authenticating support agent:', error);
-    return { success: false, error: error.message || 'Authentication failed' };
+  } catch (err: any) {
+    console.error('❌ Error authenticating support agent:', err);
+    return { success: false, error: 'Authentication failed' };
   }
 }
 
