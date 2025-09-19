@@ -14,6 +14,7 @@
 -- Drop existing functions to recreate them properly
 DROP FUNCTION IF EXISTS create_support_agent(text, text, text);
 DROP FUNCTION IF EXISTS authenticate_support_agent(text, text);
+DROP FUNCTION IF EXISTS set_support_agent_context(text);
 
 -- Enhanced create_support_agent function
 CREATE OR REPLACE FUNCTION create_support_agent(
@@ -145,6 +146,7 @@ ALTER TABLE support_agents ENABLE ROW LEVEL SECURITY;
 -- Drop existing policies to recreate them
 DROP POLICY IF EXISTS "Service role can manage all agents" ON support_agents;
 DROP POLICY IF EXISTS "Support agents can manage own profile" ON support_agents;
+DROP POLICY IF EXISTS "Authenticated users can read support agents" ON support_agents;
 
 -- Recreate policies with proper permissions
 CREATE POLICY "Service role can manage all agents"
@@ -161,7 +163,6 @@ CREATE POLICY "Support agents can manage own profile"
   USING (email = current_setting('app.current_agent_email', true))
   WITH CHECK (email = current_setting('app.current_agent_email', true));
 
--- Allow authenticated users to read support agents for admin purposes
 CREATE POLICY "Authenticated users can read support agents"
   ON support_agents
   FOR SELECT
