@@ -113,17 +113,17 @@ export class ChatService {
         });
         
         if (error) {
-          console.warn('⚠️ Agent context RPC not available, continuing without it:', error.message);
-          return; // Don't throw error, just continue
+          console.warn('⚠️ Agent context RPC failed:', error.message);
+          // Don't throw error - the authentication should be sufficient
         }
         
-        console.log('✅ Support agent context set successfully:', data);
+        console.log('✅ Support agent context set successfully');
       } catch (rpcError) {
-        console.warn('⚠️ Agent context RPC failed, continuing without it:', rpcError);
+        console.warn('⚠️ Agent context RPC failed:', rpcError);
         // Don't throw error - the authentication should be sufficient
       }
     } catch (error: any) {
-      console.warn('⚠️ Error setting support agent context, continuing anyway:', error);
+      console.warn('⚠️ Error setting support agent context:', error);
       // Don't throw error to prevent blocking the support portal
     }
   }
@@ -145,6 +145,15 @@ export class ChatService {
         console.error('❌ Error fetching all chat sessions:', error);
         throw error;
       }
+      
+      console.log('✅ [SUPPORT PORTAL] Fetched all chat sessions:', {
+        total: data?.length || 0,
+        breakdown: data?.reduce((acc, session) => {
+          const restaurantName = session.restaurant?.name || 'Unknown';
+          acc[restaurantName] = (acc[restaurantName] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>) || {}
+      });
       
       console.log('✅ Fetched all chat sessions:', data?.length || 0);
       return data || [];
@@ -663,6 +672,7 @@ export class ChatService {
         return { success: false, error: 'Invalid credentials or account inactive' };
       }
 
+      console.log('👤 Agent found:', { id: agent.id, name: agent.name, email: agent.email, isActive: agent.is_active });
       // Use the RPC function to verify password
       const { data: authResult, error: authError } = await supabase.rpc('authenticate_support_agent', {
         agent_email: email,
@@ -674,6 +684,7 @@ export class ChatService {
         return { success: false, error: 'Authentication failed' };
       }
 
+      console.log('🔐 Authentication RPC result:', authResult);
       if (!authResult) {
         console.log('❌ Invalid password for agent:', email);
         return { success: false, error: 'Invalid credentials' };
@@ -714,6 +725,10 @@ export class ChatService {
       if (error) {
         console.error('❌ Error creating support agent:', error);
         throw error;
+      }
+
+      if (!data) {
+        throw new Error('No data returned from create_support_agent function');
       }
 
       console.log('✅ Support agent created successfully:', data.id);

@@ -34,6 +34,10 @@ const SupportPortalLogin: React.FC = () => {
 
       if (result.success && result.agent) {
         console.log('✅ Support agent authenticated successfully:', result.agent.name);
+        
+        // Set support agent context for database access
+        await ChatService.setSupportAgentContext(result.agent.email);
+        
         // Store support agent session
         localStorage.setItem('support_agent_data', JSON.stringify(result.agent));
         localStorage.setItem('support_agent_login_time', new Date().toISOString());

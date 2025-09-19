@@ -134,15 +134,21 @@ const SuperAdminUI: React.FC = () => {
         return;
       }
 
-      await ChatService.createSupportAgent({
+      console.log('🔐 Creating support agent:', agentFormData.email);
+      
+      const newAgent = await ChatService.createSupportAgent({
         name: agentFormData.name,
         email: agentFormData.email,
         password: agentFormData.password
       });
+      
+      console.log('✅ Support agent created:', newAgent);
 
       // Refresh agents list
       const updatedAgents = await ChatService.getSupportAgents();
       setSupportAgents(updatedAgents);
+      
+      console.log('✅ Agents list refreshed, total agents:', updatedAgents.length);
 
       // Reset form
       setAgentFormData({
