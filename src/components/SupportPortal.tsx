@@ -8,11 +8,16 @@ import {
   Paperclip, Upload, Eye, Download, Building, Crown,
   Image, Camera, Smile, MoreVertical, Copy, Archive,
   UserX, Shield, Activity, Wifi, WifiOff, LogOut,
-  Headphones, BarChart3, TrendingUp, DollarSign
+  Headphones, BarChart3, TrendingUp
 } from 'lucide-react';
-import { ChatService, ChatSession, ChatMessage, ChatParticipant, QuickResponse } from '../services/chatService';
+import { ChatService, ChatSession, ChatMessage, ChatParticipant, QuickResponse, SupportAgent } from '../services/chatService';
 
 const SupportPortal: React.FC = () => {
+  // Authentication state
+  const [currentAgent, setCurrentAgent] = useState<SupportAgent | null>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  
+  // Chat state
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -23,6 +28,7 @@ const SupportPortal: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
+  const [restaurantFilter, setRestaurantFilter] = useState('all');
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('disconnected');
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -30,8 +36,8 @@ const SupportPortal: React.FC = () => {
   const [quickResponses, setQuickResponses] = useState<QuickResponse[]>([]);
   const [showCloseChatModal, setShowCloseChatModal] = useState(false);
   const [closingChat, setClosingChat] = useState(false);
-  const [currentAgent, setCurrentAgent] = useState<any>(null);
-  const [chatStats, setChatStats] = useState<any>(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assigningAgent, setAssigningAgent] = useState(false);
   
   // Real-time state
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -60,62 +66,8 @@ const SupportPortal: React.FC = () => {
 
   // Check authentication on mount
   useEffect(() => {
-    const agentData = localStorage.getItem('support_agent_data');
-    const loginTime = localStorage.getItem('support_agent_login_time');
-    
-    if (!agentData || !loginTime) {
-      console.log('❌ No support agent session found, redirecting to login');
-      navigate('/support-portal-login');
-      return;
-    }
-
-    try {
-      const agent = JSON.parse(agentData);
-      const loginDate = new Date(loginTime);
-      const now = new Date();
-      const hoursSinceLogin = (now.getTime() - loginDate.getTime()) / (1000 * 60 * 60);
-      
-      if (hoursSinceLogin > 24) {
-        console.log('❌ Support agent session expired, redirecting to login');
-        localStorage.removeItem('support_agent_data');
-        localStorage.removeItem('support_agent_login_time');
-        navigate('/support-portal-login');
-        return;
-      }
-
-      console.log('✅ Support agent session valid:', agent.name);
-      setCurrentAgent(agent);
-      
-      // Set agent context and load data
-      initializeSupportPortal(agent);
-    } catch (error) {
-      console.error('❌ Error parsing agent data:', error);
-      navigate('/support-portal-login');
-    }
-  }, [navigate]);
-
-  const initializeSupportPortal = async (agent: any) => {
-    try {
-      console.log('🚀 Initializing support portal for agent:', agent.name);
-      
-      // Set support agent context
-      await ChatService.setSupportAgentContext(agent.email);
-      
-      // Load initial data
-      await Promise.all([
-        fetchAllSessions(),
-        fetchQuickResponses(),
-        fetchChatStats()
-      ]);
-      
-      // Setup global subscriptions
-      setupGlobalSubscriptions();
-      
-    } catch (error) {
-      console.error('❌ Error initializing support portal:', error);
-      setError('Failed to initialize support portal');
-    }
-  };
+    checkAuthentication();
+  }, []);
 
   // Online/offline detection
   useEffect(() => {
@@ -135,7 +87,6 @@ const SupportPortal: React.FC = () => {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      cleanupAllSubscriptions();
     };
   }, []);
 
@@ -160,32 +111,107 @@ const SupportPortal: React.FC = () => {
     }
   }, [selectedSession, currentAgent]);
 
+  // Main data loading effect
   useEffect(() => {
-    if (selectedSession) {
+    if (currentAgent) {
+      console.log('🔄 [SUPPORT PORTAL] Agent authenticated, loading data...');
+      loadSupportPortalData();
+      setupGlobalSubscriptions();
+    }
+    
+    return () => {
+      cleanupAllSubscriptions();
+    };
+  }, [currentAgent]);
+
+  // Session-specific subscriptions
+  useEffect(() => {
+    if (selectedSession && currentAgent) {
       fetchMessages();
       fetchParticipants();
       setupSessionSubscriptions();
       
-      // Mark participant as online and add agent as participant
-      if (currentAgent) {
-        ChatService.updateParticipantStatus(selectedSession.id, currentAgent.id, true);
-        
-        // Add agent as participant if not already added
-        ChatService.addParticipant(selectedSession.id, {
-          user_type: 'support_agent',
-          user_id: currentAgent.id,
-          user_name: currentAgent.name
-        }).catch(error => {
-          // Ignore error if participant already exists
-          if (!error.message?.includes('duplicate')) {
-            console.warn('Failed to add agent as participant:', error);
-          }
-        });
-      }
+      // Mark participant as online
+      ChatService.updateParticipantStatus(selectedSession.id, currentAgent.id, true);
     } else {
       cleanupSessionSubscriptions();
     }
   }, [selectedSession, currentAgent]);
+
+  const checkAuthentication = async () => {
+    try {
+      console.log('🔐 [SUPPORT PORTAL] Checking authentication...');
+      
+      const agentData = localStorage.getItem('support_agent_data');
+      const loginTime = localStorage.getItem('support_agent_login_time');
+      
+      if (!agentData || !loginTime) {
+        console.log('❌ [SUPPORT PORTAL] No agent session found');
+        navigate('/support-portal-login');
+        return;
+      }
+
+      // Check if session is still valid (24 hours)
+      const loginDate = new Date(loginTime);
+      const now = new Date();
+      const hoursSinceLogin = (now.getTime() - loginDate.getTime()) / (1000 * 60 * 60);
+      
+      if (hoursSinceLogin > 24) {
+        console.log('❌ [SUPPORT PORTAL] Session expired');
+        localStorage.removeItem('support_agent_data');
+        localStorage.removeItem('support_agent_login_time');
+        navigate('/support-portal-login');
+        return;
+      }
+
+      const agent = JSON.parse(agentData);
+      console.log('✅ [SUPPORT PORTAL] Agent session valid:', agent.name);
+      
+      // Set support agent context for database access
+      await ChatService.setSupportAgentContext(agent.email);
+      
+      setCurrentAgent(agent);
+    } catch (error) {
+      console.error('❌ [SUPPORT PORTAL] Authentication check failed:', error);
+      navigate('/support-portal-login');
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const loadSupportPortalData = async () => {
+    try {
+      console.log('📊 [SUPPORT PORTAL] Loading support portal data...');
+      setLoading(true);
+      setConnectionStatus('connecting');
+      
+      // Fetch ALL chat sessions (not restaurant-specific)
+      console.log('🔍 [SUPPORT PORTAL] Fetching ALL chat sessions...');
+      const allSessions = await ChatService.getAllChatSessions();
+      console.log('✅ [SUPPORT PORTAL] Loaded sessions:', {
+        total: allSessions.length,
+        breakdown: allSessions.reduce((acc, session) => {
+          const restaurantName = session.restaurant?.name || 'Unknown';
+          acc[restaurantName] = (acc[restaurantName] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>)
+      });
+      
+      setSessions(allSessions);
+      setConnectionStatus('connected');
+      
+      // Fetch quick responses
+      const responses = await ChatService.getQuickResponses();
+      console.log('⚡ [SUPPORT PORTAL] Loaded quick responses:', responses.length);
+      setQuickResponses(responses);
+      
+    } catch (error) {
+      console.error('❌ [SUPPORT PORTAL] Error loading data:', error);
+      setConnectionStatus('disconnected');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const cleanupAllSubscriptions = () => {
     cleanupGlobalSubscriptions();
@@ -224,10 +250,12 @@ const SupportPortal: React.FC = () => {
   };
 
   const setupGlobalSubscriptions = () => {
+    if (!currentAgent) return;
+    
     cleanupGlobalSubscriptions();
     setConnectionStatus('connecting');
     
-    console.log('🔌 Setting up global sessions subscription for support portal');
+    console.log('🔌 [SUPPORT PORTAL] Setting up global sessions subscription...');
     
     try {
       sessionsSubscriptionRef.current = ChatService.subscribeToAllSessions((payload) => {
@@ -244,7 +272,7 @@ const SupportPortal: React.FC = () => {
             const exists = prev.some(session => session.id === payload.new.id);
             if (exists) return prev;
             
-            console.log('➕ Adding new session to support portal:', payload.new.title);
+            console.log('➕ [SUPPORT PORTAL] Adding new session:', payload.new.title);
             return [payload.new, ...prev].sort((a, b) => 
               new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
             );
@@ -268,26 +296,26 @@ const SupportPortal: React.FC = () => {
         }
       });
       
-      console.log('✅ Global sessions subscription established for support portal');
+      console.log('✅ [SUPPORT PORTAL] Global sessions subscription established');
     } catch (err) {
-      console.error('❌ Failed to setup global subscriptions:', err);
+      console.error('❌ [SUPPORT PORTAL] Failed to setup subscriptions:', err);
       setConnectionStatus('disconnected');
     }
   };
 
   const setupSessionSubscriptions = () => {
-    if (!selectedSession) return;
+    if (!selectedSession || !currentAgent) return;
     
     cleanupSessionSubscriptions();
     
-    console.log('🔌 [REALTIME] Setting up session subscriptions for:', selectedSession.id);
+    console.log('🔌 [SUPPORT PORTAL] Setting up session subscriptions for:', selectedSession.id);
     
     try {
       // Messages subscription with image URL resolution
       messagesSubscriptionRef.current = ChatService.subscribeToMessages(
         selectedSession.id,
         (payload) => {
-          console.log('📨 [REALTIME] Message update:', payload);
+          console.log('📨 [SUPPORT PORTAL] Message update:', payload);
           
           if (payload.eventType === 'INSERT' && payload.new) {
             setMessages(prev => {
@@ -315,7 +343,7 @@ const SupportPortal: React.FC = () => {
       participantsSubscriptionRef.current = ChatService.subscribeToParticipants(
         selectedSession.id,
         (payload) => {
-          console.log('👥 [REALTIME] Participants update:', payload);
+          console.log('👥 [SUPPORT PORTAL] Participants update:', payload);
           
           if (payload.eventType === 'INSERT' && payload.new) {
             setParticipants(prev => {
@@ -333,36 +361,9 @@ const SupportPortal: React.FC = () => {
         }
       );
       
-      console.log('✅ Session subscriptions established');
+      console.log('✅ [SUPPORT PORTAL] Session subscriptions established');
     } catch (err) {
-      console.error('❌ Failed to setup session subscriptions:', err);
-    }
-  };
-
-  const fetchAllSessions = async () => {
-    try {
-      setLoading(true);
-      setConnectionStatus('connecting');
-      console.log('🔍 [SUPPORT PORTAL] Fetching ALL chat sessions...');
-      
-      const sessionsData = await ChatService.getAllChatSessions();
-      console.log('📊 [SUPPORT PORTAL] Fetched sessions:', {
-        total: sessionsData.length,
-        byRestaurant: sessionsData.reduce((acc, session) => {
-          const restaurantName = session.restaurant?.name || 'Unknown';
-          acc[restaurantName] = (acc[restaurantName] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>)
-      });
-      
-      setSessions(sessionsData);
-      setConnectionStatus('connected');
-    } catch (error) {
-      console.error('❌ [SUPPORT PORTAL] Error fetching sessions:', error);
-      setConnectionStatus('disconnected');
-      setError('Failed to load chat sessions');
-    } finally {
-      setLoading(false);
+      console.error('❌ [SUPPORT PORTAL] Failed to setup session subscriptions:', err);
     }
   };
 
@@ -370,7 +371,7 @@ const SupportPortal: React.FC = () => {
     if (!selectedSession) return;
     
     try {
-      console.log('📨 Fetching messages for session:', selectedSession.id);
+      console.log('📨 [SUPPORT PORTAL] Fetching messages for session:', selectedSession.id);
       const messagesData = await ChatService.getChatMessages(selectedSession.id);
       
       const sortedMessages = messagesData.sort((a, b) => 
@@ -378,9 +379,9 @@ const SupportPortal: React.FC = () => {
       );
       
       setMessages(sortedMessages);
-      console.log('✅ Messages loaded:', sortedMessages.length);
+      console.log('✅ [SUPPORT PORTAL] Messages loaded:', sortedMessages.length);
     } catch (error) {
-      console.error('❌ Error fetching messages:', error);
+      console.error('❌ [SUPPORT PORTAL] Error fetching messages:', error);
     }
   };
 
@@ -391,27 +392,7 @@ const SupportPortal: React.FC = () => {
       const participantsData = await ChatService.getChatParticipants(selectedSession.id);
       setParticipants(participantsData);
     } catch (error) {
-      console.error('Error fetching participants:', error);
-    }
-  };
-
-  const fetchQuickResponses = async () => {
-    try {
-      console.log('⚡ Fetching quick responses for support portal...');
-      const responses = await ChatService.getQuickResponses();
-      console.log('✅ Quick responses loaded:', responses.length);
-      setQuickResponses(responses);
-    } catch (error) {
-      console.error('❌ Error fetching quick responses:', error);
-    }
-  };
-
-  const fetchChatStats = async () => {
-    try {
-      const stats = await ChatService.getChatStats();
-      setChatStats(stats);
-    } catch (error) {
-      console.error('Error fetching chat stats:', error);
+      console.error('❌ [SUPPORT PORTAL] Error fetching participants:', error);
     }
   };
 
@@ -455,17 +436,8 @@ const SupportPortal: React.FC = () => {
         msg.id === tempId ? sentMessage : msg
       ));
 
-      // Assign agent to session if not already assigned
-      if (!selectedSession.assigned_agent_id) {
-        await ChatService.assignAgentToSession(
-          selectedSession.id,
-          currentAgent.name,
-          currentAgent.id
-        );
-      }
-
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('❌ [SUPPORT PORTAL] Error sending message:', error);
       
       // Remove optimistic message on error and restore text
       setMessages(prev => prev.filter(msg => msg.id !== tempId));
@@ -508,7 +480,7 @@ const SupportPortal: React.FC = () => {
         await ChatService.uploadAttachment(file, message.id);
       }
     } catch (err: any) {
-      console.error('Error uploading files:', err);
+      console.error('❌ [SUPPORT PORTAL] Error uploading files:', err);
       alert(err.message || 'Failed to upload files');
     } finally {
       setUploadingFiles(false);
@@ -525,7 +497,7 @@ const SupportPortal: React.FC = () => {
   };
 
   const handleQuickResponse = (response: QuickResponse) => {
-    console.log('⚡ Using quick response:', response.title);
+    console.log('⚡ [SUPPORT PORTAL] Using quick response:', response.title);
     setNewMessage(prev => {
       // If there's already text, add the response on a new line
       const separator = prev.trim() ? '\n\n' : '';
@@ -543,6 +515,52 @@ const SupportPortal: React.FC = () => {
     }, 100);
   };
 
+  const handleAssignToSelf = async () => {
+    if (!selectedSession || !currentAgent) return;
+
+    try {
+      setAssigningAgent(true);
+      
+      // Assign agent to session
+      await ChatService.assignAgentToSession(
+        selectedSession.id,
+        currentAgent.name,
+        currentAgent.id
+      );
+
+      // Add agent as participant if not already added
+      try {
+        await ChatService.addParticipant(selectedSession.id, {
+          user_type: 'support_agent',
+          user_id: currentAgent.id,
+          user_name: currentAgent.name
+        });
+      } catch (participantError) {
+        // Ignore if participant already exists
+        console.log('ℹ️ [SUPPORT PORTAL] Participant may already exist');
+      }
+
+      // Send system message
+      await ChatService.sendMessage({
+        session_id: selectedSession.id,
+        sender_type: 'support_agent',
+        sender_id: 'system',
+        sender_name: 'System',
+        message: `${currentAgent.name} has joined the chat and will assist you.`,
+        is_system_message: true
+      });
+
+      // Refresh session data
+      await loadSupportPortalData();
+      
+    } catch (error) {
+      console.error('❌ [SUPPORT PORTAL] Error assigning agent:', error);
+      alert('Failed to assign agent to session');
+    } finally {
+      setAssigningAgent(false);
+    }
+  };
+
   const handleCloseChat = async () => {
     if (!selectedSession || !currentAgent) return;
 
@@ -553,7 +571,7 @@ const SupportPortal: React.FC = () => {
       setShowCloseChatModal(false);
       // Don't clear selected session immediately - let real-time update handle it
     } catch (error) {
-      console.error('Error closing chat:', error);
+      console.error('❌ [SUPPORT PORTAL] Error closing chat:', error);
       alert('Failed to close chat');
     } finally {
       setClosingChat(false);
@@ -563,7 +581,6 @@ const SupportPortal: React.FC = () => {
   const handleSignOut = () => {
     localStorage.removeItem('support_agent_data');
     localStorage.removeItem('support_agent_login_time');
-    cleanupAllSubscriptions();
     navigate('/support-portal-login');
   };
 
@@ -602,24 +619,51 @@ const SupportPortal: React.FC = () => {
     });
   };
 
+  // Get unique restaurants for filter
+  const uniqueRestaurants = Array.from(
+    new Set(sessions.map(s => s.restaurant?.name).filter(Boolean))
+  ).sort();
+
   const filteredSessions = sessions.filter(session => {
     const matchesSearch = session.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          session.restaurant?.name?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || session.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || session.priority === priorityFilter;
+    const matchesRestaurant = restaurantFilter === 'all' || session.restaurant?.name === restaurantFilter;
     
-    return matchesSearch && matchesStatus && matchesPriority;
+    return matchesSearch && matchesStatus && matchesPriority && matchesRestaurant;
   });
 
   const activeSessions = sessions.filter(s => s.status === 'active');
-  const unassignedSessions = sessions.filter(s => s.status === 'active' && !s.assigned_agent_id);
+  const sessionsWithAgent = sessions.filter(s => s.assigned_agent_name);
+  const unassignedSessions = sessions.filter(s => s.status === 'active' && !s.assigned_agent_name);
 
-  if (!currentAgent) {
+  // Show loading screen during authentication
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading support portal...</p>
+          <p className="text-gray-600">Authenticating support agent...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if no agent authenticated
+  if (!currentAgent) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentication Required</h2>
+          <p className="text-gray-600 mb-4">Please sign in to access the support portal</p>
+          <button
+            onClick={() => navigate('/support-portal-login')}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Go to Login
+          </button>
         </div>
       </div>
     );
@@ -631,7 +675,7 @@ const SupportPortal: React.FC = () => {
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="flex items-center justify-between px-6 py-4">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center">
               <Headphones className="h-6 w-6 text-white" />
             </div>
             <div>
@@ -655,28 +699,27 @@ const SupportPortal: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-4">
-            {/* Stats */}
-            {chatStats && (
-              <div className="flex items-center gap-4 text-sm text-gray-600">
-                <div className="flex items-center gap-1">
-                  <Activity className="h-4 w-4 text-green-500" />
-                  <span>{activeSessions.length} active</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <AlertCircle className="h-4 w-4 text-orange-500" />
-                  <span>{unassignedSessions.length} unassigned</span>
-                </div>
+            <div className="flex items-center gap-4 text-sm text-gray-600">
+              <div className="flex items-center gap-1">
+                <Activity className="h-4 w-4 text-green-500" />
+                <span>{activeSessions.length} active</span>
               </div>
-            )}
-            
+              <div className="flex items-center gap-1">
+                <Users className="h-4 w-4 text-blue-500" />
+                <span>{unassignedSessions.length} unassigned</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Building className="h-4 w-4 text-purple-500" />
+                <span>{uniqueRestaurants.length} restaurants</span>
+              </div>
+            </div>
             <button
-              onClick={fetchAllSessions}
+              onClick={loadSupportPortalData}
               className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
               title="Refresh"
             >
               <RefreshCw className="h-5 w-5" />
             </button>
-            
             <button
               onClick={handleSignOut}
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -704,11 +747,11 @@ const SupportPortal: React.FC = () => {
               />
             </div>
             
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
@@ -719,7 +762,7 @@ const SupportPortal: React.FC = () => {
               <select
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">All Priority</option>
                 <option value="urgent">Urgent</option>
@@ -728,6 +771,19 @@ const SupportPortal: React.FC = () => {
                 <option value="low">Low</option>
               </select>
             </div>
+
+            <select
+              value={restaurantFilter}
+              onChange={(e) => setRestaurantFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="all">All Restaurants ({uniqueRestaurants.length})</option>
+              {uniqueRestaurants.map((restaurant) => (
+                <option key={restaurant} value={restaurant}>
+                  {restaurant}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Sessions List */}
@@ -742,7 +798,7 @@ const SupportPortal: React.FC = () => {
                 <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-2" />
                 <p className="text-gray-500">No chat sessions found</p>
                 <p className="text-xs text-gray-400 mt-1">
-                  {sessions.length === 0 ? 'No active support chats' : 'Try adjusting your filters'}
+                  {sessions.length === 0 ? 'No sessions available' : 'Try adjusting filters'}
                 </p>
               </div>
             ) : (
@@ -764,7 +820,7 @@ const SupportPortal: React.FC = () => {
                           <h3 className="font-medium text-gray-900 text-sm truncate">
                             {session.title}
                           </h3>
-                          <p className="text-xs text-blue-600 font-medium">
+                          <p className="text-xs text-blue-600 font-medium mt-1">
                             {session.restaurant?.name || 'Unknown Restaurant'}
                           </p>
                           {hasAgent && (
@@ -775,9 +831,9 @@ const SupportPortal: React.FC = () => {
                               {isAssignedToMe && ' (You)'}
                             </p>
                           )}
-                          {!hasAgent && session.status === 'active' && (
-                            <p className="text-xs text-orange-600 font-medium mt-1">
-                              Unassigned
+                          {session.status === 'closed' && (
+                            <p className="text-xs text-gray-500 font-medium mt-1">
+                              Chat closed
                             </p>
                           )}
                         </div>
@@ -785,13 +841,18 @@ const SupportPortal: React.FC = () => {
                           <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(session.status)}`}>
                             {session.status}
                           </span>
-                          <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(session.priority)}`}>
-                            {session.priority}
-                          </span>
+                          {!hasAgent && session.status === 'active' && (
+                            <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-800 border-orange-200">
+                              Unassigned
+                            </span>
+                          )}
                         </div>
                       </div>
                       
                       <div className="flex items-center justify-between">
+                        <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(session.priority)}`}>
+                          {session.priority}
+                        </span>
                         <span className="text-xs text-gray-500">
                           {formatDate(session.last_message_at)}
                         </span>
@@ -817,10 +878,10 @@ const SupportPortal: React.FC = () => {
                     </div>
                     <div>
                       <h2 className="font-semibold text-gray-900">{selectedSession.title}</h2>
-                      <p className="text-sm text-blue-600 font-medium">
-                        {selectedSession.restaurant?.name || 'Unknown Restaurant'}
-                      </p>
                       <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-blue-600 font-medium">
+                          {selectedSession.restaurant?.name || 'Unknown Restaurant'}
+                        </span>
                         <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(selectedSession.status)}`}>
                           {selectedSession.status}
                         </span>
@@ -861,34 +922,31 @@ const SupportPortal: React.FC = () => {
                       ))}
                     </div>
                     
-                    {/* Assign to me button */}
-                    {selectedSession.status === 'active' && selectedSession.assigned_agent_id !== currentAgent.id && (
-                      <button
-                        onClick={async () => {
-                          try {
-                            await ChatService.assignAgentToSession(
-                              selectedSession.id,
-                              currentAgent.name,
-                              currentAgent.id
-                            );
-                          } catch (error) {
-                            console.error('Error assigning agent:', error);
-                          }
-                        }}
-                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
-                      >
-                        Assign to Me
-                      </button>
-                    )}
-                    
                     {/* Chat Actions */}
-                    {selectedSession.status === 'active' && selectedSession.assigned_agent_id === currentAgent.id && (
-                      <button
-                        onClick={() => setShowCloseChatModal(true)}
-                        className="px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
-                      >
-                        Close Chat
-                      </button>
+                    {selectedSession.status === 'active' && (
+                      <>
+                        {!selectedSession.assigned_agent_name && (
+                          <button
+                            onClick={handleAssignToSelf}
+                            disabled={assigningAgent}
+                            className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium flex items-center gap-1"
+                          >
+                            {assigningAgent ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <User className="h-3 w-3" />
+                            )}
+                            Assign to Me
+                          </button>
+                        )}
+                        
+                        <button
+                          onClick={() => setShowCloseChatModal(true)}
+                          className="px-3 py-1 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium"
+                        >
+                          Close Chat
+                        </button>
+                      </>
                     )}
                     
                     <button
@@ -1076,8 +1134,8 @@ const SupportPortal: React.FC = () => {
 
                     <button
                       onClick={() => {
-                        console.log('⚡ Quick responses button clicked, current state:', showQuickResponses);
-                        console.log('⚡ Available quick responses:', quickResponses.length);
+                        console.log('⚡ [SUPPORT PORTAL] Quick responses button clicked');
+                        console.log('⚡ [SUPPORT PORTAL] Available responses:', quickResponses.length);
                         setShowQuickResponses(!showQuickResponses);
                       }}
                       className={`p-3 rounded-lg transition-colors ${
@@ -1125,10 +1183,10 @@ const SupportPortal: React.FC = () => {
               <div className="text-center">
                 <MessageCircle className="h-20 w-20 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">Select a Chat Session</h3>
-                <p className="text-gray-500 max-w-sm">
-                  Choose a chat session to start helping customers across all restaurants
+                <p className="text-gray-500 max-w-sm mb-6">
+                  Choose a chat session to start or continue the conversation with restaurant managers
                 </p>
-                <div className="mt-6 grid grid-cols-2 gap-4 max-w-sm mx-auto">
+                <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto">
                   <div className="bg-white p-4 rounded-xl border border-gray-200">
                     <MessageSquare className="h-8 w-8 text-blue-600 mx-auto mb-2" />
                     <p className="text-sm font-medium text-gray-900">
@@ -1137,11 +1195,11 @@ const SupportPortal: React.FC = () => {
                     <p className="text-xs text-gray-600">Active Chats</p>
                   </div>
                   <div className="bg-white p-4 rounded-xl border border-gray-200">
-                    <AlertCircle className="h-8 w-8 text-orange-600 mx-auto mb-2" />
+                    <Building className="h-8 w-8 text-green-600 mx-auto mb-2" />
                     <p className="text-sm font-medium text-gray-900">
-                      {unassignedSessions.length}
+                      {uniqueRestaurants.length}
                     </p>
-                    <p className="text-xs text-gray-600">Unassigned</p>
+                    <p className="text-xs text-gray-600">Restaurants</p>
                   </div>
                 </div>
               </div>
@@ -1171,8 +1229,8 @@ const SupportPortal: React.FC = () => {
                   <div>
                     <p className="font-medium text-yellow-900 mb-1">Close this chat?</p>
                     <p className="text-yellow-800 text-sm">
-                      This will mark the chat as resolved and notify the restaurant. 
-                      The customer can always start a new chat if needed.
+                      This will mark the chat as resolved and notify the restaurant manager. 
+                      The conversation will be archived.
                     </p>
                   </div>
                 </div>

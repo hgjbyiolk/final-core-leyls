@@ -104,26 +104,22 @@ export class ChatService {
   // Set support agent context for database access
   static async setSupportAgentContext(agentEmail: string): Promise<void> {
     try {
-      console.log('🔐 Setting support agent context:', agentEmail);
+      console.log('🔐 [SUPPORT PORTAL] Setting support agent context for:', agentEmail);
       
-      // Check if the RPC function exists, if not, skip context setting
-      try {
-        const { data, error } = await supabase.rpc('set_support_agent_context', {
-          agent_email: agentEmail
-        });
-        
-        if (error) {
-          console.warn('⚠️ Agent context RPC failed:', error.message);
-          // Don't throw error - the authentication should be sufficient
-        }
-        
-        console.log('✅ Support agent context set successfully');
-      } catch (rpcError) {
-        console.warn('⚠️ Agent context RPC failed:', rpcError);
-        // Don't throw error - the authentication should be sufficient
+      // Set the agent email in the session for RLS policies
+      const { error } = await supabase.rpc('set_support_agent_context', {
+        agent_email: agentEmail
+      });
+      
+      if (error) {
+        console.warn('⚠️ [SUPPORT PORTAL] Agent context RPC failed:', error.message);
+        // Continue anyway - authentication should be sufficient for support agents
+      } else {
+        console.log('✅ [SUPPORT PORTAL] Support agent context set successfully');
       }
+      
     } catch (error: any) {
-      console.warn('⚠️ Error setting support agent context:', error);
+      console.warn('⚠️ [SUPPORT PORTAL] Error setting support agent context:', error);
       // Don't throw error to prevent blocking the support portal
     }
   }
@@ -131,7 +127,7 @@ export class ChatService {
   // Get all chat sessions (for support agents - sees ALL restaurants)
   static async getAllChatSessions(): Promise<ChatSession[]> {
     try {
-      console.log('🔍 Fetching ALL chat sessions for support portal');
+      console.log('🔍 [SUPPORT PORTAL] Fetching ALL chat sessions across ALL restaurants');
       
       const { data, error } = await supabase
         .from('chat_sessions')
@@ -142,23 +138,37 @@ export class ChatService {
         .order('last_message_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error fetching all chat sessions:', error);
+        console.error('❌ [SUPPORT PORTAL] Error fetching all chat sessions:', error);
+        console.error('❌ [SUPPORT PORTAL] Error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
         throw error;
       }
       
-      console.log('✅ [SUPPORT PORTAL] Fetched all chat sessions:', {
-        total: data?.length || 0,
-        breakdown: data?.reduce((acc, session) => {
-          const restaurantName = session.restaurant?.name || 'Unknown';
-          acc[restaurantName] = (acc[restaurantName] || 0) + 1;
-          return acc;
-        }, {} as Record<string, number>) || {}
+      const breakdown = data?.reduce((acc, session) => {
+        const restaurantName = session.restaurant?.name || 'Unknown Restaurant';
+        acc[restaurantName] = (acc[restaurantName] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>) || {};
+      
+      console.log('✅ [SUPPORT PORTAL] Successfully fetched ALL chat sessions:', {
+        totalSessions: data?.length || 0,
+        uniqueRestaurants: Object.keys(breakdown).length,
+        sessionsByRestaurant: breakdown,
+        sampleSessions: data?.slice(0, 3).map(s => ({
+          id: s.id,
+          title: s.title,
+          restaurant: s.restaurant?.name,
+          status: s.status
+        })) || []
       });
       
-      console.log('✅ Fetched all chat sessions:', data?.length || 0);
       return data || [];
     } catch (error: any) {
-      console.error('Error fetching all chat sessions:', error);
+      console.error('❌ [SUPPORT PORTAL] Critical error fetching all chat sessions:', error);
       return [];
     }
   }
@@ -509,24 +519,26 @@ export class ChatService {
 
   // Real-time subscriptions
   static subscribeToAllSessions(callback: (payload: any) => void) {
-    console.log('🔌 Setting up global sessions subscription');
+    console.log('🔌 [SUPPORT PORTAL] Setting up global sessions subscription for ALL restaurants');
     
     const channel = supabase
       .channel('all_chat_sessions')
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'chat_sessions' }, 
         (payload) => {
-          console.log('🔄 [REALTIME] Sessions update:', {
+          console.log('🔄 [SUPPORT PORTAL REALTIME] Sessions update:', {
             eventType: payload.eventType,
             sessionId: payload.new?.id || payload.old?.id,
             restaurantId: payload.new?.restaurant_id || payload.old?.restaurant_id,
-            status: payload.new?.status || payload.old?.status
+            restaurantName: payload.new?.restaurant?.name || 'Unknown',
+            status: payload.new?.status || payload.old?.status,
+            title: payload.new?.title || payload.old?.title
           });
           callback(payload);
         }
       )
       .subscribe((status) => {
-        console.log('📡 [REALTIME] Global sessions subscription status:', status);
+        console.log('📡 [SUPPORT PORTAL REALTIME] Global sessions subscription status:', status);
       });
 
     return channel;
@@ -652,7 +664,7 @@ export class ChatService {
     error?: string;
   }> {
     try {
-      console.log('🔐 Authenticating support agent:', email);
+      console.log('🔐 [SUPPORT PORTAL] Authenticating support agent:', email);
       
       // First check if agent exists and is active
       const { data: agent, error: agentError } = await supabase
@@ -663,16 +675,22 @@ export class ChatService {
         .maybeSingle();
 
       if (agentError) {
-        console.error('❌ Error fetching agent:', agentError);
+        console.error('❌ [SUPPORT PORTAL] Error fetching agent:', agentError);
         return { success: false, error: 'Authentication failed' };
       }
 
       if (!agent) {
-        console.log('❌ Agent not found or inactive:', email);
+        console.log('❌ [SUPPORT PORTAL] Agent not found or inactive:', email);
         return { success: false, error: 'Invalid credentials or account inactive' };
       }
 
-      console.log('👤 Agent found:', { id: agent.id, name: agent.name, email: agent.email, isActive: agent.is_active });
+      console.log('👤 [SUPPORT PORTAL] Agent found:', { 
+        id: agent.id, 
+        name: agent.name, 
+        email: agent.email, 
+        isActive: agent.is_active 
+      });
+      
       // Use the RPC function to verify password
       const { data: authResult, error: authError } = await supabase.rpc('authenticate_support_agent', {
         agent_email: email,
@@ -680,13 +698,13 @@ export class ChatService {
       });
 
       if (authError) {
-        console.error('❌ Authentication RPC error:', authError);
+        console.error('❌ [SUPPORT PORTAL] Authentication RPC error:', authError);
         return { success: false, error: 'Authentication failed' };
       }
 
-      console.log('🔐 Authentication RPC result:', authResult);
+      console.log('🔐 [SUPPORT PORTAL] Authentication RPC result:', authResult);
       if (!authResult) {
-        console.log('❌ Invalid password for agent:', email);
+        console.log('❌ [SUPPORT PORTAL] Invalid password for agent:', email);
         return { success: false, error: 'Invalid credentials' };
       }
 
@@ -697,13 +715,13 @@ export class ChatService {
         .eq('id', agent.id);
 
       if (updateError) {
-        console.warn('⚠️ Failed to update last login:', updateError);
+        console.warn('⚠️ [SUPPORT PORTAL] Failed to update last login:', updateError);
       }
 
-      console.log('✅ Support agent authenticated:', agent.name);
+      console.log('✅ [SUPPORT PORTAL] Support agent authenticated successfully:', agent.name);
       return { success: true, agent };
     } catch (error: any) {
-      console.error('❌ Error authenticating support agent:', error);
+      console.error('❌ [SUPPORT PORTAL] Error authenticating support agent:', error);
       return { success: false, error: error.message };
     }
   }

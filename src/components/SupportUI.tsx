@@ -964,6 +964,7 @@ const SupportUI: React.FC = () => {
                           : 'text-gray-600 hover:bg-gray-100'
                       }`}
                       title="Quick responses"
+                      style={{ display: 'none' }} // Hide quick responses for restaurant managers
                     >
                       <Zap className="h-4 w-4" />
                     </button>
