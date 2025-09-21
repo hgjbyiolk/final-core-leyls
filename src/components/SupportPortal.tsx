@@ -11,6 +11,7 @@ import {
   Headphones, BarChart3, TrendingUp
 } from 'lucide-react';
 import { ChatService, ChatSession, ChatMessage, ChatParticipant, QuickResponse, SupportAgent } from '../services/chatService';
+import { supabase } from '../services/supabase';
 
 const SupportPortal: React.FC = () => {
   // Authentication state
@@ -38,6 +39,7 @@ const SupportPortal: React.FC = () => {
   const [closingChat, setClosingChat] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assigningAgent, setAssigningAgent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // Real-time state
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -112,26 +114,28 @@ const SupportPortal: React.FC = () => {
   }, [selectedSession, currentAgent]);
 
   // Main data loading effect
-    console.log('👤 [SUPPORT PORTAL] Agent authenticated:', {
-      name: agent.name,
-      email: agent.email,
-      id: agent.id
-    });
-    
   useEffect(() => {
-    ChatService.setSupportAgentContext(agent.email).then(() => {
+    if (!currentAgent) return;
+
+    console.log('👤 [SUPPORT PORTAL] Agent authenticated:', {
+      name: currentAgent.name,
+      email: currentAgent.email,
+      id: currentAgent.id
+    });
+
+    ChatService.setSupportAgentContext(currentAgent.email).then(() => {
       console.log('✅ [SUPPORT PORTAL] Agent context set, loading sessions...');
-      loadAllSessions();
+      loadSupportPortalData();
       loadQuickResponses();
       setupGlobalSubscriptions();
     }).catch((error) => {
       console.error('❌ [SUPPORT PORTAL] Failed to set agent context:', error);
       // Continue anyway - try to load sessions
-      loadAllSessions();
+      loadSupportPortalData();
       loadQuickResponses();
       setupGlobalSubscriptions();
     });
-    
+
     return () => {
       cleanupAllSubscriptions();
     };
@@ -197,21 +201,14 @@ const SupportPortal: React.FC = () => {
       console.log('📊 [SUPPORT PORTAL] Loading support portal data...');
       setLoading(true);
       setConnectionStatus('connecting');
-      
-      console.log('🔍 [SUPPORT PORTAL] Starting to load ALL sessions...');
-      console.log('🔍 [SUPPORT PORTAL] Current agent:', currentAgent?.email);
-      
-      // Force a fresh session check
+
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       console.log('🔍 [SUPPORT PORTAL] Current session:', { 
         hasSession: !!session, 
         userId: session?.user?.id,
         error: sessionError 
       });
-      
-      
-      // Fetch ALL chat sessions (not restaurant-specific)
-      console.log('🔍 [SUPPORT PORTAL] Fetching ALL chat sessions...');
+
       const allSessions = await ChatService.getAllChatSessions();
       console.log('✅ [SUPPORT PORTAL] Loaded sessions:', {
         total: allSessions.length,
@@ -221,33 +218,41 @@ const SupportPortal: React.FC = () => {
           return acc;
         }, {} as Record<string, number>)
       });
-      
-      
+
+      // ✅ fixed sessionsData → allSessions
       console.log('📊 [SUPPORT PORTAL] Sessions loaded:', {
-        totalSessions: sessionsData.length,
-        sessionTitles: sessionsData.slice(0, 3).map(s => s.title),
-        restaurants: [...new Set(sessionsData.map(s => s.restaurant?.name))].filter(Boolean),
-        restaurantIds: [...new Set(sessionsData.map(s => s.restaurant_id))].filter(Boolean)
+        totalSessions: allSessions.length,
+        sessionTitles: allSessions.slice(0, 3).map(s => s.title),
+        restaurants: [...new Set(allSessions.map(s => s.restaurant?.name))].filter(Boolean),
+        restaurantIds: [...new Set(allSessions.map(s => s.restaurant_id))].filter(Boolean)
       });
-      
-      if (sessionsData.length === 0) {
+
+      if (allSessions.length === 0) {
         console.warn('⚠️ [SUPPORT PORTAL] No sessions returned - this might indicate RLS issues');
-        setError('No chat sessions found. This might be a permissions issue.');
+        setError('No chat sessions found. This might be a permissions issue.'); // ✅ now works, since error state exists
       }
-      
+
       setSessions(allSessions);
       setConnectionStatus('connected');
-      
-      // Fetch quick responses
+
       const responses = await ChatService.getQuickResponses();
       console.log('⚡ [SUPPORT PORTAL] Loaded quick responses:', responses.length);
       setQuickResponses(responses);
-      
     } catch (error) {
       console.error('❌ [SUPPORT PORTAL] Error loading data:', error);
       setConnectionStatus('disconnected');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadQuickResponses = async () => {
+    try {
+      const responses = await ChatService.getQuickResponses();
+      console.log('⚡ [SUPPORT PORTAL] Loaded quick responses:', responses.length);
+      setQuickResponses(responses);
+    } catch (error) {
+      console.error('❌ [SUPPORT PORTAL] Error loading quick responses:', error);
     }
   };
 
