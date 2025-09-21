@@ -11,6 +11,7 @@ import {
   Headphones, BarChart3, TrendingUp
 } from 'lucide-react';
 import { ChatService, ChatSession, ChatMessage, ChatParticipant, QuickResponse, SupportAgent } from '../services/chatService';
+import { supabase } from '../services/supabase';
 
 
 const SupportPortal: React.FC = () => {
