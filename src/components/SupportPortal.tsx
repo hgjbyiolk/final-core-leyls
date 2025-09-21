@@ -112,12 +112,25 @@ const SupportPortal: React.FC = () => {
   }, [selectedSession, currentAgent]);
 
   // Main data loading effect
+    console.log('👤 [SUPPORT PORTAL] Agent authenticated:', {
+      name: agent.name,
+      email: agent.email,
+      id: agent.id
+    });
+    
   useEffect(() => {
-    if (currentAgent) {
-      console.log('🔄 [SUPPORT PORTAL] Agent authenticated, loading data...');
-      loadSupportPortalData();
+    ChatService.setSupportAgentContext(agent.email).then(() => {
+      console.log('✅ [SUPPORT PORTAL] Agent context set, loading sessions...');
+      loadAllSessions();
+      loadQuickResponses();
       setupGlobalSubscriptions();
-    }
+    }).catch((error) => {
+      console.error('❌ [SUPPORT PORTAL] Failed to set agent context:', error);
+      // Continue anyway - try to load sessions
+      loadAllSessions();
+      loadQuickResponses();
+      setupGlobalSubscriptions();
+    });
     
     return () => {
       cleanupAllSubscriptions();
@@ -185,6 +198,18 @@ const SupportPortal: React.FC = () => {
       setLoading(true);
       setConnectionStatus('connecting');
       
+      console.log('🔍 [SUPPORT PORTAL] Starting to load ALL sessions...');
+      console.log('🔍 [SUPPORT PORTAL] Current agent:', currentAgent?.email);
+      
+      // Force a fresh session check
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log('🔍 [SUPPORT PORTAL] Current session:', { 
+        hasSession: !!session, 
+        userId: session?.user?.id,
+        error: sessionError 
+      });
+      
+      
       // Fetch ALL chat sessions (not restaurant-specific)
       console.log('🔍 [SUPPORT PORTAL] Fetching ALL chat sessions...');
       const allSessions = await ChatService.getAllChatSessions();
@@ -196,6 +221,19 @@ const SupportPortal: React.FC = () => {
           return acc;
         }, {} as Record<string, number>)
       });
+      
+      
+      console.log('📊 [SUPPORT PORTAL] Sessions loaded:', {
+        totalSessions: sessionsData.length,
+        sessionTitles: sessionsData.slice(0, 3).map(s => s.title),
+        restaurants: [...new Set(sessionsData.map(s => s.restaurant?.name))].filter(Boolean),
+        restaurantIds: [...new Set(sessionsData.map(s => s.restaurant_id))].filter(Boolean)
+      });
+      
+      if (sessionsData.length === 0) {
+        console.warn('⚠️ [SUPPORT PORTAL] No sessions returned - this might indicate RLS issues');
+        setError('No chat sessions found. This might be a permissions issue.');
+      }
       
       setSessions(allSessions);
       setConnectionStatus('connected');
@@ -1207,6 +1245,19 @@ const SupportPortal: React.FC = () => {
           )}
         </div>
       </div>
+      
+      {/* Debug Panel (only in development) */}
+      {import.meta.env.DEV && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mt-6">
+          <h3 className="font-medium text-yellow-900 mb-2">Debug Info</h3>
+          <div className="text-xs text-yellow-800 space-y-1">
+            <p>Agent: {currentAgent?.email}</p>
+            <p>Sessions: {sessions.length}</p>
+            <p>Restaurants: {uniqueRestaurants.join(', ')}</p>
+            <p>Connection: {connectionStatus}</p>
+          </div>
+        </div>
+      )}
 
       {/* Close Chat Modal */}
       {showCloseChatModal && (

@@ -106,21 +106,41 @@ export class ChatService {
     try {
       console.log('🔐 [SUPPORT PORTAL] Setting support agent context for:', agentEmail);
       
+      // First verify the agent exists
+      const { data: agent, error: agentError } = await supabase
+        .from('support_agents')
+        .select('id, name, email, is_active')
+        .eq('email', agentEmail)
+        .eq('is_active', true)
+        .maybeSingle();
+        
+      if (agentError) {
+        console.error('❌ [SUPPORT PORTAL] Error verifying agent:', agentError);
+        throw new Error(`Failed to verify agent: ${agentError.message}`);
+      }
+      
+      if (!agent) {
+        console.error('❌ [SUPPORT PORTAL] Agent not found or inactive:', agentEmail);
+        throw new Error('Support agent not found or inactive');
+      }
+      
+      console.log('✅ [SUPPORT PORTAL] Agent verified:', agent);
+      
       // Set the agent email in the session for RLS policies
       const { error } = await supabase.rpc('set_support_agent_context', {
         agent_email: agentEmail
       });
       
       if (error) {
-        console.warn('⚠️ [SUPPORT PORTAL] Agent context RPC failed:', error.message);
-        // Continue anyway - authentication should be sufficient for support agents
+        console.error('❌ [SUPPORT PORTAL] Agent context RPC failed:', error);
+        throw new Error(`Failed to set agent context: ${error.message}`);
       } else {
         console.log('✅ [SUPPORT PORTAL] Support agent context set successfully');
       }
       
     } catch (error: any) {
-      console.warn('⚠️ [SUPPORT PORTAL] Error setting support agent context:', error);
-      // Don't throw error to prevent blocking the support portal
+      console.error('❌ [SUPPORT PORTAL] Error setting support agent context:', error);
+      throw error;
     }
   }
 
@@ -129,6 +149,32 @@ export class ChatService {
     try {
       console.log('🔍 [SUPPORT PORTAL] Fetching ALL chat sessions across ALL restaurants');
       
+      // Try using the service role bypass function first
+      console.log('🔍 [SUPPORT PORTAL] Trying service role bypass function...');
+      const { data: bypassData, error: bypassError } = await supabase.rpc('get_all_chat_sessions_for_support');
+      
+      if (!bypassError && bypassData) {
+        console.log('✅ [SUPPORT PORTAL] Service role bypass successful:', {
+          totalSessions: bypassData.length,
+          restaurants: [...new Set(bypassData.map((s: any) => s.restaurant_name))].filter(Boolean)
+        });
+        
+        // Transform the data to match our interface
+        const transformedData = bypassData.map((session: any) => ({
+          ...session,
+          restaurant: session.restaurant_name ? {
+            name: session.restaurant_name,
+            slug: session.restaurant_slug
+          } : null
+        }));
+        
+        return transformedData;
+      }
+      
+      console.warn('⚠️ [SUPPORT PORTAL] Service role bypass failed, trying direct query:', bypassError);
+      
+      // Fallback to direct query
+      console.log('🔍 [SUPPORT PORTAL] Executing direct chat sessions query...');
       const { data, error } = await supabase
         .from('chat_sessions')
         .select(`
@@ -145,6 +191,7 @@ export class ChatService {
           details: error.details,
           hint: error.hint
         });
+        
         throw error;
       }
       
