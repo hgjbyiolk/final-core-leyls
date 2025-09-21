@@ -8,7 +8,7 @@ import {
   Paperclip, Upload, Eye, Download, Building, Crown,
   Image, Camera, Smile, MoreVertical, Copy, Archive,
   UserX, Shield, Activity, Wifi, WifiOff, LogOut,
-  Headphones, BarChart3, TrendingUp,
+  Headphones, BarChart3, TrendingUp
 } from 'lucide-react';
 import { ChatService, ChatSession, ChatMessage, ChatParticipant, QuickResponse, SupportAgent } from '../services/chatService';
 
