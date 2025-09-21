@@ -21,7 +21,7 @@ export interface SupportTicket {
 export interface SupportMessage {
   id: string;
   ticket_id: string;
-  sender_type: 'restaurant_manager' | 'super_admin' | 'support_agent';
+  sender_type: 'restaurant_manager' | 'super_admin';
   sender_id: string;
   message: string;
   created_at: string;
@@ -38,16 +38,16 @@ export interface CreateTicketData {
 
 export interface CreateMessageData {
   ticket_id: string;
-  sender_type: 'restaurant_manager' | 'super_admin' | 'support_agent';
+  sender_type: 'restaurant_manager' | 'super_admin';
   sender_id: string;
   message: string;
 }
 
 export class SupportService {
-  // 🔍 Get ALL tickets (use this for support agents / super admins)
+  // Get all tickets (for super admin)
   static async getAllTickets(): Promise<SupportTicket[]> {
     try {
-      console.log('🔍 [SupportService] Fetching ALL tickets (super admin / support agent mode)');
+      console.log('🔍 Fetching all tickets for super admin');
       const { data, error } = await supabase
         .from('support_tickets')
         .select(`
@@ -57,72 +57,66 @@ export class SupportService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ [SupportService] Error fetching all tickets:', error);
+        console.error('❌ Error fetching all tickets:', error);
         throw error;
       }
-
-      console.log('✅ [SupportService] Tickets fetched:', data?.length || 0);
+      
+      console.log('✅ Fetched tickets for super admin:', data?.length || 0);
       return data || [];
     } catch (error: any) {
-      console.error('❌ [SupportService] Exception fetching all tickets:', error.message);
+      console.error('Error fetching all tickets:', error);
       return [];
     }
   }
 
-  // 🔍 Get tickets for a single restaurant (use this for restaurant managers)
+  // Get tickets for a specific restaurant
   static async getRestaurantTickets(restaurantId: string): Promise<SupportTicket[]> {
     try {
-      console.log('🔍 [SupportService] Fetching tickets for restaurant:', restaurantId);
+      console.log('🔍 Fetching tickets for restaurant:', restaurantId);
       const { data, error } = await supabase
         .from('support_tickets')
-        .select(`
-          *,
-          restaurant:restaurants(name, slug)
-        `)
+        .select('*')
         .eq('restaurant_id', restaurantId)
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ [SupportService] Error fetching restaurant tickets:', error);
+        console.error('❌ Error fetching restaurant tickets:', error);
         throw error;
       }
-
-      console.log('✅ [SupportService] Restaurant tickets fetched:', data?.length || 0);
+      
+      console.log('✅ Fetched restaurant tickets:', data?.length || 0);
       return data || [];
     } catch (error: any) {
-      console.error('❌ [SupportService] Exception fetching restaurant tickets:', error.message);
+      console.error('Error fetching restaurant tickets:', error);
       return [];
     }
   }
 
-  // 📝 Create a new ticket
+  // Create a new ticket
   static async createTicket(ticketData: CreateTicketData): Promise<SupportTicket> {
-    console.log('📝 [SupportService] Creating ticket:', ticketData.title);
+    console.log('📝 Creating new ticket:', ticketData.title);
     const { data, error } = await supabase
       .from('support_tickets')
       .insert(ticketData)
-      .select(`
-        *,
-        restaurant:restaurants(name, slug)
-      `)
+      .select()
       .single();
 
     if (error) {
-      console.error('❌ [SupportService] Error creating ticket:', error);
+      console.error('❌ Error creating ticket:', error);
       throw error;
     }
-
-    console.log('✅ [SupportService] Ticket created:', data.id);
+    
+    console.log('✅ Ticket created successfully:', data.id);
     return data;
   }
 
-  // 🔄 Update ticket status
+  // Update ticket status
   static async updateTicketStatus(
-    ticketId: string,
+    ticketId: string, 
     status: 'open' | 'in_progress' | 'resolved' | 'closed',
     assignedToAdmin?: string
   ): Promise<void> {
-    console.log('🔄 [SupportService] Updating ticket status:', { ticketId, status, assignedToAdmin });
+    console.log('🔄 Updating ticket status:', { ticketId, status, assignedToAdmin });
     const updates: any = { status };
     if (assignedToAdmin !== undefined) {
       updates.assigned_to_admin = assignedToAdmin;
@@ -134,17 +128,17 @@ export class SupportService {
       .eq('id', ticketId);
 
     if (error) {
-      console.error('❌ [SupportService] Error updating ticket:', error);
+      console.error('❌ Error updating ticket status:', error);
       throw error;
     }
-
-    console.log('✅ [SupportService] Ticket updated');
+    
+    console.log('✅ Ticket status updated successfully');
   }
 
-  // 📨 Get messages for a ticket
+  // Get messages for a ticket
   static async getTicketMessages(ticketId: string): Promise<SupportMessage[]> {
     try {
-      console.log('📨 [SupportService] Fetching messages for ticket:', ticketId);
+      console.log('📨 Fetching messages for ticket:', ticketId);
       const { data, error } = await supabase
         .from('support_messages')
         .select('*')
@@ -152,24 +146,30 @@ export class SupportService {
         .order('created_at', { ascending: true });
 
       if (error) {
-        console.error('❌ [SupportService] Error fetching messages:', error);
+        console.error('❌ Error fetching messages:', error);
         throw error;
       }
-
-      console.log('✅ [SupportService] Messages fetched:', data?.length || 0);
+      
+      console.log('✅ Fetched messages:', data?.length || 0);
       return data || [];
     } catch (error: any) {
-      console.error('❌ [SupportService] Exception fetching messages:', error.message);
+      console.error('Error fetching ticket messages:', error);
       return [];
     }
   }
 
-  // 📤 Send a message
+  // Send a message
   static async sendMessage(messageData: CreateMessageData): Promise<SupportMessage> {
-    console.log('📤 [SupportService] Sending message:', {
+    console.log('📤 Sending message:', {
       ticketId: messageData.ticket_id,
       senderType: messageData.sender_type,
+      messageLength: messageData.message.length
     });
+    
+    // Validate sender_type
+    if (!['restaurant_manager', 'super_admin'].includes(messageData.sender_type)) {
+      throw new Error('Invalid sender type');
+    }
 
     const { data, error } = await supabase
       .from('support_messages')
@@ -178,23 +178,32 @@ export class SupportService {
       .single();
 
     if (error) {
-      console.error('❌ [SupportService] Error sending message:', error);
+      console.error('❌ Error sending message:', error);
       throw error;
     }
-
-    console.log('✅ [SupportService] Message sent:', data.id);
+    
+    console.log('✅ Message sent successfully:', data.id);
     return data;
   }
 
-  // 📊 Ticket stats
-  static async getTicketStats() {
+  // Get ticket statistics
+  static async getTicketStats(): Promise<{
+    total: number;
+    open: number;
+    inProgress: number;
+    resolved: number;
+    closed: number;
+  }> {
     try {
-      console.log('📊 [SupportService] Fetching stats');
+      console.log('📊 Fetching ticket statistics');
       const { data, error } = await supabase
         .from('support_tickets')
         .select('status');
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error fetching ticket stats:', error);
+        throw error;
+      }
 
       const stats = {
         total: data?.length || 0,
@@ -204,61 +213,61 @@ export class SupportService {
         closed: data?.filter(t => t.status === 'closed').length || 0,
       };
 
-      console.log('✅ [SupportService] Stats:', stats);
+      console.log('✅ Ticket stats calculated:', stats);
       return stats;
     } catch (error: any) {
-      console.error('❌ [SupportService] Error fetching stats:', error.message);
+      console.error('Error fetching ticket stats:', error);
       return { total: 0, open: 0, inProgress: 0, resolved: 0, closed: 0 };
     }
   }
 
-  // 🔌 Subscribe to tickets
+  // Subscribe to real-time updates for tickets
   static subscribeToTickets(callback: (payload: any) => void) {
-    console.log('🔌 [SupportService] Subscribing to ALL tickets');
+    console.log('🔌 Setting up tickets subscription');
     return supabase
       .channel('support_tickets')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'support_tickets' },
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'support_tickets' }, 
         (payload) => {
-          console.log('🎫 [SupportService] Ticket update:', payload);
+          console.log('🎫 Tickets subscription update:', payload);
           callback(payload);
         }
       )
       .subscribe();
   }
 
-  // 🔌 Subscribe to messages for a specific ticket
+  // Subscribe to real-time updates for messages
   static subscribeToMessages(ticketId: string, callback: (payload: any) => void) {
-    console.log('🔌 [SupportService] Subscribing to messages for ticket:', ticketId);
+    console.log('🔌 Setting up messages subscription for ticket:', ticketId);
     return supabase
       .channel(`support_messages_${ticketId}`)
-      .on('postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
           table: 'support_messages',
           filter: `ticket_id=eq.${ticketId}`
-        },
+        }, 
         (payload) => {
-          console.log('📨 [SupportService] Message update:', payload);
+          console.log('📨 Messages subscription update:', payload);
           callback(payload);
         }
       )
       .subscribe();
   }
 
-  // 🔌 Subscribe to ALL messages (for support agents / super admins)
+  // Subscribe to all messages (for super admin)
   static subscribeToAllMessages(callback: (payload: any) => void) {
-    console.log('🔌 [SupportService] Subscribing to ALL messages (super admin / support agent mode)');
+    console.log('🔌 Setting up global messages subscription for super admin');
     return supabase
       .channel('all_support_messages')
-      .on('postgres_changes',
-        { event: '*', schema: 'public', table: 'support_messages' },
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'support_messages' }, 
         (payload) => {
-          console.log('📨 [SupportService] Global message update:', payload);
+          console.log('📨 Global messages subscription update:', payload);
           callback(payload);
         }
       )
       .subscribe();
   }
-}
+} 
