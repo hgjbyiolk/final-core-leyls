@@ -1,5 +1,5 @@
 /*
-  # Fix Support Portal Global Access
+  # Fix Support Portal Global Access (Clean Migration)
 
   This migration ensures support agents can see ALL restaurant chat sessions
   and interact with them properly, while maintaining security.
@@ -26,17 +26,23 @@ DROP POLICY IF EXISTS "Support agents global write access" ON chat_sessions;
 DROP POLICY IF EXISTS "Support agents global message access" ON chat_messages;
 DROP POLICY IF EXISTS "Support agents global participant access" ON chat_participants;
 
--- Create comprehensive support agent policies for chat_sessions
+-- Drop old function signatures before recreating
+DROP FUNCTION IF EXISTS set_support_agent_context(text);
+DROP FUNCTION IF EXISTS get_all_chat_sessions_for_support();
+DROP FUNCTION IF EXISTS is_support_agent();
+DROP FUNCTION IF EXISTS debug_support_agent_access();
+
+-- ==========================================================
+-- Policies
+-- ==========================================================
+
 CREATE POLICY "Support agents can view all sessions globally"
   ON chat_sessions
   FOR SELECT
   TO authenticated
   USING (
-    -- Support agents can see everything
     is_support_agent() OR
-    -- Super admins can see everything
     is_super_admin() OR
-    -- Restaurant managers can see their own
     (EXISTS (
       SELECT 1 FROM restaurants r 
       WHERE r.id = chat_sessions.restaurant_id 
@@ -49,11 +55,8 @@ CREATE POLICY "Support agents can manage all sessions globally"
   FOR ALL
   TO authenticated
   USING (
-    -- Support agents can manage everything
     is_support_agent() OR
-    -- Super admins can manage everything
     is_super_admin() OR
-    -- Restaurant managers can manage their own
     (EXISTS (
       SELECT 1 FROM restaurants r 
       WHERE r.id = chat_sessions.restaurant_id 
@@ -61,11 +64,8 @@ CREATE POLICY "Support agents can manage all sessions globally"
     ))
   )
   WITH CHECK (
-    -- Support agents can create/update everything
     is_support_agent() OR
-    -- Super admins can create/update everything
     is_super_admin() OR
-    -- Restaurant managers can create/update their own
     (EXISTS (
       SELECT 1 FROM restaurants r 
       WHERE r.id = chat_sessions.restaurant_id 
@@ -73,17 +73,13 @@ CREATE POLICY "Support agents can manage all sessions globally"
     ))
   );
 
--- Create comprehensive support agent policies for chat_messages
 CREATE POLICY "Support agents can view all messages globally"
   ON chat_messages
   FOR SELECT
   TO authenticated
   USING (
-    -- Support agents can see everything
     is_support_agent() OR
-    -- Super admins can see everything
     is_super_admin() OR
-    -- Restaurant managers can see their own
     (EXISTS (
       SELECT 1 FROM chat_sessions cs
       JOIN restaurants r ON r.id = cs.restaurant_id
@@ -97,11 +93,8 @@ CREATE POLICY "Support agents can manage all messages globally"
   FOR ALL
   TO authenticated
   USING (
-    -- Support agents can manage everything
     is_support_agent() OR
-    -- Super admins can manage everything
     is_super_admin() OR
-    -- Restaurant managers can manage their own
     (EXISTS (
       SELECT 1 FROM chat_sessions cs
       JOIN restaurants r ON r.id = cs.restaurant_id
@@ -110,11 +103,8 @@ CREATE POLICY "Support agents can manage all messages globally"
     ))
   )
   WITH CHECK (
-    -- Support agents can create/update everything
     is_support_agent() OR
-    -- Super admins can create/update everything
     is_super_admin() OR
-    -- Restaurant managers can create/update their own
     (EXISTS (
       SELECT 1 FROM chat_sessions cs
       JOIN restaurants r ON r.id = cs.restaurant_id
@@ -123,17 +113,13 @@ CREATE POLICY "Support agents can manage all messages globally"
     ))
   );
 
--- Create comprehensive support agent policies for chat_participants
 CREATE POLICY "Support agents can view all participants globally"
   ON chat_participants
   FOR SELECT
   TO authenticated
   USING (
-    -- Support agents can see everything
     is_support_agent() OR
-    -- Super admins can see everything
     is_super_admin() OR
-    -- Restaurant managers can see their own
     (EXISTS (
       SELECT 1 FROM chat_sessions cs
       JOIN restaurants r ON r.id = cs.restaurant_id
@@ -147,11 +133,8 @@ CREATE POLICY "Support agents can manage all participants globally"
   FOR ALL
   TO authenticated
   USING (
-    -- Support agents can manage everything
     is_support_agent() OR
-    -- Super admins can manage everything
     is_super_admin() OR
-    -- Restaurant managers can manage their own
     (EXISTS (
       SELECT 1 FROM chat_sessions cs
       JOIN restaurants r ON r.id = cs.restaurant_id
@@ -160,11 +143,8 @@ CREATE POLICY "Support agents can manage all participants globally"
     ))
   )
   WITH CHECK (
-    -- Support agents can create/update everything
     is_support_agent() OR
-    -- Super admins can create/update everything
     is_super_admin() OR
-    -- Restaurant managers can create/update their own
     (EXISTS (
       SELECT 1 FROM chat_sessions cs
       JOIN restaurants r ON r.id = cs.restaurant_id
@@ -173,8 +153,11 @@ CREATE POLICY "Support agents can manage all participants globally"
     ))
   );
 
--- Enhanced function to get all chat sessions for support with restaurant data
-CREATE OR REPLACE FUNCTION get_all_chat_sessions_for_support()
+-- ==========================================================
+-- Functions
+-- ==========================================================
+
+CREATE FUNCTION get_all_chat_sessions_for_support()
 RETURNS TABLE (
   id uuid,
   restaurant_id uuid,
@@ -196,7 +179,6 @@ SET search_path = public
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  -- Log the function call
   RAISE NOTICE 'get_all_chat_sessions_for_support called by user: %', auth.uid();
   
   RETURN QUERY
@@ -221,18 +203,15 @@ BEGIN
 END;
 $$;
 
--- Grant execute permission to authenticated users
 GRANT EXECUTE ON FUNCTION get_all_chat_sessions_for_support() TO authenticated;
 
--- Enhanced support agent context function
-CREATE OR REPLACE FUNCTION set_support_agent_context(agent_email text)
+CREATE FUNCTION set_support_agent_context(agent_email text)
 RETURNS boolean
 SECURITY DEFINER
 SET search_path = public
 LANGUAGE plpgsql
 AS $$
 BEGIN
-  -- Verify the agent exists and is active
   IF NOT EXISTS (
     SELECT 1 FROM support_agents 
     WHERE email = agent_email 
@@ -241,7 +220,6 @@ BEGIN
     RAISE EXCEPTION 'Support agent not found or inactive: %', agent_email;
   END IF;
   
-  -- Set the context
   PERFORM set_config('app.current_agent_email', agent_email, true);
   
   RAISE NOTICE 'Support agent context set for: %', agent_email;
@@ -249,11 +227,9 @@ BEGIN
 END;
 $$;
 
--- Grant execute permission
 GRANT EXECUTE ON FUNCTION set_support_agent_context(text) TO authenticated;
 
--- Function to check if current user is a support agent
-CREATE OR REPLACE FUNCTION is_support_agent()
+CREATE FUNCTION is_support_agent()
 RETURNS boolean
 SECURITY DEFINER
 SET search_path = public
@@ -263,10 +239,8 @@ DECLARE
   agent_email text;
   agent_exists boolean := false;
 BEGIN
-  -- Try to get agent email from context
   agent_email := current_setting('app.current_agent_email', true);
   
-  -- If we have an agent email in context, verify it
   IF agent_email IS NOT NULL AND agent_email != '' THEN
     SELECT EXISTS (
       SELECT 1 FROM support_agents 
@@ -279,16 +253,13 @@ BEGIN
     END IF;
   END IF;
   
-  -- Fallback: check if current user is a super admin
   RETURN is_super_admin();
 END;
 $$;
 
--- Grant execute permission
 GRANT EXECUTE ON FUNCTION is_support_agent() TO authenticated;
 
--- Test function to debug support agent access
-CREATE OR REPLACE FUNCTION debug_support_agent_access()
+CREATE FUNCTION debug_support_agent_access()
 RETURNS json
 SECURITY DEFINER
 SET search_path = public
@@ -300,20 +271,16 @@ DECLARE
   total_sessions int;
   agent_exists boolean;
 BEGIN
-  -- Get current context
   agent_email := current_setting('app.current_agent_email', true);
   
-  -- Check if agent exists
   SELECT EXISTS (
     SELECT 1 FROM support_agents 
     WHERE email = agent_email 
     AND is_active = true
   ) INTO agent_exists;
   
-  -- Count total sessions
   SELECT COUNT(*) INTO total_sessions FROM chat_sessions;
   
-  -- Build result
   SELECT json_build_object(
     'current_user_id', auth.uid(),
     'agent_email_in_context', agent_email,
@@ -328,5 +295,4 @@ BEGIN
 END;
 $$;
 
--- Grant execute permission
 GRANT EXECUTE ON FUNCTION debug_support_agent_access() TO authenticated;
