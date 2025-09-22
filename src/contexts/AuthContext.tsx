@@ -153,113 +153,93 @@ const fetchRestaurant = async (userId: string) => {
 };
 
   const createDefaultRestaurant = async (userId: string) => {
-    try {
-      console.log('🏗️ Creating default restaurant for user:', userId);
-      
-      // Check if restaurant already exists with better error handling
-      const { data: existingRestaurant } = await supabase
-        .from('restaurants')
-        .select('*')
-        .eq('owner_id', userId)
-        .maybeSingle();
-
-      if (existingRestaurant && existingRestaurant.length > 0) {
-        console.log('🏪 Restaurant already exists:', existingRestaurant.name);
-        setRestaurant(existingRestaurant[0]);
-        return;
-      }
-      
-      if (existingRestaurant) {
-        console.log('🏪 Restaurant already exists:', existingRestaurant.name);
-        setRestaurant(existingRestaurant);
-        return;
-      }
-
-      const { data: userData } = await supabase.auth.getUser();
-      const user = userData.user;
-      
-      const restaurantName = user?.user_metadata?.restaurant_name || 'My Restaurant';
-      // Create a more unique slug
-      const baseSlug = restaurantName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-      const randomSuffix = Math.random().toString(36).substring(2, 8);
-      const slug = `${baseSlug}-${randomSuffix}`;
-
-      console.log('🏗️ Creating restaurant:', restaurantName);
-
-      const { data: restaurant, error: restaurantError } = await supabase
-        .from('restaurants')
-        .insert({
-          name: restaurantName,
-          owner_id: userId,
-          slug: slug,
-          settings: {
-            points_per_dollar: 1,
-            referral_bonus: 50,
-            pointValueAED: 0.05,
-            blanketMode: {
-              enabled: true,
-              type: 'manual',
-              manualSettings: {
-                pointsPerAED: 0.1
-              }
-            },
-            tier_thresholds: {
-              silver: 500,
-              gold: 1000
-            },
-            loyalty_program: {
-              name: 'Loyalty Program',
-              description: 'Earn points with every purchase and redeem for rewards!'
-            }
-          }
-        })
-        .select()
-        .single();
-
-      if (restaurantError) {
-        console.error('❌ Error creating restaurant:', restaurantError);
-        
-        // Handle duplicate error more robustly
-        if (restaurantError.code === '23505') {
-          console.log('🔄 Duplicate detected, fetching existing restaurant...');
-          
-          // Wait a moment and try again
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          
-          const { data: duplicateRestaurant, error: fetchError } = await supabase
-            .from('restaurants')
-            .select('*')
-            .eq('owner_id', userId)
-            .maybeSingle();
-          
-          if (!fetchError && duplicateRestaurant) {
-            console.log('✅ Found existing restaurant after duplicate:', duplicateRestaurant.name);
-            setRestaurant(duplicateRestaurant);
-            return;
-          }
-          
-          console.error('❌ Failed to fetch existing restaurant after duplicate error:', fetchError);
-        }
-        
-        // Don't throw error, just log it and continue
-        console.warn('⚠️ Restaurant creation failed, user may need to refresh:', restaurantError.message);
-        return;
-      }
-
-      console.log('✅ Restaurant created:', restaurant.name);
-      setRestaurant(restaurant);
-      
-      // Create sample data in background without blocking
-      setTimeout(() => {
-        createSampleRewards(restaurant.id).catch(console.warn);
-        createSampleMenuItems(restaurant.id).catch(console.warn);
-      }, 100);
-      
-    } catch (error) {
-      console.error('💥 Error creating default restaurant:', error);
-      // Don't throw error to prevent auth flow from breaking
+  try {
+    // Skip for support agents
+    const { data: userData } = await supabase.auth.getUser();
+    const role = userData.user?.user_metadata?.role;
+    if (role === 'support_agent') {
+      console.log('🛑 Skipping restaurant creation for support agent');
+      return;
     }
-  };
+
+    console.log('🏗️ Creating default restaurant for user:', userId);
+    
+    const { data: existingRestaurant } = await supabase
+      .from('restaurants')
+      .select('*')
+      .eq('owner_id', userId)
+      .maybeSingle();
+
+    if (existingRestaurant) {
+      console.log('🏪 Restaurant already exists:', existingRestaurant.name);
+      setRestaurant(existingRestaurant);
+      return;
+    }
+
+    const { data: userData2 } = await supabase.auth.getUser();
+    const user = userData2.user;
+
+    const restaurantName = user?.user_metadata?.restaurant_name || 'My Restaurant';
+    const baseSlug = restaurantName.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
+    const slug = `${baseSlug}-${randomSuffix}`;
+
+    console.log('🏗️ Creating restaurant:', restaurantName);
+
+    const { data: restaurant, error: restaurantError } = await supabase
+      .from('restaurants')
+      .insert({
+        name: restaurantName,
+        owner_id: userId,
+        slug: slug,
+        settings: {
+          points_per_dollar: 1,
+          referral_bonus: 50,
+          pointValueAED: 0.05,
+          blanketMode: {
+            enabled: true,
+            type: 'manual',
+            manualSettings: { pointsPerAED: 0.1 }
+          },
+          tier_thresholds: { silver: 500, gold: 1000 },
+          loyalty_program: {
+            name: 'Loyalty Program',
+            description: 'Earn points with every purchase and redeem for rewards!'
+          }
+        }
+      })
+      .select()
+      .single();
+
+    if (restaurantError) {
+      console.error('❌ Error creating restaurant:', restaurantError);
+      if (restaurantError.code === '23505') {
+        console.log('🔄 Duplicate detected, fetching existing restaurant...');
+        const { data: duplicateRestaurant } = await supabase
+          .from('restaurants')
+          .select('*')
+          .eq('owner_id', userId)
+          .maybeSingle();
+        if (duplicateRestaurant) {
+          console.log('✅ Found existing restaurant after duplicate:', duplicateRestaurant.name);
+          setRestaurant(duplicateRestaurant);
+        }
+      }
+      return;
+    }
+
+    console.log('✅ Restaurant created:', restaurant.name);
+    setRestaurant(restaurant);
+
+    setTimeout(() => {
+      createSampleRewards(restaurant.id).catch(console.warn);
+      createSampleMenuItems(restaurant.id).catch(console.warn);
+    }, 100);
+    
+  } catch (error) {
+    console.error('💥 Error creating default restaurant:', error);
+  }
+};
 
   const createSampleRewards = async (restaurantId: string) => {
     try {
