@@ -113,40 +113,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const fetchRestaurant = async (userId: string) => {
-    try {
-      console.log('🏪 Fetching restaurant for user:', userId);
-      
-      // Simple query with shorter timeout
-      const { data, error } = await supabase
-        .from('restaurants')
-        .select('id, name, slug, settings')
-        .eq('owner_id', userId)
-        .limit(1);
-
-      if (error) {
-        console.error('❌ Error fetching restaurant:', error);
-        // Create restaurant in background if fetch fails
-        createDefaultRestaurant(userId);
-        return;
-      }
-
-      if (data && data.length > 0) {
-        console.log('✅ Restaurant found:', data[0].name);
-        setRestaurant(data[0]);
-        return;
-      }
-
-      // If no restaurant exists, create one in background
-      console.log('🏗️ No restaurant found, creating default restaurant...');
-      createDefaultRestaurant(userId);
-      
-    } catch (error) {
-      console.error('💥 Error in fetchRestaurant:', error);
-      // Create restaurant in background if any error occurs
-      createDefaultRestaurant(userId);
+const fetchRestaurant = async (userId: string) => {
+  try {
+    // Skip for support agents
+    const { data: userData } = await supabase.auth.getUser();
+    const role = userData.user?.user_metadata?.role;
+    if (role === 'support_agent') {
+      console.log('🛑 Skipping restaurant fetch for support agent');
+      return;
     }
-  };
+
+    console.log('🏪 Fetching restaurant for user:', userId);
+    
+    const { data, error } = await supabase
+      .from('restaurants')
+      .select('id, name, slug, settings')
+      .eq('owner_id', userId)
+      .limit(1);
+
+    if (error) {
+      console.error('❌ Error fetching restaurant:', error);
+      createDefaultRestaurant(userId);
+      return;
+    }
+
+    if (data && data.length > 0) {
+      console.log('✅ Restaurant found:', data[0].name);
+      setRestaurant(data[0]);
+      return;
+    }
+
+    console.log('🏗️ No restaurant found, creating default restaurant...');
+    createDefaultRestaurant(userId);
+    
+  } catch (error) {
+    console.error('💥 Error in fetchRestaurant:', error);
+    createDefaultRestaurant(userId);
+  }
+};
 
   const createDefaultRestaurant = async (userId: string) => {
     try {
