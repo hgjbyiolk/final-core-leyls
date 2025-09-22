@@ -778,57 +778,67 @@ const SupportPortal: React.FC = () => {
       <div className="flex h-[calc(100vh-80px)]">
         {/* Sessions Sidebar */}
         <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-          {/* Filters */}
-          <div className="p-4 border-b border-gray-200 space-y-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                {agent?.name?.split(' ').map(n => n[0]).join('') || 'SA'}
-                placeholder="Search chats or restaurants..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                <p className="text-sm text-gray-600">Agent: {agent?.name || 'Support Agent'}</p>
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
-              </select>
-              
-              <select
-                value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="all">All Priority</option>
-                <option value="urgent">Urgent</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
+         {/* Filters */}
+<div className="p-4 border-b border-gray-200 space-y-3">
+  <div className="relative">
+    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
 
-            <select
-              value={restaurantFilter}
-              onChange={(e) => setRestaurantFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="all">All Restaurants ({uniqueRestaurants.length})</option>
-              {uniqueRestaurants.map((restaurant) => (
-                <option key={restaurant} value={restaurant}>
-                  {restaurant}
-                </option>
-              ))}
-            </select>
-          </div>
+    {/* Input field */}
+    <input
+      placeholder="Search chats or restaurants..."
+      value={searchQuery}
+      onChange={(e) => setSearchQuery(e.target.value)}
+      className="pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
+    />
+
+    {/* Agent info displayed separately */}
+    <p className="mt-2 text-sm text-gray-600">
+      Agent: {agent?.name || 'Support Agent'} (
+      {agent?.name?.split(' ').map(n => n[0]).join('') || 'SA'})
+    </p>
+  </div>
+
+  {/* Status + Priority filters */}
+  <div className="grid grid-cols-2 gap-2">
+    <select
+      value={statusFilter}
+      onChange={(e) => setStatusFilter(e.target.value)}
+      className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+    >
+      <option value="all">All Status</option>
+      <option value="active">Active</option>
+      <option value="resolved">Resolved</option>
+      <option value="closed">Closed</option>
+    </select>
+    
+    <select
+      value={priorityFilter}
+      onChange={(e) => setPriorityFilter(e.target.value)}
+      className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+    >
+      <option value="all">All Priority</option>
+      <option value="urgent">Urgent</option>
+      <option value="high">High</option>
+      <option value="medium">Medium</option>
+      <option value="low">Low</option>
+    </select>
+  </div>
+
+  {/* Restaurant filter */}
+  <select
+    value={restaurantFilter}
+    onChange={(e) => setRestaurantFilter(e.target.value)}
+    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+  >
+    <option value="all">All Restaurants ({uniqueRestaurants.length})</option>
+    {uniqueRestaurants.map((restaurant) => (
+      <option key={restaurant} value={restaurant}>
+        {restaurant}
+      </option>
+    ))}
+  </select>
+</div>
+
 
           {/* Sessions List */}
           <div className="flex-1 overflow-y-auto">
