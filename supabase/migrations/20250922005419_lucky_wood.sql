@@ -1,23 +1,10 @@
 /*
-  # Fix Support Portal Global Access (Clean Migration)
+  # Fix Support Portal Global Access (Safe Migration)
 
   This migration ensures support agents can see ALL restaurant chat sessions
   and interact with them properly, while maintaining security.
 
-  1. Enhanced RLS Policies
-    - Support agents get global read/write access to all chat sessions
-    - Support agents can manage messages and participants across all restaurants
-    - Service role bypass for critical operations
-
-  2. Enhanced Functions
-    - Improved support agent context setting
-    - Better session fetching with restaurant data
-    - Enhanced authentication functions
-
-  3. Security
-    - Maintain restaurant manager restrictions
-    - Ensure only authenticated support agents get global access
-    - Proper permission validation
+  ✅ Safe: We no longer drop `is_support_agent()` since policies depend on it.
 */
 
 -- Drop existing problematic policies
@@ -26,10 +13,9 @@ DROP POLICY IF EXISTS "Support agents global write access" ON chat_sessions;
 DROP POLICY IF EXISTS "Support agents global message access" ON chat_messages;
 DROP POLICY IF EXISTS "Support agents global participant access" ON chat_participants;
 
--- Drop old function signatures before recreating
+-- Drop/replace only functions that *need* changes
 DROP FUNCTION IF EXISTS set_support_agent_context(text);
 DROP FUNCTION IF EXISTS get_all_chat_sessions_for_support();
-DROP FUNCTION IF EXISTS is_support_agent();
 DROP FUNCTION IF EXISTS debug_support_agent_access();
 
 -- ==========================================================
@@ -229,7 +215,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION set_support_agent_context(text) TO authenticated;
 
-CREATE FUNCTION is_support_agent()
+CREATE OR REPLACE FUNCTION is_support_agent()
 RETURNS boolean
 SECURITY DEFINER
 SET search_path = public
