@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { SupportAuthProvider } from './contexts/SupportAuthContext';
 import LandingPage from './components/LandingPage';
 import SignupPage from './components/SignupPage';
 import UpgradePage from './components/UpgradePage';
@@ -105,17 +106,20 @@ function App() {
           
           <Route 
             path="/support-portal" 
-            element={<SupportPortal />}
+            element={
+              <SupportAuthProvider>
+                <SupportPortal />
+              </SupportAuthProvider>
+            }
           />
           
           <Route 
             path="/support-portal-login" 
-            element={<SupportPortalLogin />}
-          />
-          
-          <Route 
-            path="/support-portal" 
-            element={<SupportPortal />}
+            element={
+              <SupportAuthProvider>
+                <SupportPortalLogin />
+              </SupportAuthProvider>
+            }
           />
           
           <Route 

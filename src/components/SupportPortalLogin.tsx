@@ -5,7 +5,7 @@ import {
   AlertCircle, Loader2, Crown, Star, Building, Users,
   MessageSquare, Coffee, Monitor, Zap, CheckCircle
 } from 'lucide-react';
-import { ChatService } from '../services/chatService';
+import { useSupportAuth } from '../contexts/SupportAuthContext';
 
 const SupportPortalLogin: React.FC = () => {
   const [credentials, setCredentials] = useState({
@@ -15,7 +15,15 @@ const SupportPortalLogin: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const { signIn, agent } = useSupportAuth();
   const navigate = useNavigate();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (agent) {
+      navigate('/support-portal');
+    }
+  }, [agent, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,28 +36,15 @@ const SupportPortalLogin: React.FC = () => {
         return;
       }
 
-      console.log('🔐 Attempting support agent login:', credentials.email);
-      const result = await ChatService.authenticateSupportAgent(credentials.email, credentials.password);
-      console.log('🔐 Login result:', result);
-
-      if (result.success && result.agent) {
-        console.log('✅ Support agent authenticated successfully:', result.agent.name);
-        
-        // Set support agent context for database access
-        await ChatService.setSupportAgentContext(result.agent.email);
-        
-        // Store support agent session
-        localStorage.setItem('support_agent_data', JSON.stringify(result.agent));
-        localStorage.setItem('support_agent_login_time', new Date().toISOString());
-        
+      const result = await signIn(credentials.email, credentials.password);
+      
+      if (!result.error) {
         navigate('/support-portal');
       } else {
-        console.error('❌ Authentication failed:', result.error);
-        setError(result.error || 'Invalid credentials');
+        setError(result.error);
       }
-    } catch (err: any) {
-      console.error('❌ Login error:', err);
-      setError(err.message || 'Authentication failed');
+    } catch (error: any) {
+      setError(error.message || 'Authentication failed');
     } finally {
       setLoading(false);
     }

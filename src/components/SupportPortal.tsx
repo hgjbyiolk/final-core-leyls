@@ -623,7 +623,7 @@ const SupportPortal: React.FC = () => {
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem('support_agent_data');
+    const { signOut } = useSupportAuth();
     localStorage.removeItem('support_agent_login_time');
     navigate('/support-portal-login');
   };
@@ -783,11 +783,11 @@ const SupportPortal: React.FC = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
-                type="text"
+                {agent?.name?.split(' ').map(n => n[0]).join('') || 'SA'}
                 placeholder="Search chats or restaurants..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                <p className="text-sm text-gray-600">Agent: {agent?.name || 'Support Agent'}</p>
               />
             </div>
             
