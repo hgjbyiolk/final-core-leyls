@@ -792,10 +792,10 @@ const SupportPortal: React.FC = () => {
     />
 
     {/* Agent info displayed separately */}
-    <p className="mt-2 text-sm text-gray-600">
-      Agent: {agent?.name || 'Support Agent'} (
-      {agent?.name?.split(' ').map(n => n[0]).join('') || 'SA'})
-    </p>
+   <p className="mt-2 text-sm text-gray-600">
+  Agent: {currentAgent?.name || 'Support Agent'} (
+  {currentAgent?.name?.split(' ').map(n => n[0]).join('') || 'SA'})
+</p>
   </div>
 
   {/* Status + Priority filters */}
