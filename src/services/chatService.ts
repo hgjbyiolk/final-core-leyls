@@ -101,14 +101,13 @@ export interface QuickResponse {
 }
 
 export class ChatService {
-  // Set support agent context for database access
  // Set support agent context for database access
 static async setSupportAgentContext(agentEmail: string): Promise<void> {
   try {
     console.log('🔐 [SUPPORT PORTAL] Setting support agent context for:', agentEmail);
 
     const { error } = await supabase.rpc('set_support_agent_context', {
-      agent_email: agentEmail, // must match SQL function argument
+      agent_email: agentEmail, // must match SQL function arg name
     });
 
     if (error) {
@@ -122,24 +121,6 @@ static async setSupportAgentContext(agentEmail: string): Promise<void> {
     throw error;
   }
 }
-
-      
-      // Also try the custom function as backup
-      const { error: customError } = await supabase.rpc('set_support_agent_context', {
-        agent_email: agentEmail
-      });
-      
-      if (customError) {
-        console.warn('⚠️ [SUPPORT PORTAL] Custom context setting failed (non-critical):', customError);
-      } else {
-        console.log('✅ [SUPPORT PORTAL] Custom support agent context set successfully');
-      }
-      
-    } catch (error: any) {
-      console.warn('⚠️ [SUPPORT PORTAL] Context setting failed (non-critical):', error);
-      // Don't throw - this shouldn't block the support portal from working
-    }
-  }
 
   // Get all chat sessions (for support agents - sees ALL restaurants)
   static async getAllChatSessions(): Promise<ChatSession[]> {
