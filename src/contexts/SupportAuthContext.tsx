@@ -61,77 +61,45 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    try {
-      console.log('🔐 [SUPPORT AUTH] Attempting sign in:', email);
+  try {
+    console.log('🔐 [SUPPORT AUTH] Attempting sign in:', email);
 
-      // First check if agent exists and is active
-      const { data: agent, error: agentError } = await supabase
-        .from('support_agents')
-        .select('*')
-        .eq('email', email)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (agentError) {
-        console.error('❌ [SUPPORT AUTH] Error fetching agent:', agentError);
-        return { error: 'Authentication failed' };
-      }
-
-      if (!agent) {
-        console.log('❌ [SUPPORT AUTH] Agent not found or inactive:', email);
-        return { error: 'Invalid credentials or account inactive' };
-      }
-
-      console.log('👤 [SUPPORT AUTH] Agent found:', { 
-        id: agent.id, 
-        name: agent.name, 
-        email: agent.email, 
-        isActive: agent.is_active 
-      });
-      
-      // Use the RPC function to verify password
-      const { data: authResult, error: authError } = await supabase.rpc('authenticate_support_agent', {
+    // Use RPC to validate agent (bypasses RLS safely if SECURITY DEFINER)
+    const { data: authResult, error: authError } = await supabase.rpc(
+      'authenticate_support_agent',
+      {
         agent_email: email,
-        agent_password: password
-      });
-
-      if (authError) {
-        console.error('❌ [SUPPORT AUTH] Authentication RPC error:', authError);
-        return { error: 'Authentication failed' };
+        agent_password: password,
       }
+    );
 
-      console.log('🔐 [SUPPORT AUTH] Authentication RPC result:', authResult);
-      if (!authResult) {
-        console.log('❌ [SUPPORT AUTH] Invalid password for agent:', email);
-        return { error: 'Invalid credentials' };
-      }
-
-      // Update last login
-      const { error: updateError } = await supabase
-        .from('support_agents')
-        .update({ last_login_at: new Date().toISOString() })
-        .eq('id', agent.id);
-
-      if (updateError) {
-        console.warn('⚠️ [SUPPORT AUTH] Failed to update last login:', updateError);
-      }
-
-      setAgent(agent);
-
-      // Store session locally
-      localStorage.setItem('support_agent_data', JSON.stringify(agent));
-      localStorage.setItem('support_agent_login_time', new Date().toISOString());
-
-      // Set DB context so RLS policies work
-      await ChatService.setSupportAgentContext(agent.email);
-
-      console.log('✅ [SUPPORT AUTH] Sign in successful:', agent.name);
-      return { error: null };
-    } catch (error: any) {
-      console.error('❌ [SUPPORT AUTH] Sign in error:', error);
-      return { error: error.message || 'Authentication failed' };
+    if (authError) {
+      console.error('❌ [SUPPORT AUTH] Authentication RPC error:', authError);
+      return { error: 'Authentication failed' };
     }
-  };
+
+    if (!authResult) {
+      console.log('❌ [SUPPORT AUTH] Invalid credentials for agent:', email);
+      return { error: 'Invalid credentials' };
+    }
+
+    // authResult should return the full agent row from the RPC
+    setAgent(authResult);
+
+    // Store session locally
+    localStorage.setItem('support_agent_data', JSON.stringify(authResult));
+    localStorage.setItem('support_agent_login_time', new Date().toISOString());
+
+    // Set DB context so RLS policies work
+    await ChatService.setSupportAgentContext(authResult.email);
+
+    console.log('✅ [SUPPORT AUTH] Sign in successful:', authResult.name);
+    return { error: null };
+  } catch (error: any) {
+    console.error('❌ [SUPPORT AUTH] Sign in error:', error);
+    return { error: error.message || 'Authentication failed' };
+  }
+};
 
   const signOut = () => {
     console.log('🔐 [SUPPORT AUTH] Signing out agent:', agent?.name);
