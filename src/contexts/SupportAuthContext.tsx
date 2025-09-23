@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { ChatService, SupportAgent } from '../services/chatService';
@@ -131,4 +132,3 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
     </SupportAuthContext.Provider>
   );
 };
- 
