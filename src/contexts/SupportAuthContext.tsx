@@ -62,32 +62,47 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    try {
-      console.log('🔐 [SUPPORT AUTH] Attempting sign in:', email);
-      
-      const result = await ChatService.authenticateSupportAgent(email, password);
-      
-      if (result.success && result.agent) {
-        setAgent(result.agent);
-        
-        // Store session
-        localStorage.setItem('support_agent_data', JSON.stringify(result.agent));
-        localStorage.setItem('support_agent_login_time', new Date().toISOString());
-        
-        // Set support agent context
-        await ChatService.setSupportAgentContext(result.agent.email);
-        
-        console.log('✅ [SUPPORT AUTH] Sign in successful:', result.agent.name);
-        return { error: null };
+  try {
+    console.log('🔐 [SUPPORT AUTH] Attempting sign in:', email);
+
+    const result = await ChatService.authenticateSupportAgent(email, password);
+
+    if (result.success && result.agent) {
+      setAgent(result.agent);
+
+      // Store session locally
+      localStorage.setItem('support_agent_data', JSON.stringify(result.agent));
+      localStorage.setItem('support_agent_login_time', new Date().toISOString());
+
+      // 🔑 Update Supabase JWT to carry is_support_agent = true
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: { is_support_agent: true }
+      });
+
+      if (updateError) {
+        console.warn('⚠️ Failed to update JWT claims for agent:', updateError.message);
       } else {
-        console.error('❌ [SUPPORT AUTH] Sign in failed:', result.error);
-        return { error: result.error || 'Authentication failed' };
+        console.log('✅ Updated JWT with is_support_agent claim');
       }
-    } catch (error: any) {
-      console.error('❌ [SUPPORT AUTH] Sign in error:', error);
-      return { error: error.message || 'Authentication failed' };
+
+      // Refresh session so the new claim takes effect immediately
+      await supabase.auth.refreshSession();
+
+      // Set support agent context (optional backup)
+      await ChatService.setSupportAgentContext(result.agent.email);
+
+      console.log('✅ [SUPPORT AUTH] Sign in successful:', result.agent.name);
+      return { error: null };
+    } else {
+      console.error('❌ [SUPPORT AUTH] Sign in failed:', result.error);
+      return { error: result.error || 'Authentication failed' };
     }
-  };
+  } catch (error: any) {
+    console.error('❌ [SUPPORT AUTH] Sign in error:', error);
+    return { error: error.message || 'Authentication failed' };
+  }
+};
+
 
   const signOut = () => {
     console.log('🔐 [SUPPORT AUTH] Signing out agent:', agent?.name);
