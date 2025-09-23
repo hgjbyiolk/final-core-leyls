@@ -101,8 +101,12 @@ CREATE POLICY "Support agents global participant access"
     ))
   );
 
+-- Drop old versions of functions before recreating
+DROP FUNCTION IF EXISTS set_support_agent_context(text);
+DROP FUNCTION IF EXISTS get_all_chat_sessions_for_support();
+
 -- Enhanced support agent context function
-CREATE OR REPLACE FUNCTION set_support_agent_context(agent_email text)
+CREATE FUNCTION set_support_agent_context(agent_email text)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -160,7 +164,7 @@ END;
 $$;
 
 -- Service role bypass function for support agents
-CREATE OR REPLACE FUNCTION get_all_chat_sessions_for_support()
+CREATE FUNCTION get_all_chat_sessions_for_support()
 RETURNS TABLE (
   id uuid,
   restaurant_id uuid,
