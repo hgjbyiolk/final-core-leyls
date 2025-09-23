@@ -64,16 +64,19 @@ const signIn = async (email: string, password: string) => {
   try {
     console.log('🔐 [SUPPORT AUTH] Attempting sign in:', email);
 
-    // Call the new RPC which now returns the full agent row
-    const { data: agent, error } = await supabase.rpc('authenticate_support_agent', {
+    // Call RPC (returns { id, name, email })
+    const { data, error } = await supabase.rpc('authenticate_support_agent', {
       agent_email: email,
-      agent_password: password
+      agent_password: password,
     });
 
     if (error) {
       console.error('❌ [SUPPORT AUTH] RPC error:', error);
       return { error: 'Authentication failed' };
     }
+
+    // Supabase RPC returns an array of rows → pick first
+    const agent = data?.[0];
 
     if (!agent) {
       console.log('❌ [SUPPORT AUTH] Invalid credentials for:', email);
@@ -83,7 +86,7 @@ const signIn = async (email: string, password: string) => {
     console.log('✅ [SUPPORT AUTH] Agent authenticated:', {
       id: agent.id,
       name: agent.name,
-      email: agent.email
+      email: agent.email,
     });
 
     // Save locally
@@ -100,7 +103,6 @@ const signIn = async (email: string, password: string) => {
     return { error: err.message || 'Authentication failed' };
   }
 };
-
 
   const signOut = () => {
     console.log('🔐 [SUPPORT AUTH] Signing out agent:', agent?.name);
