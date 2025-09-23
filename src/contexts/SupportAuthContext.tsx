@@ -60,46 +60,47 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
     checkExistingSession();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+const signIn = async (email: string, password: string) => {
   try {
     console.log('🔐 [SUPPORT AUTH] Attempting sign in:', email);
 
-    // Use RPC to validate agent (bypasses RLS safely if SECURITY DEFINER)
-    const { data: authResult, error: authError } = await supabase.rpc(
-      'authenticate_support_agent',
-      {
-        agent_email: email,
-        agent_password: password,
-      }
-    );
+    // Call the new RPC which now returns the full agent row
+    const { data: agent, error } = await supabase.rpc('authenticate_support_agent', {
+      agent_email: email,
+      agent_password: password
+    });
 
-    if (authError) {
-      console.error('❌ [SUPPORT AUTH] Authentication RPC error:', authError);
+    if (error) {
+      console.error('❌ [SUPPORT AUTH] RPC error:', error);
       return { error: 'Authentication failed' };
     }
 
-    if (!authResult) {
-      console.log('❌ [SUPPORT AUTH] Invalid credentials for agent:', email);
-      return { error: 'Invalid credentials' };
+    if (!agent) {
+      console.log('❌ [SUPPORT AUTH] Invalid credentials for:', email);
+      return { error: 'Invalid credentials or inactive account' };
     }
 
-    // authResult should return the full agent row from the RPC
-    setAgent(authResult);
+    console.log('✅ [SUPPORT AUTH] Agent authenticated:', {
+      id: agent.id,
+      name: agent.name,
+      email: agent.email
+    });
 
-    // Store session locally
-    localStorage.setItem('support_agent_data', JSON.stringify(authResult));
+    // Save locally
+    setAgent(agent);
+    localStorage.setItem('support_agent_data', JSON.stringify(agent));
     localStorage.setItem('support_agent_login_time', new Date().toISOString());
 
-    // Set DB context so RLS policies work
-    await ChatService.setSupportAgentContext(authResult.email);
+    // Set DB context for RLS
+    await ChatService.setSupportAgentContext(agent.email);
 
-    console.log('✅ [SUPPORT AUTH] Sign in successful:', authResult.name);
     return { error: null };
-  } catch (error: any) {
-    console.error('❌ [SUPPORT AUTH] Sign in error:', error);
-    return { error: error.message || 'Authentication failed' };
+  } catch (err: any) {
+    console.error('❌ [SUPPORT AUTH] Sign in error:', err);
+    return { error: err.message || 'Authentication failed' };
   }
 };
+
 
   const signOut = () => {
     console.log('🔐 [SUPPORT AUTH] Signing out agent:', agent?.name);
