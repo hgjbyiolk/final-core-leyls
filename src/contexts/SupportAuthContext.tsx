@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
 import { ChatService, SupportAgent } from '../services/chatService';
 
 interface SupportAuthContextType {
@@ -23,97 +24,96 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if support agent is already logged in
-useEffect(() => {
-  const checkExistingSession = async () => {
-    try {
-      const agentData = localStorage.getItem('support_agent_data');
-      const loginTime = localStorage.getItem('support_agent_login_time');
+    const checkExistingSession = async () => {
+      try {
+        const agentData = localStorage.getItem('support_agent_data');
+        const loginTime = localStorage.getItem('support_agent_login_time');
 
-      if (agentData && loginTime) {
-        const loginDate = new Date(loginTime);
-        const now = new Date();
-        const hoursSinceLogin = (now.getTime() - loginDate.getTime()) / (1000 * 60 * 60);
+        if (agentData && loginTime) {
+          const loginDate = new Date(loginTime);
+          const now = new Date();
+          const hoursSinceLogin =
+            (now.getTime() - loginDate.getTime()) / (1000 * 60 * 60);
 
-        if (hoursSinceLogin < 24) {
-          const parsedAgent: SupportAgent = JSON.parse(agentData);
-          setAgent(parsedAgent);
-          console.log('🔐 [SUPPORT AUTH] Restored agent session:', parsedAgent.name);
+          if (hoursSinceLogin < 24) {
+            const parsedAgent: SupportAgent = JSON.parse(agentData);
+            setAgent(parsedAgent);
+            console.log('🔐 [SUPPORT AUTH] Restored agent session:', parsedAgent.name);
 
-          // 🔑 Ensure Supabase JWT has is_support_agent = true
-          const { error: updateError } = await supabase.auth.updateUser({
-            data: { is_support_agent: true }
-          });
+            // 🔑 Ensure Supabase JWT has is_support_agent = true
+            const { error: updateError } = await supabase.auth.updateUser({
+              data: { is_support_agent: true }
+            });
 
-          if (updateError) {
-            console.warn('⚠️ Failed to refresh JWT claims for agent:', updateError.message);
+            if (updateError) {
+              console.warn('⚠️ Failed to refresh JWT claims for agent:', updateError.message);
+            } else {
+              console.log('✅ Refreshed JWT with is_support_agent claim');
+            }
+
+            // Refresh session immediately so new claim takes effect
+            await supabase.auth.refreshSession();
+
+            // Also set DB context (backup for RLS policies)
+            ChatService.setSupportAgentContext(parsedAgent.email).catch(console.error);
           } else {
-            console.log('✅ Refreshed JWT with is_support_agent claim');
+            localStorage.removeItem('support_agent_data');
+            localStorage.removeItem('support_agent_login_time');
+            console.log('⏰ [SUPPORT AUTH] Session expired, cleared storage');
           }
-
-          await supabase.auth.refreshSession();
-
-          ChatService.setSupportAgentContext(parsedAgent.email).catch(console.error);
-        } else {
-          localStorage.removeItem('support_agent_data');
-          localStorage.removeItem('support_agent_login_time');
-          console.log('⏰ [SUPPORT AUTH] Session expired, cleared storage');
         }
+      } catch (error) {
+        console.error('❌ [SUPPORT AUTH] Error checking existing session:', error);
+        localStorage.removeItem('support_agent_data');
+        localStorage.removeItem('support_agent_login_time');
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('❌ [SUPPORT AUTH] Error checking existing session:', error);
-      localStorage.removeItem('support_agent_data');
-      localStorage.removeItem('support_agent_login_time');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  checkExistingSession();
-}, []);
+    checkExistingSession();
+  }, []);
 
   const signIn = async (email: string, password: string) => {
-  try {
-    console.log('🔐 [SUPPORT AUTH] Attempting sign in:', email);
+    try {
+      console.log('🔐 [SUPPORT AUTH] Attempting sign in:', email);
 
-    const result = await ChatService.authenticateSupportAgent(email, password);
+      const result = await ChatService.authenticateSupportAgent(email, password);
 
-    if (result.success && result.agent) {
-      setAgent(result.agent);
+      if (result.success && result.agent) {
+        setAgent(result.agent);
 
-      // Store session locally
-      localStorage.setItem('support_agent_data', JSON.stringify(result.agent));
-      localStorage.setItem('support_agent_login_time', new Date().toISOString());
+        // Store session
+        localStorage.setItem('support_agent_data', JSON.stringify(result.agent));
+        localStorage.setItem('support_agent_login_time', new Date().toISOString());
 
-      // 🔑 Update Supabase JWT to carry is_support_agent = true
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: { is_support_agent: true }
-      });
+        // Set support agent context
+        await ChatService.setSupportAgentContext(result.agent.email);
 
-      if (updateError) {
-        console.warn('⚠️ Failed to update JWT claims for agent:', updateError.message);
+        // 🔑 Ensure Supabase JWT has is_support_agent = true
+        const { error: updateError } = await supabase.auth.updateUser({
+          data: { is_support_agent: true }
+        });
+
+        if (updateError) {
+          console.warn('⚠️ Failed to refresh JWT claims for agent:', updateError.message);
+        } else {
+          console.log('✅ Refreshed JWT with is_support_agent claim');
+        }
+
+        await supabase.auth.refreshSession();
+
+        console.log('✅ [SUPPORT AUTH] Sign in successful:', result.agent.name);
+        return { error: null };
       } else {
-        console.log('✅ Updated JWT with is_support_agent claim');
+        console.error('❌ [SUPPORT AUTH] Sign in failed:', result.error);
+        return { error: result.error || 'Authentication failed' };
       }
-
-      // Refresh session so the new claim takes effect immediately
-      await supabase.auth.refreshSession();
-
-      // Set support agent context (optional backup)
-      await ChatService.setSupportAgentContext(result.agent.email);
-
-      console.log('✅ [SUPPORT AUTH] Sign in successful:', result.agent.name);
-      return { error: null };
-    } else {
-      console.error('❌ [SUPPORT AUTH] Sign in failed:', result.error);
-      return { error: result.error || 'Authentication failed' };
+    } catch (error: any) {
+      console.error('❌ [SUPPORT AUTH] Sign in error:', error);
+      return { error: error.message || 'Authentication failed' };
     }
-  } catch (error: any) {
-    console.error('❌ [SUPPORT AUTH] Sign in error:', error);
-    return { error: error.message || 'Authentication failed' };
-  }
-};
-
+  };
 
   const signOut = () => {
     console.log('🔐 [SUPPORT AUTH] Signing out agent:', agent?.name);
