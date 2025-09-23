@@ -102,21 +102,26 @@ export interface QuickResponse {
 
 export class ChatService {
 // Set support agent context
-static async setSupportAgentContext(agentEmail: string): Promise<void> {
+static async setSupportAgentContext(agentEmail: string) {
   try {
-    console.log('🔐 [SUPPORT PORTAL] Setting support agent context for:', agentEmail);
+    if (!agentEmail) {
+      console.warn("⚠️ [SUPPORT PORTAL] No agent email provided for context set");
+      return;
+    }
 
-   const { error } = await supabase.rpc('set_support_agent_context', {
-        params: { agent_email: agentEmail }
-      });
+    console.log("🔐 [SUPPORT PORTAL] Setting support agent context for:", agentEmail);
+
+    const { error } = await supabase.rpc("set_support_agent_context", {
+      agent_email: agentEmail,
+    });
 
     if (error) {
-      console.error('❌ [SUPPORT PORTAL] Failed to set agent context:', error);
+      console.error("❌ [SUPPORT PORTAL] Failed to set agent context:", error);
     } else {
-      console.log('✅ [SUPPORT PORTAL] Agent context set successfully');
+      console.log("✅ [SUPPORT PORTAL] Agent context set");
     }
   } catch (err) {
-    console.error('⚠️ [SUPPORT PORTAL] Context setting failed, continuing without context', err);
+    console.error("❌ [SUPPORT PORTAL] Error in setSupportAgentContext:", err);
   }
 }
 
