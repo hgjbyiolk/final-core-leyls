@@ -126,24 +126,28 @@ const SupportPortal: React.FC = () => {
       id: currentAgent.id
     });
 
-    ChatService.setSupportAgentContext(currentAgent.email).then(() => {
-      console.log('✅ [SUPPORT PORTAL] Agent context set, loading sessions...');
-      loadSupportPortalData();
-      loadQuickResponses();
-      setupGlobalSubscriptions();
-    }).catch((error) => {
-      console.error('❌ [SUPPORT PORTAL] Failed to set agent context:', error);
-      // Continue anyway - try to load sessions
-      
-      // Set support agent context immediately when agent is available
-      ChatService.setSupportAgentContext(currentAgent.email).catch(error => {
-        console.warn('⚠️ [SUPPORT PORTAL] Initial context setting failed:', error);
+    // ✅ Fixed: Add proper null check and error handling
+    if (currentAgent?.email) {
+      ChatService.setSupportAgentContext(currentAgent.email).then(() => {
+        console.log('✅ [SUPPORT PORTAL] Agent context set, loading sessions...');
+        loadSupportPortalData();
+        loadQuickResponses();
+        setupGlobalSubscriptions();
+      }).catch((error) => {
+        console.error('❌ [SUPPORT PORTAL] Failed to set agent context:', error);
+        // Continue anyway - try to load sessions
+        console.warn('⚠️ [SUPPORT PORTAL] Continuing without context, some features may not work');
+        loadSupportPortalData();
+        loadQuickResponses();
+        setupGlobalSubscriptions();
       });
-      
+    } else {
+      console.warn("⚠️ [SUPPORT PORTAL] No agent email available yet, skipping context set");
+      // Still try to load data
       loadSupportPortalData();
       loadQuickResponses();
       setupGlobalSubscriptions();
-    });
+    }
 
     return () => {
       cleanupAllSubscriptions();
@@ -193,10 +197,9 @@ const SupportPortal: React.FC = () => {
       const agent = JSON.parse(agentData);
       console.log('✅ [SUPPORT PORTAL] Agent session valid:', agent.name);
       
-      // Set support agent context for database access
-      await ChatService.setSupportAgentContext(currentAgent.email);
-      
+      // ✅ Fixed: Set the agent first, then set context in the useEffect
       setCurrentAgent(agent);
+      
     } catch (error) {
       console.error('❌ [SUPPORT PORTAL] Authentication check failed:', error);
       navigate('/support-portal-login');
@@ -213,10 +216,13 @@ const SupportPortal: React.FC = () => {
 
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      // Ensure context is set before fetching
-      if (agent) {
+      // ✅ Fixed: Ensure context is set before fetching, with null check
+      if (currentAgent?.email) {
         await ChatService.setSupportAgentContext(currentAgent.email);
+      } else {
+        console.warn('⚠️ [SUPPORT PORTAL] No current agent email available for context setting');
       }
+      
       console.log('🔍 [SUPPORT PORTAL] Current session:', { 
         hasSession: !!session, 
         userId: session?.user?.id,
@@ -233,7 +239,6 @@ const SupportPortal: React.FC = () => {
         }, {} as Record<string, number>)
       });
 
-      // ✅ fixed sessionsData → allSessions
       console.log('📊 [SUPPORT PORTAL] Sessions loaded:', {
         totalSessions: allSessions.length,
         sessionTitles: allSessions.slice(0, 3).map(s => s.title),
@@ -243,7 +248,7 @@ const SupportPortal: React.FC = () => {
 
       if (allSessions.length === 0) {
         console.warn('⚠️ [SUPPORT PORTAL] No sessions returned - this might indicate RLS issues');
-        setError('No chat sessions found. This might be a permissions issue.'); // ✅ now works, since error state exists
+        setError('No chat sessions found. This might be a permissions issue.');
       }
 
       setSessions(allSessions);
@@ -480,8 +485,12 @@ const SupportPortal: React.FC = () => {
     scrollToBottom();
 
     try {
-      // Set support agent context before sending message
-      await ChatService.setSupportAgentContext(currentAgent.email);
+      // ✅ Fixed: Set support agent context before sending message with null check
+      if (currentAgent?.email) {
+        await ChatService.setSupportAgentContext(currentAgent.email);
+      } else {
+        console.warn("⚠️ [SUPPORT PORTAL] No agent email available for context setting");
+      }
       
       const sentMessage = await ChatService.sendMessage({
         session_id: selectedSession.id,
@@ -513,8 +522,12 @@ const SupportPortal: React.FC = () => {
 
     setUploadingFiles(true);
     try {
-      // Set context before file operations
-      await ChatService.setSupportAgentContext(currentAgent.email);
+      // ✅ Fixed: Set context before file operations with null check
+      if (currentAgent?.email) {
+        await ChatService.setSupportAgentContext(currentAgent.email);
+      } else {
+        console.warn("⚠️ [SUPPORT PORTAL] No agent email available for context setting");
+      }
       
       for (const file of Array.from(files)) {
         // Validate file type (only images)
@@ -584,8 +597,12 @@ const SupportPortal: React.FC = () => {
     try {
       setAssigningAgent(true);
       
-      // Set support agent context before assignment
-      await ChatService.setSupportAgentContext(currentAgent.email);
+      // ✅ Fixed: Set support agent context before assignment with null check
+      if (currentAgent?.email) {
+        await ChatService.setSupportAgentContext(currentAgent.email);
+      } else {
+        console.warn("⚠️ [SUPPORT PORTAL] No agent email available for context setting");
+      }
       
       // Assign agent to session
       await ChatService.assignAgentToSession(
@@ -633,8 +650,12 @@ const SupportPortal: React.FC = () => {
     try {
       setClosingChat(true);
       
-      // Set support agent context before closing
-      await ChatService.setSupportAgentContext(currentAgent.email);
+      // ✅ Fixed: Set support agent context before closing with null check
+      if (currentAgent?.email) {
+        await ChatService.setSupportAgentContext(currentAgent.email);
+      } else {
+        console.warn("⚠️ [SUPPORT PORTAL] No agent email available for context setting");
+      }
       
       await ChatService.closeChatSession(selectedSession.id, currentAgent.name);
       
