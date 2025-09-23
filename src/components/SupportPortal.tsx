@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSupportAuth } from '../contexts/SupportAuthContext';
+
 import { 
   MessageSquare, Plus, Search, Filter, Clock, CheckCircle,
   AlertCircle, User, Send, X, ChevronDown, ChevronUp,
