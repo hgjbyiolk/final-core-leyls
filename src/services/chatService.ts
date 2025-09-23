@@ -106,9 +106,9 @@ static async setSupportAgentContext(agentEmail: string): Promise<void> {
   try {
     console.log('🔐 [SUPPORT PORTAL] Setting support agent context for:', agentEmail);
 
-    const { error } = await supabase.rpc('set_support_agent_context', {
-      agent_email: agentEmail, // ✅ must pass parameter
-    });
+   const { error } = await supabase.rpc('set_support_agent_context', {
+        params: { agent_email: agentEmail }
+      });
 
     if (error) {
       console.error('❌ [SUPPORT PORTAL] Failed to set agent context:', error);
