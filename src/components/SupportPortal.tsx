@@ -136,7 +136,7 @@ const SupportPortal: React.FC = () => {
       // Continue anyway - try to load sessions
       
       // Set support agent context immediately when agent is available
-      ChatService.setSupportAgentContext(agent.email).catch(error => {
+      ChatService.setSupportAgentContext(currentAgent.email).catch(error => {
         console.warn('⚠️ [SUPPORT PORTAL] Initial context setting failed:', error);
       });
       
@@ -194,7 +194,7 @@ const SupportPortal: React.FC = () => {
       console.log('✅ [SUPPORT PORTAL] Agent session valid:', agent.name);
       
       // Set support agent context for database access
-      await ChatService.setSupportAgentContext(agent.email);
+      await ChatService.setSupportAgentContext(currentAgent.email);
       
       setCurrentAgent(agent);
     } catch (error) {
@@ -215,7 +215,7 @@ const SupportPortal: React.FC = () => {
       
       // Ensure context is set before fetching
       if (agent) {
-        await ChatService.setSupportAgentContext(agent.email);
+        await ChatService.setSupportAgentContext(currentAgent.email);
       }
       console.log('🔍 [SUPPORT PORTAL] Current session:', { 
         hasSession: !!session, 
@@ -481,7 +481,7 @@ const SupportPortal: React.FC = () => {
 
     try {
       // Set support agent context before sending message
-      await ChatService.setSupportAgentContext(agent.email);
+      await ChatService.setSupportAgentContext(currentAgent.email);
       
       const sentMessage = await ChatService.sendMessage({
         session_id: selectedSession.id,
@@ -514,7 +514,7 @@ const SupportPortal: React.FC = () => {
     setUploadingFiles(true);
     try {
       // Set context before file operations
-      await ChatService.setSupportAgentContext(agent.email);
+      await ChatService.setSupportAgentContext(currentAgent.email);
       
       for (const file of Array.from(files)) {
         // Validate file type (only images)
@@ -585,7 +585,7 @@ const SupportPortal: React.FC = () => {
       setAssigningAgent(true);
       
       // Set support agent context before assignment
-      await ChatService.setSupportAgentContext(agent.email);
+      await ChatService.setSupportAgentContext(currentAgent.email);
       
       // Assign agent to session
       await ChatService.assignAgentToSession(
@@ -634,7 +634,7 @@ const SupportPortal: React.FC = () => {
       setClosingChat(true);
       
       // Set support agent context before closing
-      await ChatService.setSupportAgentContext(agent.email);
+      await ChatService.setSupportAgentContext(currentAgent.email);
       
       await ChatService.closeChatSession(selectedSession.id, currentAgent.name);
       
