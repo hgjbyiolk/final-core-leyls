@@ -394,13 +394,14 @@ try {
     p_is_system_message: messageData.is_system_message || false
   });
 
-  if (!bypassError && bypassData && bypassData.length > 0) {
-    const message = bypassData[0]; // ✅ get first row
-    console.log('✅ [SUPPORT PORTAL] Message sent via service role bypass:', message.id);
-    return message;
-  } else {
-    console.warn('⚠️ [SUPPORT PORTAL] Service role bypass failed:', bypassError);
-  }
+ if (!bypassError && bypassData && bypassData.length > 0) {
+  const message = bypassData[0];
+  console.log("✅ [SUPPORT PORTAL] Message sent via service role bypass:", message.id);
+  return message;
+} else {
+  throw new Error("Failed to send message via bypass: " + (bypassError?.message || "unknown"));
+}
+
 } catch (bypassError) {
   console.warn('⚠️ [SUPPORT PORTAL] Service role bypass error:', bypassError);
 }
