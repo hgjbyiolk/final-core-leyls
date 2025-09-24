@@ -739,9 +739,25 @@ await ChatService.sendMessage({
     return matchesSearch && matchesStatus && matchesPriority && matchesRestaurant;
   });
 
-  const activeSessions = sessions.filter(s => s.status === 'active');
-  const sessionsWithAgent = sessions.filter(s => s.assigned_agent_name);
-  const unassignedSessions = sessions.filter(s => s.status === 'active' && !s.assigned_agent_name);
+  const activeSessions = sessions.filter(s => s.status === "active");
+
+// ✅ FIX: also check participants if assigned_agent_name is missing
+const sessionsWithAgent = sessions.filter(
+  s =>
+    s.assigned_agent_name ||
+    s.participants?.some(p => p.user_type === "support_agent")
+);
+
+const unassignedSessions = sessions.filter(
+  s =>
+    s.status === "active" &&
+    !s.assigned_agent_name &&
+    !s.participants?.some(p => p.user_type === "support_agent")
+);
+
+  // const activeSessions = sessions.filter(s => s.status === 'active');
+  // const sessionsWithAgent = sessions.filter(s => s.assigned_agent_name);
+  // const unassignedSessions = sessions.filter(s => s.status === 'active' && !s.assigned_agent_name);
 
   // Show loading screen during authentication
   if (authLoading) {
