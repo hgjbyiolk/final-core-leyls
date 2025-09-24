@@ -465,8 +465,8 @@ const SupportPortal: React.FC = () => {
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     console.log('📤 [SUPPORT PORTAL] Sending message as agent:', {
-      agentEmail: agent.email,
-      agentName: agent.name,
+      agentEmail: currentAgent.email,
+      agentName: currentAgent.name,
       sessionId: selectedSession.id,
       restaurantName: selectedSession.restaurant?.name
     });
@@ -476,8 +476,8 @@ const SupportPortal: React.FC = () => {
       id: tempId,
       session_id: selectedSession.id,
       sender_type: 'support_agent',
-      sender_id: agent.email, // Use email as sender_id for consistency
-      sender_name: agent.email, // Use email as sender_name for RLS context
+      sender_id: currentAgent.email, // Use email as sender_id for consistency
+      sender_name: currentAgent.email, // Use email as sender_name for RLS context
       message: messageText,
       message_type: 'text',
       has_attachments: false,
@@ -494,7 +494,6 @@ const SupportPortal: React.FC = () => {
     try {
       // CRITICAL: Set support agent context before sending
       console.log('🔐 [SUPPORT PORTAL] Setting context before message send...');
-      await ChatService.setSupportAgentContext(agent.email);
       
       // ✅ Fixed: Set support agent context before sending message with null check
       if (currentAgent?.email) {
@@ -506,8 +505,8 @@ const SupportPortal: React.FC = () => {
       const sentMessage = await ChatService.sendMessage({
         session_id: selectedSession.id,
         sender_type: 'support_agent',
-        sender_id: agent.email,
-        sender_name: agent.email,
+        sender_id: currentAgent.email,
+        sender_name: currentAgent.email,
         message: messageText
       });
 
@@ -613,9 +612,6 @@ const SupportPortal: React.FC = () => {
     try {
       setAssigningAgent(true);
       
-      // Set context before assignment
-      await ChatService.setSupportAgentContext(agent.email);
-      
       // ✅ Fixed: Set support agent context before assignment with null check
       if (currentAgent?.email) {
         await ChatService.setSupportAgentContext(currentAgent.email);
@@ -627,7 +623,7 @@ const SupportPortal: React.FC = () => {
       await ChatService.assignAgentToSession(
         selectedSession.id,
         currentAgent.name,
-        agent.email // Use email as ID for consistency
+        currentAgent.email // Use email as ID for consistency
       );
 
       // Add agent as participant if not already added
@@ -646,10 +642,10 @@ const SupportPortal: React.FC = () => {
       await ChatService.sendMessage({
         session_id: selectedSession.id,
         sender_type: 'support_agent',
-        sender_id: agent.email,
-        sender_name: agent.email,
-        user_id: agent.email,
-        user_name: agent.email
+        sender_id: currentAgent.email,
+        sender_name: currentAgent.email,
+        user_id: currentAgent.email,
+        user_name: currentAgent.email
       });
 
       // Refresh session data
@@ -669,12 +665,8 @@ const SupportPortal: React.FC = () => {
     try {
       setClosingChat(true);
       
-      // ✅ Fixed: Set support agent context before closing with null check
-      if (currentAgent?.email) {
-        await ChatService.setSupportAgentContext(currentAgent.email);
-      } else {
-        console.warn("⚠️ [SUPPORT PORTAL] No agent email available for context setting");
-      }
+      // Set context before closing
+      await ChatService.setSupportAgentContext(currentAgent.email);
       
       await ChatService.closeChatSession(selectedSession.id, currentAgent.name);
       
