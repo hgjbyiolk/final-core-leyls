@@ -384,12 +384,12 @@ static async getChatMessages(sessionId: string): Promise<ChatMessage[]> {
   // Send a message with real-time handling
   static async sendMessage(messageData: CreateMessageData): Promise<ChatMessage> {
   console.log('📤 Sending message:', {
-    sessionId: messageData.session_id,
-    senderType: messageData.sender_type,
-    senderName: messageData.sender_name,
-    messageLength: messageData.message.length,
-    isSystem: messageData.is_system_message
-  });
+  sessionId: messageData.session_id,
+  senderType: messageData.sender_type,
+  senderName: messageData.sender_name,
+  messageLength: messageData.message?.length || 0, // ✅ safe
+  isSystem: messageData.is_system_message
+});
 
   // 🔐 If this is a support agent
   if (messageData.sender_type === 'support_agent') {
