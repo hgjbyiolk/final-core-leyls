@@ -381,29 +381,30 @@ static async setSupportAgentContext(agentEmail: string) {
       await this.setSupportAgentContext(agentEmail);
       
       // Also try the service role bypass approach
-      try {
-        console.log('🔐 [SUPPORT PORTAL] Attempting service role message insert...');
-        const { data: bypassData, error: bypassError } = await supabase.rpc('send_message_as_support_agent', {
-          p_session_id: messageData.session_id,
-          p_sender_id: messageData.sender_id,
-          p_sender_name: messageData.sender_name,
-          p_message: messageData.message,
-          p_message_type: messageData.message_type || 'text',
-          p_has_attachments: messageData.has_attachments || false,
-          p_is_system_message: messageData.is_system_message || false
-        });
-        
-        if (!bypassError && bypassData) {
-          console.log('✅ [SUPPORT PORTAL] Message sent via service role bypass:', bypassData.id);
-          return bypassData;
-        } else {
-          console.warn('⚠️ [SUPPORT PORTAL] Service role bypass failed:', bypassError);
-        }
-      } catch (bypassError) {
-        console.warn('⚠️ [SUPPORT PORTAL] Service role bypass error:', bypassError);
-      }
+     // Also try the service role bypass approach
+try {
+  console.log('🔐 [SUPPORT PORTAL] Attempting service role message insert...');
+  const { data: bypassData, error: bypassError } = await supabase.rpc('send_message_as_support_agent', {
+    p_session_id: messageData.session_id,
+    p_sender_id: messageData.sender_id,
+    p_sender_name: messageData.sender_name,
+    p_message: messageData.message,
+    p_message_type: messageData.message_type || 'text',
+    p_has_attachments: messageData.has_attachments || false,
+    p_is_system_message: messageData.is_system_message || false
+  });
+
+  if (!bypassError && bypassData && bypassData.length > 0) {
+    const message = bypassData[0]; // ✅ get first row
+    console.log('✅ [SUPPORT PORTAL] Message sent via service role bypass:', message.id);
+    return message;
+  } else {
+    console.warn('⚠️ [SUPPORT PORTAL] Service role bypass failed:', bypassError);
+  }
+} catch (bypassError) {
+  console.warn('⚠️ [SUPPORT PORTAL] Service role bypass error:', bypassError);
+}
     }
-    
     const messageToInsert = {
       session_id: messageData.session_id,
       sender_type: messageData.sender_type,
