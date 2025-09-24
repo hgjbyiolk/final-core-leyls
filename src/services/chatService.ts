@@ -333,31 +333,53 @@ static async setSupportAgentContext(agentEmail: string) {
   }
 
   // Get messages for a chat session
-  static async getChatMessages(sessionId: string): Promise<ChatMessage[]> {
-    try {
-      console.log('📨 Fetching messages for session:', sessionId);
-      
-      const { data, error } = await supabase
-        .from('chat_messages')
-        .select(`
-          *,
-          attachments:message_attachments(*)
-        `)
-        .eq('session_id', sessionId)
-        .order('created_at', { ascending: true });
+  // Get messages for a chat session
+static async getChatMessages(sessionId: string): Promise<ChatMessage[]> {
+  try {
+    console.log("📨 Fetching messages for session:", sessionId);
 
-      if (error) {
-        console.error('❌ Error fetching messages:', error);
-        throw error;
+    // 🔐 Try bypass function (support agents)
+    try {
+      const { data: bypassData, error: bypassError } = await supabase.rpc(
+        "get_all_chat_messages_for_support",
+        { p_session_id: sessionId }
+      );
+
+      if (!bypassError && bypassData) {
+        console.log(
+          "✅ [SUPPORT PORTAL] Messages loaded via bypass:",
+          bypassData.length
+        );
+        return bypassData;
       }
-      
-      console.log('✅ Fetched messages:', data?.length || 0);
-      return data || [];
-    } catch (error: any) { 
-      console.error('Error fetching chat messages:', error);
-      return [];
+      console.warn("⚠️ Bypass message load failed:", bypassError);
+    } catch (err) {
+      console.error("❌ Bypass RPC error (messages):", err);
     }
+
+    // 🔄 Fallback for restaurant managers
+    const { data, error } = await supabase
+      .from("chat_messages")
+      .select(`
+        *,
+        attachments:message_attachments(*)
+      `)
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      console.error("❌ Error fetching messages:", error);
+      throw error;
+    }
+
+    console.log("✅ Fetched messages:", data?.length || 0);
+    return data || [];
+  } catch (error: any) {
+    console.error("Error fetching chat messages:", error);
+    return [];
   }
+}
+
 
   // Send a message with real-time handling
   static async sendMessage(messageData: CreateMessageData): Promise<ChatMessage> {
