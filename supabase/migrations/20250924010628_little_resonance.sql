@@ -17,10 +17,30 @@
     - Service role bypass functions
 */
 
--- Drop existing functions to recreate them properly
+-- ============================================
+-- Step 1: Drop existing policies (dependent on is_support_agent)
+-- ============================================
+
+DROP POLICY IF EXISTS "Support agents can read all sessions" ON chat_sessions;
+DROP POLICY IF EXISTS "Support agents can manage all sessions" ON chat_sessions;
+DROP POLICY IF EXISTS "Support agents can read messages" ON chat_messages;
+DROP POLICY IF EXISTS "Support agents can insert messages" ON chat_messages;
+DROP POLICY IF EXISTS "Support agents can send messages globally" ON chat_messages;
+DROP POLICY IF EXISTS "Support agents can manage all messages" ON chat_messages;
+DROP POLICY IF EXISTS "Support agents can insert participants" ON chat_participants;
+DROP POLICY IF EXISTS "Support agents can manage all participants" ON chat_participants;
+
+-- ============================================
+-- Step 2: Drop old functions
+-- ============================================
+
 DROP FUNCTION IF EXISTS authenticate_support_agent(text, text);
 DROP FUNCTION IF EXISTS set_support_agent_context(text);
 DROP FUNCTION IF EXISTS is_support_agent();
+
+-- ============================================
+-- Step 3: Recreate functions
+-- ============================================
 
 -- Create proper support agent authentication function
 CREATE OR REPLACE FUNCTION authenticate_support_agent(
@@ -59,7 +79,7 @@ BEGIN
     RETURN;
   END IF;
   
-  -- Validate password (simple comparison for now - in production use proper hashing)
+  -- Validate password (simple comparison for now - replace with proper hashing later)
   IF agent_record.hashed_password = agent_password THEN
     password_valid := true;
   END IF;
@@ -195,12 +215,9 @@ BEGIN
 END;
 $$;
 
--- Update RLS policies to give support agents global access
-DROP POLICY IF EXISTS "Support agents can read all sessions" ON chat_sessions;
-DROP POLICY IF EXISTS "Support agents can manage all sessions" ON chat_sessions;
-DROP POLICY IF EXISTS "Support agents can read all messages" ON chat_messages;
-DROP POLICY IF EXISTS "Support agents can send messages globally" ON chat_messages;
-DROP POLICY IF EXISTS "Support agents can manage all participants" ON chat_participants;
+-- ============================================
+-- Step 4: Recreate RLS policies with new function
+-- ============================================
 
 -- Chat Sessions - Support Agent Global Access
 CREATE POLICY "Support agents can read all sessions"
@@ -244,7 +261,10 @@ CREATE POLICY "Support agents can manage all participants"
   USING (is_support_agent() OR is_super_admin())
   WITH CHECK (is_support_agent() OR is_super_admin());
 
--- Grant execute permissions
+-- ============================================
+-- Step 5: Grant execute permissions
+-- ============================================
+
 GRANT EXECUTE ON FUNCTION authenticate_support_agent(text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION set_support_agent_context(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION is_support_agent() TO authenticated;
