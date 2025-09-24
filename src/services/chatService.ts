@@ -383,27 +383,24 @@ static async getChatMessages(sessionId: string): Promise<ChatMessage[]> {
 
   // Send a message with real-time handling
   static async sendMessage(messageData: CreateMessageData): Promise<ChatMessage> {
-    console.log('📤 Sending message:', {
-      sessionId: messageData.session_id,
-      senderType: messageData.sender_type,
-      senderName: messageData.sender_name,
-      messageLength: messageData.message.length,
-      isSystem: messageData.is_system_message
-    });
-    
-    // CRITICAL: Always set support agent context before sending messages
-// If this is a support agent
-if (messageData.sender_type === 'support_agent') {
-  console.log('🔐 [SUPPORT PORTAL] Setting support agent context before sending message...');
+  console.log('📤 Sending message:', {
+    sessionId: messageData.session_id,
+    senderType: messageData.sender_type,
+    senderName: messageData.sender_name,
+    messageLength: messageData.message.length,
+    isSystem: messageData.is_system_message
+  });
 
-  const agentEmail = messageData.sender_name;
-  await this.setSupportAgentContext(agentEmail);
+  // 🔐 If this is a support agent
+  if (messageData.sender_type === 'support_agent') {
+    console.log('🔐 [SUPPORT PORTAL] Setting support agent context before sending message...');
 
-  try {
-    console.log('🔐 [SUPPORT PORTAL] Attempting service role message insert...');
+    const agentEmail = messageData.sender_name;
+    await this.setSupportAgentContext(agentEmail);
 
-    // Decide whether to use attachments function
-    if (messageData.has_attachments) {
+    try {
+      console.log('🔐 [SUPPORT PORTAL] Attempting service role message insert...');
+
       const { data: bypassData, error: bypassError } = await supabase.rpc(
         'send_message_with_attachments_as_support_agent',
         {
@@ -412,73 +409,56 @@ if (messageData.sender_type === 'support_agent') {
           p_sender_name: messageData.sender_name,
           p_message: messageData.message,
           p_message_type: messageData.message_type || 'text',
-          p_has_attachments: true,
+          p_has_attachments: messageData.has_attachments || false,
           p_is_system_message: messageData.is_system_message || false,
-          p_attachments: messageData.attachments
-            ? JSON.stringify(messageData.attachments)
-            : '[]'
+          // ✅ FIX 1: Pass raw array, not string
+          p_attachments: messageData.attachments || []
         }
       );
 
       if (!bypassError && bypassData) {
-        console.log('✅ [SUPPORT PORTAL] Message with attachments sent:', bypassData.id);
+        console.log('✅ [SUPPORT PORTAL] Message sent via RPC:', bypassData.id);
         return bypassData;
       }
-      console.warn('⚠️ Attachments bypass failed:', bypassError);
-    } else {
-      const { data: bypassData, error: bypassError } = await supabase.rpc(
-        'send_message_with_attachments_as_support_agent',
-        {
-          p_session_id: messageData.session_id,
-          p_sender_id: messageData.sender_id,
-          p_sender_name: messageData.sender_name,
-          p_message: messageData.message,
-          p_message_type: messageData.message_type || 'text',
-          p_has_attachments: false,
-          p_is_system_message: messageData.is_system_message || false,
-          p_attachments: '[]'
-        }
-      );
 
-      if (!bypassError && bypassData) {
-        console.log('✅ [SUPPORT PORTAL] Message sent:', bypassData.id);
-        return bypassData;
-      }
-      console.warn('⚠️ Message bypass failed:', bypassError);
+      // ✅ FIX 2: Stop support agents from falling back
+      console.error('❌ Support agent RPC failed, not allowed to fallback:', bypassError);
+      throw bypassError;
+    } catch (err) {
+      console.error('❌ Bypass RPC error:', err);
+      throw err;
     }
-  } catch (err) {
-    console.error('❌ Bypass RPC error:', err);
   }
+
+  // 🔄 Fallback ONLY for restaurant managers
+  const messageToInsert = {
+    session_id: messageData.session_id,
+    sender_type: messageData.sender_type,
+    sender_id: messageData.sender_id,
+    sender_name: messageData.sender_name,
+    message: messageData.message,
+    message_type: messageData.message_type || 'text',
+    has_attachments: messageData.has_attachments || false,
+    is_system_message: messageData.is_system_message || false
+  };
+
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .insert(messageToInsert)
+    .select(`
+      *,
+      attachments:message_attachments(*)
+    `)
+    .single();
+
+  if (error) {
+    console.error('❌ Error sending message:', error);
+    throw error;
+  }
+
+  console.log('✅ Message sent successfully (restaurant manager):', data.id);
+  return data;
 }
-
-    const messageToInsert = {
-      session_id: messageData.session_id,
-      sender_type: messageData.sender_type,
-      sender_id: messageData.sender_id,
-      sender_name: messageData.sender_name,
-      message: messageData.message,
-      message_type: messageData.message_type || 'text',
-      has_attachments: messageData.has_attachments || false,
-      is_system_message: messageData.is_system_message || false
-    };
-
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .insert(messageToInsert)
-      .select(`
-        *,
-        attachments:message_attachments(*)
-      `)
-      .single();
-
-    if (error) {
-      console.error('❌ Error sending message:', error);
-      throw error;
-    }
-    
-    console.log('✅ Message sent successfully:', data.id);
-    return data;
-  }
 
   // Upload file attachment
   static async uploadAttachment(
