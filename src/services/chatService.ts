@@ -370,42 +370,65 @@ static async setSupportAgentContext(agentEmail: string) {
     });
     
     // CRITICAL: Always set support agent context before sending messages
-    if (messageData.sender_type === 'support_agent') {
-      console.log('🔐 [SUPPORT PORTAL] Setting support agent context before sending message...');
-      
-      // Get agent email from sender_name (which should be the email)
-      const agentEmail = messageData.sender_name;
-      console.log('🔐 [SUPPORT PORTAL] Using agent email for context:', agentEmail);
-      
-      // Set context - this is critical for RLS policies
-      await this.setSupportAgentContext(agentEmail);
-      
-      // Also try the service role bypass approach
-     // Also try the service role bypass approach
-try {
-  console.log('🔐 [SUPPORT PORTAL] Attempting service role message insert...');
-  const { data: bypassData, error: bypassError } = await supabase.rpc('send_message_as_support_agent', {
-    p_session_id: messageData.session_id,
-    p_sender_id: messageData.sender_id,
-    p_sender_name: messageData.sender_name,
-    p_message: messageData.message,
-    p_message_type: messageData.message_type || 'text',
-    p_has_attachments: messageData.has_attachments || false,
-    p_is_system_message: messageData.is_system_message || false
-  });
+// If this is a support agent
+if (messageData.sender_type === 'support_agent') {
+  console.log('🔐 [SUPPORT PORTAL] Setting support agent context before sending message...');
 
- if (!bypassError && bypassData && bypassData.length > 0) {
-  const message = bypassData[0];
-  console.log("✅ [SUPPORT PORTAL] Message sent via service role bypass:", message.id);
-  return message;
-} else {
-  throw new Error("Failed to send message via bypass: " + (bypassError?.message || "unknown"));
-}
+  const agentEmail = messageData.sender_name;
+  await this.setSupportAgentContext(agentEmail);
 
-} catch (bypassError) {
-  console.warn('⚠️ [SUPPORT PORTAL] Service role bypass error:', bypassError);
-}
+  try {
+    console.log('🔐 [SUPPORT PORTAL] Attempting service role message insert...');
+
+    // Decide whether to use attachments function
+    if (messageData.has_attachments) {
+      const { data: bypassData, error: bypassError } = await supabase.rpc(
+        'send_message_with_attachments_as_support_agent',
+        {
+          p_session_id: messageData.session_id,
+          p_sender_id: messageData.sender_id,
+          p_sender_name: messageData.sender_name,
+          p_message: messageData.message,
+          p_message_type: messageData.message_type || 'text',
+          p_has_attachments: true,
+          p_is_system_message: messageData.is_system_message || false,
+          p_attachments: messageData.attachments
+            ? JSON.stringify(messageData.attachments)
+            : '[]'
+        }
+      );
+
+      if (!bypassError && bypassData) {
+        console.log('✅ [SUPPORT PORTAL] Message with attachments sent:', bypassData.id);
+        return bypassData;
+      }
+      console.warn('⚠️ Attachments bypass failed:', bypassError);
+    } else {
+      const { data: bypassData, error: bypassError } = await supabase.rpc(
+        'send_message_with_attachments_as_support_agent',
+        {
+          p_session_id: messageData.session_id,
+          p_sender_id: messageData.sender_id,
+          p_sender_name: messageData.sender_name,
+          p_message: messageData.message,
+          p_message_type: messageData.message_type || 'text',
+          p_has_attachments: false,
+          p_is_system_message: messageData.is_system_message || false,
+          p_attachments: '[]'
+        }
+      );
+
+      if (!bypassError && bypassData) {
+        console.log('✅ [SUPPORT PORTAL] Message sent:', bypassData.id);
+        return bypassData;
+      }
+      console.warn('⚠️ Message bypass failed:', bypassError);
     }
+  } catch (err) {
+    console.error('❌ Bypass RPC error:', err);
+  }
+}
+
     const messageToInsert = {
       session_id: messageData.session_id,
       sender_type: messageData.sender_type,
