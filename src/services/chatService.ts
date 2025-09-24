@@ -416,10 +416,12 @@ static async getChatMessages(sessionId: string): Promise<ChatMessage[]> {
         }
       );
 
-      if (!bypassError && bypassData) {
-        console.log('✅ [SUPPORT PORTAL] Message sent via RPC:', bypassData.id);
-        return bypassData;
-      }
+if (!bypassError && bypassData && bypassData.length > 0) {
+  const msg = bypassData[0]; // grab the first returned row
+  console.log('✅ [SUPPORT PORTAL] Message sent via RPC:', msg.id);
+  return msg;
+}
+
 
       // ✅ FIX 2: Stop support agents from falling back
       console.error('❌ Support agent RPC failed, not allowed to fallback:', bypassError);
