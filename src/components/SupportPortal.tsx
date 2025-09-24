@@ -464,13 +464,20 @@ const SupportPortal: React.FC = () => {
     const messageText = newMessage.trim();
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
+    console.log('📤 [SUPPORT PORTAL] Sending message as agent:', {
+      agentEmail: agent.email,
+      agentName: agent.name,
+      sessionId: selectedSession.id,
+      restaurantName: selectedSession.restaurant?.name
+    });
+    
     // Optimistic message
     const optimisticMessage: ChatMessage = {
       id: tempId,
       session_id: selectedSession.id,
       sender_type: 'support_agent',
-      sender_id: currentAgent.id,
-      sender_name: currentAgent.name,
+      sender_id: agent.email, // Use email as sender_id for consistency
+      sender_name: agent.email, // Use email as sender_name for RLS context
       message: messageText,
       message_type: 'text',
       has_attachments: false,
@@ -485,6 +492,10 @@ const SupportPortal: React.FC = () => {
     scrollToBottom();
 
     try {
+      // CRITICAL: Set support agent context before sending
+      console.log('🔐 [SUPPORT PORTAL] Setting context before message send...');
+      await ChatService.setSupportAgentContext(agent.email);
+      
       // ✅ Fixed: Set support agent context before sending message with null check
       if (currentAgent?.email) {
         await ChatService.setSupportAgentContext(currentAgent.email);
@@ -495,11 +506,13 @@ const SupportPortal: React.FC = () => {
       const sentMessage = await ChatService.sendMessage({
         session_id: selectedSession.id,
         sender_type: 'support_agent',
-        sender_id: currentAgent.id,
-        sender_name: currentAgent.name,
+        sender_id: agent.email,
+        sender_name: agent.email,
         message: messageText
       });
 
+      console.log('✅ [SUPPORT PORTAL] Message sent successfully:', sentMessage.id);
+      
       // Replace optimistic message with real one
       setMessages(prev => prev.map(msg => 
         msg.id === tempId ? sentMessage : msg
@@ -511,7 +524,10 @@ const SupportPortal: React.FC = () => {
       // Remove optimistic message on error and restore text
       setMessages(prev => prev.filter(msg => msg.id !== tempId));
       setNewMessage(messageText);
-      alert('Failed to send message. Please try again.');
+      
+      // Show more specific error message
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to send message: ${errorMessage}. Please try again.`);
     } finally {
       setSendingMessage(false);
     }
@@ -597,6 +613,9 @@ const SupportPortal: React.FC = () => {
     try {
       setAssigningAgent(true);
       
+      // Set context before assignment
+      await ChatService.setSupportAgentContext(agent.email);
+      
       // ✅ Fixed: Set support agent context before assignment with null check
       if (currentAgent?.email) {
         await ChatService.setSupportAgentContext(currentAgent.email);
@@ -608,7 +627,7 @@ const SupportPortal: React.FC = () => {
       await ChatService.assignAgentToSession(
         selectedSession.id,
         currentAgent.name,
-        currentAgent.id
+        agent.email // Use email as ID for consistency
       );
 
       // Add agent as participant if not already added
@@ -627,10 +646,10 @@ const SupportPortal: React.FC = () => {
       await ChatService.sendMessage({
         session_id: selectedSession.id,
         sender_type: 'support_agent',
-        sender_id: 'system',
-        sender_name: 'System',
-        message: `${currentAgent.name} has joined the chat and will assist you.`,
-        is_system_message: true
+        sender_id: agent.email,
+        sender_name: agent.email,
+        user_id: agent.email,
+        user_name: agent.email
       });
 
       // Refresh session data

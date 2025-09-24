@@ -72,37 +72,41 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // Sign in
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('🔐 [SUPPORT AUTH] Attempting sign in:', email);
+      console.log('🔐 [SUPPORT AUTH] Starting authentication for:', email);
 
-      const { data, error } = await supabase.rpc('authenticate_support_agent', {
+      // Call the authentication function
+      const { data: authData, error: authError } = await supabase.rpc('authenticate_support_agent', {
         agent_email: email,
-        agent_password: password,
+        agent_password: password
       });
 
-      if (error) {
-        console.error('❌ [SUPPORT AUTH] RPC error:', error);
+      if (authError) {
+        console.error('❌ [SUPPORT AUTH] Authentication RPC error:', authError);
         return { error: 'Authentication failed' };
       }
 
-      // Our RPC returns a single row, not an array
-      const authenticatedAgent: SupportAgent | null = data ?? null;
+      console.log('🔐 [SUPPORT AUTH] Authentication response:', authData);
 
-      if (!authenticatedAgent) {
-        console.log('❌ [SUPPORT AUTH] Invalid credentials for:', email);
+      // Check if authentication was successful
+      if (!authData) {
+        console.log('❌ [SUPPORT AUTH] Authentication failed for:', email);
         return { error: 'Invalid credentials or inactive account' };
       }
 
+      // The RPC now returns a single agent record, not an array
+      const authenticatedAgent: SupportAgent = authData;
+      
       console.log('✅ [SUPPORT AUTH] Agent authenticated:', {
         id: authenticatedAgent.id,
         name: authenticatedAgent.name,
-        email: authenticatedAgent.email,
+        email: authenticatedAgent.email
       });
 
       setAgent(authenticatedAgent);
       localStorage.setItem('support_agent_data', JSON.stringify(authenticatedAgent));
       localStorage.setItem('support_agent_login_time', new Date().toISOString());
 
-      // Set DB context for RLS
+      // Set database context for RLS
       await ChatService.setSupportAgentContext(authenticatedAgent.email);
 
       return { error: null };

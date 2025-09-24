@@ -369,18 +369,38 @@ static async setSupportAgentContext(agentEmail: string) {
       isSystem: messageData.is_system_message
     });
     
-    // If this is a support agent message, ensure context is set
+    // CRITICAL: Always set support agent context before sending messages
     if (messageData.sender_type === 'support_agent') {
+      console.log('🔐 [SUPPORT PORTAL] Setting support agent context before sending message...');
+      
+      // Get agent email from sender_name (which should be the email)
+      const agentEmail = messageData.sender_name;
+      console.log('🔐 [SUPPORT PORTAL] Using agent email for context:', agentEmail);
+      
+      // Set context - this is critical for RLS policies
+      await this.setSupportAgentContext(agentEmail);
+      
+      // Also try the service role bypass approach
       try {
-        // Try to get agent email from current context or use sender_id as fallback
-        const agentEmail = messageData.sender_name.includes('@') 
-          ? messageData.sender_name 
-          : `${messageData.sender_id}@support.local`;
+        console.log('🔐 [SUPPORT PORTAL] Attempting service role message insert...');
+        const { data: bypassData, error: bypassError } = await supabase.rpc('send_message_as_support_agent', {
+          p_session_id: messageData.session_id,
+          p_sender_id: messageData.sender_id,
+          p_sender_name: messageData.sender_name,
+          p_message: messageData.message,
+          p_message_type: messageData.message_type || 'text',
+          p_has_attachments: messageData.has_attachments || false,
+          p_is_system_message: messageData.is_system_message || false
+        });
         
-        await this.setSupportAgentContext(agentEmail);
-      } catch (contextError) {
-        console.warn('⚠️ [SUPPORT PORTAL] Could not set context for message sending:', contextError);
-        // Continue anyway - the message might still work with existing policies
+        if (!bypassError && bypassData) {
+          console.log('✅ [SUPPORT PORTAL] Message sent via service role bypass:', bypassData.id);
+          return bypassData;
+        } else {
+          console.warn('⚠️ [SUPPORT PORTAL] Service role bypass failed:', bypassError);
+        }
+      } catch (bypassError) {
+        console.warn('⚠️ [SUPPORT PORTAL] Service role bypass error:', bypassError);
       }
     }
     
