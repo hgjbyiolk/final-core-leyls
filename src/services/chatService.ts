@@ -334,39 +334,28 @@ static async setSupportAgentContext(agentEmail: string) {
 
   // Get messages for a chat session
   static async getChatMessages(sessionId: string): Promise<ChatMessage[]> {
-// For support agents, use bypass function
-try {
-  const { data: bypassData, error: bypassError } = await supabase.rpc(
-    'get_all_chat_messages_for_support',
-    { p_session_id: sessionId }
-  );
+    try {
+      console.log('📨 Fetching messages for session:', sessionId);
+      
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select(`
+          *,
+          attachments:message_attachments(*)
+        `)
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true });
 
-  if (!bypassError && bypassData) {
-    console.log('✅ [SUPPORT PORTAL] Messages loaded via bypass:', bypassData.length);
-    return bypassData;
-  }
-  console.warn('⚠️ Bypass message load failed:', bypassError);
-} catch (err) {
-  console.error('❌ Bypass RPC error (messages):', err);
-}
-
-// fallback (restaurant managers)
-const { data, error } = await supabase
-  .from('chat_messages')
-  .select(`
-    *,
-    attachments:message_attachments(*)
-  `)
-  .eq('session_id', sessionId)
-  .order('created_at', { ascending: true });
-
-if (error) {
-  console.error('❌ Error fetching messages:', error);
-  throw error;
-}
-
-return data || [];
-
+      if (error) {
+        console.error('❌ Error fetching messages:', error);
+        throw error;
+      }
+      
+      console.log('✅ Fetched messages:', data?.length || 0);
+      return data || [];
+    } catch (error: any) { 
+      console.error('Error fetching chat messages:', error);
+      return [];
     }
   }
 
