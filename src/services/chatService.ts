@@ -547,43 +547,40 @@ if (!bypassError && bypassData && bypassData.length > 0) {
   }
 
   // Add participant to session
-  static async addParticipant(
-    sessionId: string,
-    participantData: CreateParticipantData
-  ): Promise<ChatParticipant> {
-    console.log('👤 Adding participant to session:', {
-      sessionId,
-      userType: participantData.user_type,
-      userName: participantData.user_name,
-      userId: participantData.user_id
-    });
+ // Add participant to session (via secure RPC)
+static async addParticipant(
+  sessionId: string,
+  participantData: CreateParticipantData
+): Promise<ChatParticipant> {
+  console.log('👤 Adding participant to session:', {
+    sessionId,
+    userType: participantData.user_type,
+    userName: participantData.user_name,
+    userId: participantData.user_id
+  });
 
-    if (!['restaurant_manager', 'support_agent'].includes(participantData.user_type)) {
-      throw new Error(`Invalid user_type: ${participantData.user_type}`);
-    }
-    
-    const participantToInsert = {
-      session_id: sessionId,
-      user_type: participantData.user_type,
-      user_id: participantData.user_id,
-      user_name: participantData.user_name
-    };
-
-    const { data, error } = await supabase
-  .from('chat_participants')
-  .upsert(participantToInsert, { onConflict: 'session_id,user_id' }) // ✅ avoid duplicates
-  .select()
-  .single();
-
-
-    if (error) {
-      console.error('❌ Error adding participant:', error);
-      throw error;
-    }
-    
-    console.log('✅ Participant added successfully:', data.id);
-    return data;
+  if (!['restaurant_manager', 'support_agent'].includes(participantData.user_type)) {
+    throw new Error(`Invalid user_type: ${participantData.user_type}`);
   }
+
+  // 🔑 Use secure RPC to bypass RLS and handle conflicts
+  const { data, error } = await supabase.rpc(
+    'add_support_agent_to_session',
+    {
+      p_session_id: sessionId,
+      p_agent_id: participantData.user_id,
+      p_agent_name: participantData.user_name,
+    }
+  );
+
+  if (error) {
+    console.error('❌ Error adding participant via RPC:', error);
+    throw error;
+  }
+
+  console.log('✅ Participant added successfully via RPC:', data.id);
+  return data as ChatParticipant;
+}
 
   // Update participant status
   static async updateParticipantStatus(
