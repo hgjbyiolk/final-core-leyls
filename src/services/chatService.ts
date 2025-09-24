@@ -570,10 +570,11 @@ if (!bypassError && bypassData && bypassData.length > 0) {
     };
 
     const { data, error } = await supabase
-      .from('chat_participants')
-      .insert(participantToInsert)
-      .select()
-      .single();
+  .from('chat_participants')
+  .upsert(participantToInsert, { onConflict: 'session_id,user_id' }) // ✅ avoid duplicates
+  .select()
+  .single();
+
 
     if (error) {
       console.error('❌ Error adding participant:', error);
