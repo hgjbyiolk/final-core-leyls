@@ -1111,83 +1111,82 @@ const SupportPortal: React.FC = () => {
                   </div>
                 )}
 
-                {messages.map((message) => {
-                  const isPending = message.id.startsWith('temp_');
-                  const isFromAgent = message.sender_type === 'support_agent';
+{messages.map((message) => {
+  const isPending = message.id?.startsWith('temp_') ?? false;
+  const isFromAgent = message.sender_type === 'support_agent';
 
-                  return (
-                    <div
-                      key={message.id}
-                      className={`flex ${isFromAgent ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-xs lg:max-w-md ${
-                          isFromAgent
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-white border border-gray-200'
-                        } rounded-2xl px-4 py-3 shadow-sm ${isPending ? 'opacity-70' : ''}`}
-                      >
-                        {message.is_system_message ? (
-                          <p className="text-center text-xs text-gray-500 italic">
-                            {message.message}
-                          </p>
-                        ) : (
-                          <>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span
-                                className={`text-xs font-medium ${
-                                  isFromAgent ? 'text-white/80' : 'text-gray-600'
-                                }`}
-                              >
-                                {message.sender_name}
-                              </span>
-                              <span
-                                className={`text-xs ${
-                                  isFromAgent ? 'text-white/60' : 'text-gray-400'
-                                }`}
-                              >
-                                {formatTime(message.created_at)}
-                              </span>
-                              {isPending && (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              )}
-                            </div>
-                            <p className="text-sm leading-relaxed">{message.message}</p>
+  return (
+    <div
+      key={message.id ?? Math.random()} // fallback in case id is missing
+      className={`flex ${isFromAgent ? 'justify-end' : 'justify-start'}`}
+    >
+      <div
+        className={`max-w-xs lg:max-w-md ${
+          isFromAgent
+            ? 'bg-blue-600 text-white'
+            : 'bg-white border border-gray-200'
+        } rounded-2xl px-4 py-3 shadow-sm ${isPending ? 'opacity-70' : ''}`}
+      >
+        {message.is_system_message ? (
+          <p className="text-center text-xs text-gray-500 italic">
+            {message.message}
+          </p>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 mb-1">
+              <span
+                className={`text-xs font-medium ${
+                  isFromAgent ? 'text-white/80' : 'text-gray-600'
+                }`}
+              >
+                {message.sender_name ?? 'Unknown'}
+              </span>
+              <span
+                className={`text-xs ${
+                  isFromAgent ? 'text-white/60' : 'text-gray-400'
+                }`}
+              >
+                {message.created_at ? formatTime(message.created_at) : ''}
+              </span>
+              {isPending && <Loader2 className="h-3 w-3 animate-spin" />}
+            </div>
+            <p className="text-sm leading-relaxed">{message.message ?? ''}</p>
 
-                            {message.attachments && message.attachments.length > 0 && (
-                              <div className="mt-2 space-y-2">
-                                {message.attachments.map((attachment) => (
-                                  <div key={attachment.id} className="bg-white/10 rounded-lg p-2">
-                                    {attachment.file_type.startsWith('image/') ? (
-                                      <div className="space-y-2">
-                                        <img
-                                          src={attachment.file_url}
-                                          alt={attachment.file_name}
-                                          className="max-w-full h-auto rounded-lg shadow-sm"
-                                          style={{ maxHeight: '200px' }}
-                                          onError={(e) => {
-                                            console.error('❌ Failed to load image:', attachment.file_url);
-                                            e.currentTarget.style.display = 'none';
-                                          }}
-                                        />
-                                        <p className="text-xs opacity-75">{attachment.file_name}</p>
-                                      </div>
-                                    ) : (
-                                      <div className="flex items-center gap-2">
-                                        <Paperclip className="h-4 w-4" />
-                                        <span className="text-xs">{attachment.file_name}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </>
-                        )}
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="mt-2 space-y-2">
+                {message.attachments.map((attachment) => (
+                  <div key={attachment.id ?? Math.random()} className="bg-white/10 rounded-lg p-2">
+                    {attachment.file_type?.startsWith('image/') ? (
+                      <div className="space-y-2">
+                        <img
+                          src={attachment.file_url ?? ''}
+                          alt={attachment.file_name ?? 'attachment'}
+                          className="max-w-full h-auto rounded-lg shadow-sm"
+                          style={{ maxHeight: '200px' }}
+                          onError={(e) => {
+                            console.error('❌ Failed to load image:', attachment.file_url);
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                        <p className="text-xs opacity-75">{attachment.file_name ?? ''}</p>
                       </div>
-                    </div>
-                  );
-                })}
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Paperclip className="h-4 w-4" />
+                        <span className="text-xs">{attachment.file_name ?? 'File'}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+})}
+
                 <div ref={messagesEndRef} />
               </div>
 
