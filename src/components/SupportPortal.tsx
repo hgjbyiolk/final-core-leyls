@@ -644,10 +644,10 @@ await ChatService.sendMessage({
   session_id: selectedSession.id,
   sender_type: 'support_agent',
   sender_id: currentAgent.email,
-  sender_name: currentAgent.name,
-  message: `Agent ${currentAgent.name} has joined the chat`, // <-- REQUIRED
-  message_type: 'system',
-  is_system_message: true
+  sender_name: currentAgent.name,   // use agent’s display name if possible
+  message: `Agent ${currentAgent.name} has joined the chat`,
+  message_type: 'text',             // ✅ valid type
+  is_system_message: true           // ✅ mark it as system
 });
 
 
