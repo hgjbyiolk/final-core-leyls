@@ -639,14 +639,17 @@ const SupportPortal: React.FC = () => {
       }
 
       // Send system message
-      await ChatService.sendMessage({
-        session_id: selectedSession.id,
-        sender_type: 'support_agent',
-        sender_id: currentAgent.email,
-        sender_name: currentAgent.email,
-        user_id: currentAgent.email,
-        user_name: currentAgent.email
-      });
+     // Send system message
+await ChatService.sendMessage({
+  session_id: selectedSession.id,
+  sender_type: 'support_agent',
+  sender_id: currentAgent.email,
+  sender_name: currentAgent.name,
+  message: `Agent ${currentAgent.name} has joined the chat`, // <-- REQUIRED
+  message_type: 'system',
+  is_system_message: true
+});
+
 
       // Refresh session data
       await loadSupportPortalData();
