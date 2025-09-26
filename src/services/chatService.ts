@@ -300,13 +300,15 @@ static async closeChatSession(
   systemMessage?: string
 ) {
   try {
-    console.log("🔒 Closing chat session (RPC):", sessionId, "by", agentEmail);
-
-    const { data, error } = await supabase.rpc("close_chat_session", {
+    const payload = {
       session_id: sessionId, // must match SQL arg name
-      closed_by: agentEmail, // plain text
-      close_message: systemMessage ?? "Chat closed by support agent", // fallback
-    });
+      closed_by: agentEmail,
+      close_message: systemMessage ?? null, // ensure it's null if not set
+    };
+
+    console.log("🔍 Closing with payload:", payload);
+
+    const { data, error } = await supabase.rpc("close_chat_session", payload);
 
     if (error) {
       console.error("❌ Error closing chat session (RPC):", error);
