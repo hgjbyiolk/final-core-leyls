@@ -144,11 +144,13 @@ static async setSupportAgentContext(agentEmail: string) {
        // Transform the data to match our interface
 const transformedData = bypassData.map((session: any) => ({
   ...session,
-  restaurant: session.restaurant_name
-    ? { name: session.restaurant_name, slug: session.restaurant_slug }
-    : null,
-  chat_participants: session.chat_participants || [] // ✅ add this
+  restaurant: session.restaurant_name ? {
+    name: session.restaurant_name,
+    slug: session.restaurant_slug
+  } : null,
+  participants: session.chat_participants || []  // ✅ add this line
 }));
+
 
         
         return transformedData;
