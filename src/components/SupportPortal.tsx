@@ -627,16 +627,25 @@ const SupportPortal: React.FC = () => {
       );
 
       // Add agent as participant if not already added
-      try {
-        await ChatService.addParticipant(selectedSession.id, {
-          user_type: 'support_agent',
-          user_id: currentAgent.id,
-          user_name: currentAgent.name
-        });
-      } catch (participantError) {
-        // Ignore if participant already exists
-        console.log('ℹ️ [SUPPORT PORTAL] Participant may already exist');
-      }
+// Add agent as participant if not already added
+try {
+  const newParticipant = await ChatService.addParticipant(selectedSession.id, {
+    user_type: 'support_agent',
+    user_id: currentAgent.id,
+    user_name: currentAgent.name
+  });
+
+  // ✅ Immediately update local participants state so UI doesn’t wait on realtime
+  setParticipants(prev => {
+    if (prev.some(p => p.user_id === newParticipant.user_id && p.session_id === selectedSession.id)) {
+      return prev; // already exists
+    }
+    return [...prev, { ...newParticipant, is_online: true }];
+  });
+} catch (participantError) {
+  console.log('ℹ️ [SUPPORT PORTAL] Participant may already exist');
+}
+
 
       // Send system message
      // Send system message
