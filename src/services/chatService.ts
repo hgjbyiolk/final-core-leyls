@@ -294,37 +294,28 @@ const { data, error } = await supabase
 
   // Close chat session
   // Put this in src/services/chatService.ts inside the ChatService class (replace previous closeChatSession implementation)
-static async closeChatSession(sessionId: string, agentEmail?: string, systemMessage?: string): Promise<{ session_id: string; closed: boolean; message_id: string | null } | null> {
+static async closeChatSession(sessionId: string, agentEmail: string, systemMessage?: string) {
   try {
-    console.log('🔒 Closing chat session (RPC):', sessionId, 'by', agentEmail);
+    console.log("🔒 Closing chat session (RPC):", sessionId, "by", agentEmail);
 
-    // ensure agent context is set so RLS functions that check context behave as expected
-    if (agentEmail) {
-      await this.setSupportAgentContext(agentEmail);
-    }
-
-    const { data, error } = await supabase.rpc('close_chat_session', {
-      p_session_id: sessionId,
-      p_agent_email: agentEmail ?? null,
-      p_system_message: systemMessage ?? null
+    const { error } = await supabase.rpc("close_chat_session", {
+      session_id: sessionId,
+      closed_by: agentEmail,
+      close_message: systemMessage,
     });
 
     if (error) {
-      console.error('❌ Error closing chat session (RPC):', error);
+      console.error("❌ Error closing chat session (RPC):", error);
       throw error;
     }
 
-    console.log('✅ Chat session closed via RPC:', data);
-    // data is usually an array of rows returned by RPC; supabase-js returns it as data
-    if (Array.isArray(data) && data.length > 0) {
-      return data[0];
-    }
-    return data || null;
+    console.log("✅ Chat session closed successfully via RPC");
   } catch (err) {
-    console.error('❌ closeChatSession error:', err);
+    console.error("❌ closeChatSession error:", err);
     throw err;
   }
 }
+
 
 
   // Assign agent to session
