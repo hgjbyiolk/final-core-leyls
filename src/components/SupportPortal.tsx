@@ -761,8 +761,9 @@ const unassignedSessions = sessions.filter(
   s =>
     s.status === "active" &&
     !s.assigned_agent_name &&
-    !s.participants?.some(p => p.user_type === "support_agent")
+    !s.chat_participants?.some(p => p.user_type === "support_agent")
 );
+
 
   // const activeSessions = sessions.filter(s => s.status === 'active');
   // const sessionsWithAgent = sessions.filter(s => s.assigned_agent_name);
