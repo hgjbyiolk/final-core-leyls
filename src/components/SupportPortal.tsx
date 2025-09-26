@@ -982,11 +982,12 @@ const unassignedSessions = sessions.filter(
                           <span className={`text-xs px-2 py-1 rounded-full border ${getStatusColor(session.status)}`}>
                             {session.status}
                           </span>
-                         {!hasAgent && session.status === 'active' && !session.participants?.some(p => p.user_type === "support_agent") && (
+                       {!hasAgent && session.status === 'active' && !session.participants?.some(p => p.user_type === "support_agent") && (
   <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-800 border-orange-200">
     Unassigned
   </span>
 )}
+
 
                         </div>
                       </div>
