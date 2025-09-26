@@ -294,14 +294,18 @@ const { data, error } = await supabase
 
   // Close chat session
   // Put this in src/services/chatService.ts inside the ChatService class (replace previous closeChatSession implementation)
-static async closeChatSession(sessionId: string, agentEmail: string, systemMessage?: string) {
+static async closeChatSession(
+  sessionId: string,
+  agentEmail: string,
+  systemMessage?: string
+) {
   try {
     console.log("🔒 Closing chat session (RPC):", sessionId, "by", agentEmail);
 
-    const { error } = await supabase.rpc("close_chat_session", {
-      session_id: sessionId,
-      closed_by: agentEmail,
-      close_message: systemMessage,
+    const { data, error } = await supabase.rpc("close_chat_session", {
+      session_id: sessionId, // must match SQL arg name
+      closed_by: agentEmail, // plain text
+      close_message: systemMessage ?? "Chat closed by support agent", // fallback
     });
 
     if (error) {
@@ -309,14 +313,13 @@ static async closeChatSession(sessionId: string, agentEmail: string, systemMessa
       throw error;
     }
 
-    console.log("✅ Chat session closed successfully via RPC");
+    console.log("✅ Chat session closed successfully via RPC:", data);
+    return data;
   } catch (err) {
     console.error("❌ closeChatSession error:", err);
     throw err;
   }
 }
-
-
 
   // Assign agent to session
   static async assignAgentToSession(
