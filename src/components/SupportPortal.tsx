@@ -675,7 +675,7 @@ const handleCloseChat = async () => {
   if (!selectedSession || !currentAgent) return;
 
   try {
-    setClosing(true); // optional: if you have a loading spinner
+    setClosingChat(true); // optional: if you have a loading spinner
 
     await ChatService.closeChatSession(
       selectedSession.id,
@@ -691,7 +691,7 @@ const handleCloseChat = async () => {
     console.error("❌ [SUPPORT PORTAL] Failed to close chat:", err);
     alert("Failed to close chat");
   } finally {
-    setClosing(false);
+    setClosingChat(false);
   }
 };
 
