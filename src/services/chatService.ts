@@ -168,10 +168,12 @@ const { data, error } = await supabase
       user_id,
       user_name,
       user_type,
-      is_online
+      is_online,
+      joined_at
     )
   `)
-  .order('last_message_at', { ascending: false }); 
+  .order('last_message_at', { ascending: false });
+
 
 
       if (error) {
