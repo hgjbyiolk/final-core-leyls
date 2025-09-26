@@ -1020,16 +1020,21 @@ const unassignedSessions = sessions.filter(
                         <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityColor(selectedSession.priority)}`}>
                           {selectedSession.priority}
                         </span>
-                        {selectedSession.assigned_agent_name && (
-                          <span className={`text-xs px-2 py-1 rounded-full border ${
-                            selectedSession.assigned_agent_id === currentAgent.id
-                              ? 'bg-green-100 text-green-800 border-green-200'
-                              : 'bg-blue-100 text-blue-800 border-blue-200'
-                          }`}>
-                            Agent: {selectedSession.assigned_agent_name}
-                            {selectedSession.assigned_agent_id === currentAgent.id && ' (You)'}
-                          </span>
-                        )}
+                        {(selectedSession.assigned_agent_name ||
+  participants.some(p => p.user_type === "support_agent")) && (
+  <span className={`text-xs px-2 py-1 rounded-full border ${
+    selectedSession.assigned_agent_id === currentAgent.id ||
+    participants.some(p => p.user_type === "support_agent" && p.user_id === currentAgent.id)
+      ? 'bg-green-100 text-green-800 border-green-200'
+      : 'bg-blue-100 text-blue-800 border-blue-200'
+  }`}>
+    Agent: {selectedSession.assigned_agent_name ||
+      participants.find(p => p.user_type === "support_agent")?.user_name}
+    {(selectedSession.assigned_agent_id === currentAgent.id ||
+      participants.some(p => p.user_type === "support_agent" && p.user_id === currentAgent.id)) && ' (You)'}
+  </span>
+)}
+
                       </div>
                     </div>
                   </div>
