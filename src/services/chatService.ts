@@ -293,32 +293,39 @@ const { data, error } = await supabase
   }
 
   // Close chat session
-  static async closeChatSession(sessionId: string, agentName: string): Promise<void> {
-    try {
-      console.log('🔒 Closing chat session:', sessionId);
-      
-      // Update session status
-      await this.updateChatSession(sessionId, {
-        status: 'closed',
-        updated_at: new Date().toISOString()
-      });
+  // Put this in src/services/chatService.ts inside the ChatService class (replace previous closeChatSession implementation)
+static async closeChatSession(sessionId: string, agentEmail?: string, systemMessage?: string): Promise<{ session_id: string; closed: boolean; message_id: string | null } | null> {
+  try {
+    console.log('🔒 Closing chat session (RPC):', sessionId, 'by', agentEmail);
 
-      // Send system message
-      await this.sendMessage({
-        session_id: sessionId,
-        sender_type: 'support_agent',
-        sender_id: 'system',
-        sender_name: 'System',
-        message: `Chat closed by ${agentName}. Thank you for contacting support!`,
-        is_system_message: true
-      });
+    // ensure agent context is set so RLS functions that check context behave as expected
+    if (agentEmail) {
+      await this.setSupportAgentContext(agentEmail);
+    }
 
-      console.log('✅ Chat session closed successfully');
-    } catch (error) {
-      console.error('❌ Error closing chat session:', error);
+    const { data, error } = await supabase.rpc('close_chat_session', {
+      p_session_id: sessionId,
+      p_agent_email: agentEmail ?? null,
+      p_system_message: systemMessage ?? null
+    });
+
+    if (error) {
+      console.error('❌ Error closing chat session (RPC):', error);
       throw error;
     }
+
+    console.log('✅ Chat session closed via RPC:', data);
+    // data is usually an array of rows returned by RPC; supabase-js returns it as data
+    if (Array.isArray(data) && data.length > 0) {
+      return data[0];
+    }
+    return data || null;
+  } catch (err) {
+    console.error('❌ closeChatSession error:', err);
+    throw err;
   }
+}
+
 
   // Assign agent to session
   static async assignAgentToSession(
