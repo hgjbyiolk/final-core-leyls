@@ -671,26 +671,30 @@ await ChatService.sendMessage({
     }
   };
 
-  const handleCloseChat = async () => {
-    if (!selectedSession || !currentAgent) return;
+const handleCloseChat = async () => {
+  if (!selectedSession || !currentAgent) return;
 
-    try {
-      setClosingChat(true);
-      
-      // Set context before closing
-      await ChatService.setSupportAgentContext(currentAgent.email);
-      
-      await ChatService.closeChatSession(selectedSession.id, currentAgent.name);
-      
-      setShowCloseChatModal(false);
-      // Don't clear selected session immediately - let real-time update handle it
-    } catch (error) {
-      console.error('❌ [SUPPORT PORTAL] Error closing chat:', error);
-      alert('Failed to close chat');
-    } finally {
-      setClosingChat(false);
-    }
-  };
+  try {
+    setClosing(true); // optional: if you have a loading spinner
+
+    await ChatService.closeChatSession(
+      selectedSession.id,
+      currentAgent.email,
+      `${currentAgent.name || 'Agent'} closed the chat`
+    );
+
+    // reload sessions after close so UI updates
+    await loadSupportPortalData();
+
+    alert("Chat closed successfully");
+  } catch (err) {
+    console.error("❌ [SUPPORT PORTAL] Failed to close chat:", err);
+    alert("Failed to close chat");
+  } finally {
+    setClosing(false);
+  }
+};
+
 
   const handleSignOut = () => {
     const { signOut } = useSupportAuth();
