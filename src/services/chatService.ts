@@ -156,13 +156,21 @@ static async setSupportAgentContext(agentEmail: string) {
       
       // Fallback to direct query
       console.log('🔍 [SUPPORT PORTAL] Executing direct chat sessions query...');
-      const { data, error } = await supabase
-        .from('chat_sessions')
-        .select(`
-          *,
-          restaurant:restaurants(name, slug)
-        `)
-        .order('last_message_at', { ascending: false });
+const { data, error } = await supabase
+  .from('chat_sessions')
+  .select(`
+    *,
+    restaurant:restaurants(name, slug),
+    chat_participants (
+      id,
+      user_id,
+      user_name,
+      user_type,
+      is_online
+    )
+  `)
+  .order('last_message_at', { ascending: false });
+
 
       if (error) {
         console.error('❌ [SUPPORT PORTAL] Error fetching all chat sessions:', error);
