@@ -74,6 +74,24 @@ const SupportPortal: React.FC = () => {
     checkAuthentication();
   }, []);
 
+    // Debug: check current user role + metadata
+  useEffect(() => {
+    const checkUserRole = async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+
+      if (error) {
+        console.error("❌ Error getting user:", error);
+      } else {
+        console.log("👤 Debug - User:", user);
+        console.log("🔑 App metadata:", user?.app_metadata);
+        console.log("📦 User metadata:", user?.user_metadata);
+      }
+    };
+
+    checkUserRole();
+  }, []);
+
+
  
 
   // Online/offline detection
