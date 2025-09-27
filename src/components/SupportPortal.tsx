@@ -74,6 +74,8 @@ const SupportPortal: React.FC = () => {
     checkAuthentication();
   }, []);
 
+ 
+
   // Online/offline detection
   useEffect(() => {
     const handleOnline = () => {
@@ -126,7 +128,9 @@ const SupportPortal: React.FC = () => {
       id: currentAgent.id
     });
 
-    // ✅ Fixed: Add proper null check and error handling
+   
+    
+  // ✅ Fixed: Add proper null check and error handling
     if (currentAgent?.email) {
       ChatService.setSupportAgentContext(currentAgent.email).then(() => {
         console.log('✅ [SUPPORT PORTAL] Agent context set, loading sessions...');
@@ -207,6 +211,16 @@ const SupportPortal: React.FC = () => {
       setAuthLoading(false);
     }
   };
+
+  const { data: { user }, error } = await supabase.auth.getUser();
+
+if (error) {
+  console.error("❌ Error getting user:", error);
+} else {
+  console.log("User metadata:", user?.user_metadata);
+  console.log("App metadata:", user?.app_metadata);
+}
+
 
   const loadSupportPortalData = async () => {
     try {
