@@ -212,15 +212,7 @@ const SupportPortal: React.FC = () => {
     }
   };
 
-  const { data: { user }, error } = await supabase.auth.getUser();
-
-if (error) {
-  console.error("❌ Error getting user:", error);
-} else {
-  console.log("User metadata:", user?.user_metadata);
-  console.log("App metadata:", user?.app_metadata);
-}
-
+   
 
   const loadSupportPortalData = async () => {
     try {
