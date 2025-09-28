@@ -1,18 +1,29 @@
--- Add role column to users table if it doesn't exist
+/*
+  # Migrate Support Agents to Supabase Auth (Cleaned & Fixed)
+
+  This migration will:
+  - Add `role` column to users table
+  - Create index for role-based queries
+  - Create helper functions for support agent auth
+  - Update quick_responses policies
+  - Add policies for support_agents and users
+*/
+
+-- 1. Add role column if missing
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role text DEFAULT 'restaurant_owner';
+
+-- 2. Create index for support role queries (safe check)
 DO $$
 BEGIN
-  IF NOT EXISTS (
+  IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'users' AND column_name = 'role'
   ) THEN
-    ALTER TABLE users ADD COLUMN role text DEFAULT 'restaurant_owner';
+    CREATE INDEX IF NOT EXISTS idx_users_role ON users(role) WHERE role = 'support';
   END IF;
 END $$;
 
--- Create index for role-based queries
-CREATE INDEX IF NOT EXISTS idx_users_role ON users(role) WHERE role = 'support';
-
--- Function to get user role from JWT
+-- 3. Helper function: get role from JWT
 CREATE OR REPLACE FUNCTION auth.role()
 RETURNS text
 LANGUAGE sql
@@ -25,22 +36,22 @@ AS $$
   );
 $$;
 
--- Function to check if current user is support agent
+-- 4. Helper function: check if support agent
 CREATE OR REPLACE FUNCTION is_support_agent()
 RETURNS boolean
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
 AS $$
-  SELECT auth.role() = 'support' OR 
-         (auth.jwt() -> 'app_metadata' ->> 'role') = 'support' OR
-         EXISTS (
-           SELECT 1 FROM users 
-           WHERE id = auth.uid() AND role = 'support'
-         );
+  SELECT auth.role() = 'support'
+     OR (auth.jwt() -> 'app_metadata' ->> 'role') = 'support'
+     OR EXISTS (
+          SELECT 1 FROM users 
+          WHERE id = auth.uid() AND role = 'support'
+       );
 $$;
 
--- Update quick_responses policies to use proper auth role
+-- 5. Update quick_responses policies
 DROP POLICY IF EXISTS "Support agents can read quick responses" ON quick_responses;
 DROP POLICY IF EXISTS "Support agents can read all quick responses" ON quick_responses;
 
@@ -54,7 +65,7 @@ USING (
   (auth.jwt() -> 'app_metadata' ->> 'role') = 'support'
 );
 
--- Function to create support agent via Supabase Auth (note: creation in auth.users should be done via Admin API)
+-- 6. Function: create support agent via Supabase Auth
 CREATE OR REPLACE FUNCTION create_support_agent_auth(
   agent_name text,
   agent_email text,
@@ -68,7 +79,7 @@ DECLARE
   new_user_id uuid;
   result json;
 BEGIN
-  -- Insert into users table with support role (this assumes auth user already created by Admin API)
+  -- Insert into users table with support role
   INSERT INTO users (email, role, user_metadata)
   VALUES (
     agent_email,
@@ -77,7 +88,7 @@ BEGIN
   )
   RETURNING id INTO new_user_id;
   
-  -- Also insert into support_agents table for backward compatibility
+  -- Insert into support_agents for backward compatibility
   INSERT INTO support_agents (id, name, email, role, is_active)
   VALUES (new_user_id, agent_name, agent_email, 'support_agent', true)
   ON CONFLICT (email) DO UPDATE SET
@@ -98,7 +109,7 @@ BEGIN
 END;
 $$;
 
--- Function to authenticate support agent and return user data (read-only helper)
+-- 7. Function: authenticate support agent
 CREATE OR REPLACE FUNCTION authenticate_support_agent_auth(
   agent_email text
 )
@@ -142,7 +153,7 @@ BEGIN
 END;
 $$;
 
--- Function to set support agent context (updated for auth users)
+-- 8. Function: set support agent context
 CREATE OR REPLACE FUNCTION set_support_agent_context(agent_email text)
 RETURNS void
 LANGUAGE plpgsql
@@ -164,7 +175,7 @@ BEGIN
 END;
 $$;
 
--- Update support agent policies to work with auth users
+-- 9. Update support_agents policies
 DROP POLICY IF EXISTS "Support agents can manage own profile" ON support_agents;
 
 CREATE POLICY "Support agents can manage own profile"
@@ -172,15 +183,15 @@ ON support_agents
 FOR ALL
 TO authenticated
 USING (
-  email = (auth.jwt() ->> 'email') AND 
-  (auth.role() = 'support' OR is_support_agent())
+  email = (auth.jwt() ->> 'email') 
+  AND (auth.role() = 'support' OR is_support_agent())
 )
 WITH CHECK (
-  email = (auth.jwt() ->> 'email') AND 
-  (auth.role() = 'support' OR is_support_agent())
+  email = (auth.jwt() ->> 'email') 
+  AND (auth.role() = 'support' OR is_support_agent())
 );
 
--- Replace "CREATE POLICY IF NOT EXISTS" with DROP + CREATE pattern for users table policy
+-- 10. Add users policy (support agents can read own profile)
 DROP POLICY IF EXISTS "Support agents can read own profile" ON users;
 
 CREATE POLICY "Support agents can read own profile"
@@ -191,8 +202,8 @@ USING (
   id = auth.uid() AND role = 'support'
 );
 
--- Grant necessary permissions (use explicit signatures)
-GRANT EXECUTE ON FUNCTION create_support_agent_auth(text, text, text) TO service_role;
-GRANT EXECUTE ON FUNCTION authenticate_support_agent_auth(text) TO service_role;
-GRANT EXECUTE ON FUNCTION set_support_agent_context(text) TO authenticated;
-GRANT EXECUTE ON FUNCTION is_support_agent() TO authenticated;
+-- 11. Grant permissions
+GRANT EXECUTE ON FUNCTION create_support_agent_auth TO service_role;
+GRANT EXECUTE ON FUNCTION authenticate_support_agent_auth TO service_role;
+GRANT EXECUTE ON FUNCTION set_support_agent_context TO authenticated;
+GRANT EXECUTE ON FUNCTION is_support_agent TO authenticated;
