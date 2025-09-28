@@ -1,10 +1,10 @@
 /*
-  # Migrate Support Agents to Supabase Auth (Cleaned & Fixed)
+  # Migrate Support Agents to Supabase Auth (Fixed for Supabase Permissions)
 
   This migration will:
   - Add `role` column to users table
   - Create index for role-based queries
-  - Create helper functions for support agent auth
+  - Create helper functions for support agent auth (in public schema)
   - Update quick_responses policies
   - Add policies for support_agents and users
 */
@@ -23,27 +23,27 @@ BEGIN
   END IF;
 END $$;
 
--- 3. Helper function: get role from JWT
-CREATE OR REPLACE FUNCTION auth.role()
+-- 3. Helper function: get role from JWT (in public schema)
+CREATE OR REPLACE FUNCTION public.get_auth_role()
 RETURNS text
 LANGUAGE sql
 STABLE
 AS $$
   SELECT COALESCE(
-    auth.jwt() ->> 'role',
+    (auth.jwt() ->> 'role'),
     (auth.jwt() -> 'app_metadata' ->> 'role'),
     'authenticated'
   );
 $$;
 
--- 4. Helper function: check if support agent
-CREATE OR REPLACE FUNCTION is_support_agent()
+-- 4. Helper function: check if support agent (in public schema)
+CREATE OR REPLACE FUNCTION public.is_support_agent()
 RETURNS boolean
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
 AS $$
-  SELECT auth.role() = 'support'
+  SELECT public.get_auth_role() = 'support'
      OR (auth.jwt() -> 'app_metadata' ->> 'role') = 'support'
      OR EXISTS (
           SELECT 1 FROM users 
@@ -60,13 +60,13 @@ ON quick_responses
 FOR SELECT
 TO authenticated
 USING (
-  is_support_agent() OR 
-  auth.role() = 'support' OR
+  public.is_support_agent() OR 
+  public.get_auth_role() = 'support' OR
   (auth.jwt() -> 'app_metadata' ->> 'role') = 'support'
 );
 
 -- 6. Function: create support agent via Supabase Auth
-CREATE OR REPLACE FUNCTION create_support_agent_auth(
+CREATE OR REPLACE FUNCTION public.create_support_agent_auth(
   agent_name text,
   agent_email text,
   agent_password text
@@ -110,7 +110,7 @@ END;
 $$;
 
 -- 7. Function: authenticate support agent
-CREATE OR REPLACE FUNCTION authenticate_support_agent_auth(
+CREATE OR REPLACE FUNCTION public.authenticate_support_agent_auth(
   agent_email text
 )
 RETURNS json
@@ -154,7 +154,7 @@ END;
 $$;
 
 -- 8. Function: set support agent context
-CREATE OR REPLACE FUNCTION set_support_agent_context(agent_email text)
+CREATE OR REPLACE FUNCTION public.set_support_agent_context(agent_email text)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -184,11 +184,11 @@ FOR ALL
 TO authenticated
 USING (
   email = (auth.jwt() ->> 'email') 
-  AND (auth.role() = 'support' OR is_support_agent())
+  AND (public.get_auth_role() = 'support' OR public.is_support_agent())
 )
 WITH CHECK (
   email = (auth.jwt() ->> 'email') 
-  AND (auth.role() = 'support' OR is_support_agent())
+  AND (public.get_auth_role() = 'support' OR public.is_support_agent())
 );
 
 -- 10. Add users policy (support agents can read own profile)
@@ -203,7 +203,8 @@ USING (
 );
 
 -- 11. Grant permissions
-GRANT EXECUTE ON FUNCTION create_support_agent_auth TO service_role;
-GRANT EXECUTE ON FUNCTION authenticate_support_agent_auth TO service_role;
-GRANT EXECUTE ON FUNCTION set_support_agent_context TO authenticated;
-GRANT EXECUTE ON FUNCTION is_support_agent TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_support_agent_auth TO service_role;
+GRANT EXECUTE ON FUNCTION public.authenticate_support_agent_auth TO service_role;
+GRANT EXECUTE ON FUNCTION public.set_support_agent_context TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_support_agent TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_auth_role TO authenticated;
