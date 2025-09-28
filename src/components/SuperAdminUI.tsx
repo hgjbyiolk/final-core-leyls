@@ -134,7 +134,7 @@ const SuperAdminUI: React.FC = () => {
         return;
       }
 
-      console.log('🔐 Creating support agent:', agentFormData.email);
+      console.log('🔐 Creating support agent via Supabase Auth:', agentFormData.email);
       
       const newAgent = await ChatService.createSupportAgent({
         name: agentFormData.name,
@@ -142,7 +142,7 @@ const SuperAdminUI: React.FC = () => {
         password: agentFormData.password
       });
       
-      console.log('✅ Support agent created:', newAgent);
+      console.log('✅ Support agent created via Supabase Auth:', newAgent);
 
       // Refresh agents list
       const updatedAgents = await ChatService.getSupportAgents();

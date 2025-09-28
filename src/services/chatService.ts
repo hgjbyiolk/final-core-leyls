@@ -101,29 +101,29 @@ export interface QuickResponse {
 }
 
 export class ChatService {
-// Set support agent context
-static async setSupportAgentContext(agentEmail: string) {
-  try {
-    if (!agentEmail) {
-      console.warn("⚠️ [SUPPORT PORTAL] No agent email provided for context set");
-      return;
+  // Set support agent context (updated for Supabase Auth)
+  static async setSupportAgentContext(agentEmail: string) {
+    try {
+      if (!agentEmail) {
+        console.warn("⚠️ [SUPPORT PORTAL] No agent email provided for context set");
+        return;
+      }
+
+      console.log("🔐 [SUPPORT PORTAL] Setting support agent context for:", agentEmail);
+
+      const { error } = await supabase.rpc("set_support_agent_context", {
+        agent_email: agentEmail,
+      });
+
+      if (error) {
+        console.error("❌ [SUPPORT PORTAL] Failed to set agent context:", error);
+      } else {
+        console.log("✅ [SUPPORT PORTAL] Agent context set");
+      }
+    } catch (err) {
+      console.error("❌ [SUPPORT PORTAL] Error in setSupportAgentContext:", err);
     }
-
-    console.log("🔐 [SUPPORT PORTAL] Setting support agent context for:", agentEmail);
-
-    const { error } = await supabase.rpc("set_support_agent_context", {
-      agent_email: agentEmail,
-    });
-
-    if (error) {
-      console.error("❌ [SUPPORT PORTAL] Failed to set agent context:", error);
-    } else {
-      console.log("✅ [SUPPORT PORTAL] Agent context set");
-    }
-  } catch (err) {
-    console.error("❌ [SUPPORT PORTAL] Error in setSupportAgentContext:", err);
   }
-}
 
   // Get all chat sessions (for support agents - sees ALL restaurants)
   static async getAllChatSessions(): Promise<ChatSession[]> {
@@ -771,24 +771,29 @@ static async addParticipant(
     password: string;
   }): Promise<SupportAgent> {
     try {
-      console.log('👤 Creating support agent:', agentData.email);
+      console.log('👤 Creating support agent via Supabase Auth:', agentData.email);
       
-      const { data, error } = await supabase.rpc('create_support_agent', {
-        agent_name: agentData.name,
-        agent_email: agentData.email,
-        agent_password: agentData.password
+      // Call the new edge function that uses Supabase Auth Admin API
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-support-agent-auth`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: agentData.name,
+          email: agentData.email,
+          password: agentData.password
+        })
       });
 
-      if (error) {
-        console.error('❌ Error creating support agent:', error);
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create support agent');
       }
 
-      if (!data) {
-        throw new Error('No data returned from create_support_agent function');
-      }
-
-      console.log('✅ Support agent created successfully:', data.id);
+      const data = await response.json();
+      console.log('✅ Support agent created successfully via Supabase Auth:', data.id);
       return data;
     } catch (error: any) {
       console.error('Error creating support agent:', error);
@@ -798,9 +803,23 @@ static async addParticipant(
 
   static async getSupportAgents(): Promise<SupportAgent[]> {
     try {
+      // Get support agents from users table joined with support_agents for compatibility
       const { data, error } = await supabase
-        .from('support_agents')
-        .select('id, name, email, role, is_active, last_login_at, created_at')
+        .from('users')
+        .select(`
+          id, 
+          email, 
+          role,
+          user_metadata,
+          created_at,
+          support_agents!inner(
+            name,
+            is_active,
+            last_login_at,
+            updated_at
+          )
+        `)
+        .eq('role', 'support')
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -808,7 +827,19 @@ static async addParticipant(
         throw error;
       }
 
-      return data || [];
+      // Transform the data to match the expected interface
+      const transformedData = (data || []).map(user => ({
+        id: user.id,
+        name: user.support_agents.name || user.user_metadata?.name || 'Unknown',
+        email: user.email,
+        role: 'support_agent',
+        is_active: user.support_agents.is_active,
+        last_login_at: user.support_agents.last_login_at,
+        created_at: user.created_at,
+        updated_at: user.support_agents.updated_at
+      }));
+
+      return transformedData;
     } catch (error: any) {
       console.error('Error fetching support agents:', error);
       return [];
@@ -817,9 +848,10 @@ static async addParticipant(
 
   static async updateSupportAgent(
     agentId: string,
-    updates: Partial<Pick<SupportAgent, 'name' | 'email' | 'is_active'>>
+    updates: Partial<Pick<SupportAgent, 'name' | 'is_active'>>
   ): Promise<void> {
     try {
+      // Update support_agents table for backward compatibility
       const { error } = await supabase
         .from('support_agents')
         .update(updates)
@@ -828,6 +860,21 @@ static async addParticipant(
       if (error) {
         console.error('❌ Error updating support agent:', error);
         throw error;
+      }
+
+      // Also update users table if name is being changed
+      if (updates.name) {
+        const { error: usersError } = await supabase
+          .from('users')
+          .update({
+            user_metadata: { name: updates.name, role: 'support' }
+          })
+          .eq('id', agentId)
+          .eq('role', 'support');
+
+        if (usersError) {
+          console.warn('⚠️ Error updating users table:', usersError);
+        }
       }
 
       console.log('✅ Support agent updated successfully');
@@ -839,14 +886,23 @@ static async addParticipant(
 
   static async deleteSupportAgent(agentId: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('support_agents')
-        .delete()
-        .eq('id', agentId);
+      console.log('🗑️ Deleting support agent via Supabase Auth:', agentId);
+      
+      // Call the new edge function that uses Supabase Auth Admin API
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-support-agent-auth`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agentId
+        })
+      });
 
-      if (error) {
-        console.error('❌ Error deleting support agent:', error);
-        throw error;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete support agent');
       }
 
       console.log('✅ Support agent deleted successfully');

@@ -72,31 +72,65 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // Sign in
   const signIn = async (email: string, password: string) => {
     try {
-      console.log('🔐 [SUPPORT AUTH] Starting authentication for:', email);
+      console.log('🔐 [SUPPORT AUTH] Starting Supabase Auth for:', email);
 
-      // Call the authentication function
-      const { data: authData, error: authError } = await supabase.rpc('authenticate_support_agent', {
-        agent_email: email,
-        agent_password: password
+      // Use Supabase Auth for authentication
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
       });
 
       if (authError) {
-        console.error('❌ [SUPPORT AUTH] Authentication RPC error:', authError);
+        console.error('❌ [SUPPORT AUTH] Supabase Auth error:', authError);
+        return { error: 'Invalid credentials' };
+      }
+
+      if (!authData.user) {
+        console.log('❌ [SUPPORT AUTH] No user returned from auth');
         return { error: 'Authentication failed' };
       }
 
-      console.log('🔐 [SUPPORT AUTH] Authentication response:', authData);
+      console.log('🔐 [SUPPORT AUTH] Supabase Auth successful:', authData.user.id);
 
-      // Check if authentication was successful
-      if (!authData) {
-        console.log('❌ [SUPPORT AUTH] Authentication failed for:', email);
-        return { error: 'Invalid credentials or inactive account' };
+      // Verify this is a support agent
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, email, role, user_metadata')
+        .eq('id', authData.user.id)
+        .eq('role', 'support')
+        .single();
+
+      if (userError || !userData) {
+        console.error('❌ [SUPPORT AUTH] User is not a support agent:', userError);
+        await supabase.auth.signOut(); // Sign out if not a support agent
+        return { error: 'Access denied - not a support agent' };
       }
 
-      // The RPC now returns a single agent record, not an array
-      const authenticatedAgent: SupportAgent = authData;
+      // Check if agent is active in support_agents table
+      const { data: agentData, error: agentError } = await supabase
+        .from('support_agents')
+        .select('name, is_active')
+        .eq('email', email)
+        .single();
+
+      if (agentError || !agentData || !agentData.is_active) {
+        console.error('❌ [SUPPORT AUTH] Agent not found or inactive:', agentError);
+        await supabase.auth.signOut();
+        return { error: 'Account inactive or not found' };
+      }
+
+      const authenticatedAgent: SupportAgent = {
+        id: userData.id,
+        name: agentData.name || userData.user_metadata?.name || 'Support Agent',
+        email: userData.email,
+        role: 'support_agent',
+        is_active: agentData.is_active,
+        created_at: authData.user.created_at,
+        updated_at: new Date().toISOString(),
+        password_hash: '' // Not needed for auth users
+      };
       
-      console.log('✅ [SUPPORT AUTH] Agent authenticated:', {
+      console.log('✅ [SUPPORT AUTH] Agent authenticated via Supabase Auth:', {
         id: authenticatedAgent.id,
         name: authenticatedAgent.name,
         email: authenticatedAgent.email
@@ -118,6 +152,8 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const signOut = () => {
     console.log('🔐 [SUPPORT AUTH] Signing out agent:', agent?.email);
+    // Sign out from Supabase Auth
+    supabase.auth.signOut();
     setAgent(null);
     localStorage.removeItem('support_agent_data');
     localStorage.removeItem('support_agent_login_time');
