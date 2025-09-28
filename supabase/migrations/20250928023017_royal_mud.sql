@@ -1,22 +1,3 @@
-/*
-  # Migrate Support Agents to Supabase Auth
-
-  1. Database Changes
-    - Add role column to users table for support agents
-    - Create function to handle support agent creation via Supabase Auth
-    - Update RLS policies for support agent access
-    - Create migration function for existing support agents
-
-  2. Security
-    - Enable RLS on users table for support agents
-    - Add policies for support agent management
-    - Update quick_responses policies to use auth.role()
-
-  3. Functions
-    - Create helper functions for support agent management
-    - Add role-based access control functions
-*/
-
 -- Add role column to users table if it doesn't exist
 DO $$
 BEGIN
@@ -73,7 +54,7 @@ USING (
   (auth.jwt() -> 'app_metadata' ->> 'role') = 'support'
 );
 
--- Function to create support agent via Supabase Auth
+-- Function to create support agent via Supabase Auth (note: creation in auth.users should be done via Admin API)
 CREATE OR REPLACE FUNCTION create_support_agent_auth(
   agent_name text,
   agent_email text,
@@ -87,10 +68,7 @@ DECLARE
   new_user_id uuid;
   result json;
 BEGIN
-  -- This function will be called from the edge function
-  -- which has access to the admin client
-  
-  -- Insert into users table with support role
+  -- Insert into users table with support role (this assumes auth user already created by Admin API)
   INSERT INTO users (email, role, user_metadata)
   VALUES (
     agent_email,
@@ -120,7 +98,7 @@ BEGIN
 END;
 $$;
 
--- Function to authenticate support agent and return user data
+-- Function to authenticate support agent and return user data (read-only helper)
 CREATE OR REPLACE FUNCTION authenticate_support_agent_auth(
   agent_email text
 )
@@ -132,7 +110,6 @@ DECLARE
   agent_record record;
   result json;
 BEGIN
-  -- Get support agent from users table
   SELECT u.id, u.email, u.user_metadata->>'name' as name, u.role, u.created_at, u.updated_at
   INTO agent_record
   FROM users u
@@ -147,7 +124,6 @@ BEGIN
     RETURN NULL;
   END IF;
   
-  -- Update last login
   UPDATE support_agents 
   SET last_login_at = now(), updated_at = now()
   WHERE email = agent_email;
@@ -173,7 +149,6 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
-  -- Verify the agent exists and is active
   IF NOT EXISTS (
     SELECT 1 FROM users u
     JOIN support_agents sa ON sa.email = u.email
@@ -184,10 +159,7 @@ BEGIN
     RAISE EXCEPTION 'Support agent not found or inactive: %', agent_email;
   END IF;
   
-  -- Set the context for RLS policies
   PERFORM set_config('app.current_agent_email', agent_email, true);
-  
-  -- Also set a flag that this is a support agent session
   PERFORM set_config('app.is_support_agent', 'true', true);
 END;
 $$;
@@ -208,8 +180,10 @@ WITH CHECK (
   (auth.role() = 'support' OR is_support_agent())
 );
 
--- Add policy for users table to allow support agents to read their own profile
-CREATE POLICY IF NOT EXISTS "Support agents can read own profile"
+-- Replace "CREATE POLICY IF NOT EXISTS" with DROP + CREATE pattern for users table policy
+DROP POLICY IF EXISTS "Support agents can read own profile" ON users;
+
+CREATE POLICY "Support agents can read own profile"
 ON users
 FOR SELECT
 TO authenticated
@@ -217,8 +191,8 @@ USING (
   id = auth.uid() AND role = 'support'
 );
 
--- Grant necessary permissions
-GRANT EXECUTE ON FUNCTION create_support_agent_auth TO service_role;
-GRANT EXECUTE ON FUNCTION authenticate_support_agent_auth TO service_role;
-GRANT EXECUTE ON FUNCTION set_support_agent_context TO authenticated;
-GRANT EXECUTE ON FUNCTION is_support_agent TO authenticated;
+-- Grant necessary permissions (use explicit signatures)
+GRANT EXECUTE ON FUNCTION create_support_agent_auth(text, text, text) TO service_role;
+GRANT EXECUTE ON FUNCTION authenticate_support_agent_auth(text) TO service_role;
+GRANT EXECUTE ON FUNCTION set_support_agent_context(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION is_support_agent() TO authenticated;
