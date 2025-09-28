@@ -42,6 +42,8 @@ Deno.serve(async (req: Request) => {
       throw new Error('Support agent not found');
     }
 
+    console.log('👤 Found support agent to delete:', agent.email);
+
     // Delete from support_agents table first
     const { error: agentsError } = await supabaseAdmin
       .from('support_agents')
@@ -49,9 +51,11 @@ Deno.serve(async (req: Request) => {
       .eq('id', agentId);
 
     if (agentsError) {
-      console.warn('⚠️ Error deleting from support_agents table:', agentsError);
-      // Continue with auth deletion even if this fails
+      console.error('❌ Error deleting from support_agents table:', agentsError);
+      throw new Error(`Failed to delete support agent record: ${agentsError.message}`);
     }
+
+    console.log('✅ Deleted from support_agents table');
 
     // Delete from users table
     const { error: usersError } = await supabaseAdmin
@@ -61,8 +65,11 @@ Deno.serve(async (req: Request) => {
       .eq('role', 'support');
 
     if (usersError) {
-      console.warn('⚠️ Error deleting from users table:', usersError);
+      console.error('❌ Error deleting from users table:', usersError);
+      throw new Error(`Failed to delete user record: ${usersError.message}`);
     }
+
+    console.log('✅ Deleted from users table');
 
     // Delete from Supabase Auth
     const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(agentId);
@@ -72,7 +79,7 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Failed to delete auth user: ${authError.message}`);
     }
 
-    console.log('✅ Support agent deleted successfully');
+    console.log('✅ Support agent deleted successfully from all tables and auth');
 
     return new Response(
       JSON.stringify({ success: true }),

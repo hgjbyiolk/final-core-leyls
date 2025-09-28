@@ -803,40 +803,29 @@ static async addParticipant(
 
   static async getSupportAgents(): Promise<SupportAgent[]> {
     try {
-      // Get support agents from users table joined with support_agents for compatibility
-      const { data, error } = await supabase
-        .from('users')
-        .select(`
-          id, 
-          email, 
-          role,
-          user_metadata,
-          created_at,
-          support_agents!inner(
-            name,
-            is_active,
-            last_login_at,
-            updated_at
-          )
-        `)
-        .eq('role', 'support')
-        .order('created_at', { ascending: false });
+      console.log('👥 Fetching support agents using proper FK relationship...');
+      
+      // Use the new function that properly joins users and support_agents
+      const { data, error } = await supabase.rpc('get_support_agents_with_users');
 
       if (error) {
         console.error('❌ Error fetching support agents:', error);
         throw error;
       }
 
+      console.log('✅ Support agents fetched via RPC function:', data?.length || 0);
+      
       // Transform the data to match the expected interface
-      const transformedData = (data || []).map(user => ({
-        id: user.id,
-        name: user.support_agents.name || user.user_metadata?.name || 'Unknown',
-        email: user.email,
+      const transformedData = (data || []).map((agent: any) => ({
+        id: agent.id,
+        name: agent.name || 'Unknown',
+        email: agent.email,
         role: 'support_agent',
-        is_active: user.support_agents.is_active,
-        last_login_at: user.support_agents.last_login_at,
-        created_at: user.created_at,
-        updated_at: user.support_agents.updated_at
+        is_active: agent.is_active,
+        last_login_at: agent.last_login_at,
+        created_at: agent.created_at,
+        updated_at: agent.updated_at,
+        password_hash: '' // Not needed for auth users
       }));
 
       return transformedData;
@@ -851,7 +840,9 @@ static async addParticipant(
     updates: Partial<Pick<SupportAgent, 'name' | 'is_active'>>
   ): Promise<void> {
     try {
-      // Update support_agents table for backward compatibility
+      console.log('🔄 Updating support agent:', agentId, updates);
+      
+      // Update support_agents table
       const { error } = await supabase
         .from('support_agents')
         .update(updates)
@@ -864,16 +855,21 @@ static async addParticipant(
 
       // Also update users table if name is being changed
       if (updates.name) {
+        console.log('📝 Updating user metadata with new name...');
         const { error: usersError } = await supabase
           .from('users')
           .update({
-            user_metadata: { name: updates.name, role: 'support' }
+            user_metadata: { 
+              name: updates.name, 
+              role: 'support' 
+            }
           })
           .eq('id', agentId)
           .eq('role', 'support');
 
         if (usersError) {
-          console.warn('⚠️ Error updating users table:', usersError);
+          console.error('❌ Error updating users table:', usersError);
+          throw new Error(`Failed to update user metadata: ${usersError.message}`);
         }
       }
 

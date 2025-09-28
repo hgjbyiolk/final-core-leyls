@@ -82,7 +82,10 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       if (authError) {
         console.error('❌ [SUPPORT AUTH] Supabase Auth error:', authError);
-        return { error: 'Invalid credentials' };
+        if (authError.message === 'Invalid login credentials') {
+          return { error: 'Invalid email or password. Please check your credentials.' };
+        }
+        return { error: authError.message };
       }
 
       if (!authData.user) {
@@ -92,29 +95,49 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       console.log('🔐 [SUPPORT AUTH] Supabase Auth successful:', authData.user.id);
 
-      // Verify this is a support agent
+      // Verify this is a support agent using the proper FK relationship
+      console.log('🔍 [SUPPORT AUTH] Verifying support agent status...');
+      
+      // Check both auth metadata and database record
+      const metadataRole = authData.user.user_metadata?.role;
+      const appMetadataRole = authData.user.app_metadata?.role;
+      
+      console.log('🔍 [SUPPORT AUTH] Auth metadata roles:', {
+        userMetadataRole: metadataRole,
+        appMetadataRole: appMetadataRole
+      });
+      
+      // Get user and support agent data using the FK relationship
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, email, role, user_metadata')
+        .select(`
+          id, 
+          email, 
+          role, 
+          user_metadata,
+          support_agents!inner(
+            name,
+            is_active,
+            last_login_at
+          )
+        `)
         .eq('id', authData.user.id)
         .eq('role', 'support')
-        .single();
+        .maybeSingle();
 
       if (userError || !userData) {
-        console.error('❌ [SUPPORT AUTH] User is not a support agent:', userError);
+        console.error('❌ [SUPPORT AUTH] User is not a support agent or FK relationship missing:', userError);
         await supabase.auth.signOut(); // Sign out if not a support agent
-        return { error: 'Access denied - not a support agent' };
+        return { error: 'Access denied - not a support agent or account not properly configured' };
       }
 
-      // Check if agent is active in support_agents table
-      const { data: agentData, error: agentError } = await supabase
-        .from('support_agents')
-        .select('name, is_active')
-        .eq('email', email)
-        .single();
+      console.log('✅ [SUPPORT AUTH] Support agent verified via FK relationship');
+      
+      // Extract support agent data from the joined query
+      const agentData = userData.support_agents;
 
-      if (agentError || !agentData || !agentData.is_active) {
-        console.error('❌ [SUPPORT AUTH] Agent not found or inactive:', agentError);
+      if (!agentData || !agentData.is_active) {
+        console.error('❌ [SUPPORT AUTH] Agent not found or inactive');
         await supabase.auth.signOut();
         return { error: 'Account inactive or not found' };
       }
@@ -126,7 +149,7 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
         role: 'support_agent',
         is_active: agentData.is_active,
         created_at: authData.user.created_at,
-        updated_at: new Date().toISOString(),
+        updated_at: agentData.last_login_at || new Date().toISOString(),
         password_hash: '' // Not needed for auth users
       };
       
@@ -136,6 +159,11 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
         email: authenticatedAgent.email
       });
 
+      // Update last login time
+      await supabase
+        .from('support_agents')
+        .update({ last_login_at: new Date().toISOString() })
+        .eq('id', authenticatedAgent.id);
       setAgent(authenticatedAgent);
       localStorage.setItem('support_agent_data', JSON.stringify(authenticatedAgent));
       localStorage.setItem('support_agent_login_time', new Date().toISOString());

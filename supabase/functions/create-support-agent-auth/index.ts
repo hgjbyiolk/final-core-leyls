@@ -84,7 +84,7 @@ Deno.serve(async (req: Request) => {
 
     if (agentsError && agentsError.code !== '23505') { // Ignore duplicate key errors
       console.error('❌ Error inserting into support_agents table:', agentsError);
-      // Don't throw here as the main auth user was created successfully
+      throw new Error(`Failed to create support agent record: ${agentsError.message}`);
     }
 
     console.log('✅ Support agent created successfully via Supabase Auth');
@@ -94,7 +94,7 @@ Deno.serve(async (req: Request) => {
         id: authUser.user.id,
         name,
         email,
-        role: 'support',
+        role: 'support_agent',
         is_active: true,
         created_at: authUser.user.created_at
       }),

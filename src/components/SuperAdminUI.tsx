@@ -137,10 +137,12 @@ const SuperAdminUI: React.FC = () => {
       console.log('✅ Support agent created via Supabase Auth:', newAgent);
 
       // Refresh agents list
-      const updatedAgents = await ChatService.getSupportAgents();
-      setSupportAgents(updatedAgents);
+      setTimeout(async () => {
+        const updatedAgents = await ChatService.getSupportAgents();
+        setSupportAgents(updatedAgents);
+        console.log('✅ Agents list refreshed, total agents:', updatedAgents.length);
+      }, 1000); // Small delay to ensure database consistency
       
-      console.log('✅ Agents list refreshed, total agents:', updatedAgents.length);
 
       // Reset form
       setAgentFormData({
@@ -163,11 +165,14 @@ const SuperAdminUI: React.FC = () => {
 
   const handleUpdateAgent = async (agentId: string, updates: any) => {
     try {
+      console.log('🔄 Updating support agent:', agentId, updates);
       await ChatService.updateSupportAgent(agentId, updates);
       
       // Refresh agents list
-      const updatedAgents = await ChatService.getSupportAgents();
-      setSupportAgents(updatedAgents);
+      setTimeout(async () => {
+        const updatedAgents = await ChatService.getSupportAgents();
+        setSupportAgents(updatedAgents);
+      }, 500);
     } catch (err: any) {
       console.error('Error updating support agent:', err);
       alert(err.message || 'Failed to update support agent');
@@ -180,11 +185,14 @@ const SuperAdminUI: React.FC = () => {
     }
 
     try {
+      console.log('🗑️ Deleting support agent:', agentId);
       await ChatService.deleteSupportAgent(agentId);
       
       // Refresh agents list
-      const updatedAgents = await ChatService.getSupportAgents();
-      setSupportAgents(updatedAgents);
+      setTimeout(async () => {
+        const updatedAgents = await ChatService.getSupportAgents();
+        setSupportAgents(updatedAgents);
+      }, 500);
     } catch (err: any) {
       console.error('Error deleting support agent:', err);
       alert(err.message || 'Failed to delete support agent');
