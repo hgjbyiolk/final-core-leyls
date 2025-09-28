@@ -1,14 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Users, Building, DollarSign, TrendingUp, BarChart3, 
-  MessageSquare, Settings, LogOut, RefreshCw, Search,
-  Filter, Eye, MoreVertical, Crown, AlertCircle, CheckCircle,
-  Clock, Star, ArrowRight, Send, X, Loader2, Plus,
-  FileText, Download, Upload, Paperclip, Image, File,
-  User, Shield, Zap, Target, Gift, Calendar, Phone, Mail,
-  Edit3, Trash2, UserPlus, Key, Lock, EyeOff
-} from 'lucide-react';
+import { Users, Building, DollarSign, TrendingUp, BarChart3, MessageSquare, Settings, LogOut, RefreshCw, Search, Filter, Eye, MoreVertical, Crown, AlertCircle, CheckCircle, Clock, Star, ArrowRight, Send, X, Loader2, Plus, FileText, Download, Upload, Paperclip, Image, File, User, Shield, Zap, Target, Gift, Calendar, Phone, Mail, CreditCard as Edit3, Trash2, UserPlus, Key, Lock, EyeOff } from 'lucide-react';
 import { SupportService, SupportTicket, SupportMessage } from '../services/supportService';
 import { SubscriptionService } from '../services/subscriptionService';
 import { ChatService, SupportAgent } from '../services/chatService';
