@@ -32,7 +32,7 @@ Deno.serve(async (req: Request) => {
 
     console.log('👤 Creating support agent via Supabase Auth:', email);
 
-    // Create user in Supabase Auth with support role
+    // Create user in Supabase Auth with proper support role in both metadata fields
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -53,7 +53,7 @@ Deno.serve(async (req: Request) => {
 
     console.log('✅ Auth user created:', authUser.user.id);
 
-    // Insert into users table with support role
+    // Insert into public.users table with support role (this will be synced automatically by trigger)
     const { error: usersError } = await supabaseAdmin
       .from('users')
       .insert({
@@ -66,12 +66,14 @@ Deno.serve(async (req: Request) => {
         }
       });
 
-    if (usersError && usersError.code !== '23505') { // Ignore duplicate key errors
+    if (usersError && usersError.code !== '23505') {
       console.error('❌ Error inserting into users table:', usersError);
       throw new Error(`Failed to create user record: ${usersError.message}`);
     }
 
-    // Insert into support_agents table for backward compatibility
+    console.log('✅ Public users record created');
+
+    // Insert into support_agents table (now with FK to public.users)
     const { error: agentsError } = await supabaseAdmin
       .from('support_agents')
       .insert({
@@ -82,8 +84,10 @@ Deno.serve(async (req: Request) => {
         is_active: true
       });
 
-    if (agentsError && agentsError.code !== '23505') { // Ignore duplicate key errors
+    if (agentsError) {
       console.error('❌ Error inserting into support_agents table:', agentsError);
+      // Clean up auth user if support_agents insertion fails
+      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
       throw new Error(`Failed to create support agent record: ${agentsError.message}`);
     }
 

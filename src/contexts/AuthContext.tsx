@@ -115,18 +115,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 const fetchRestaurant = async (userId: string) => {
   try {
-    // Skip for support agents - check both user_metadata and users table
+    // Skip for support agents - comprehensive role checking
     const { data: userData } = await supabase.auth.getUser();
     const metadataRole = userData.user?.user_metadata?.role;
     const appMetadataRole = userData.user?.app_metadata?.role;
     
-    // Check if this is a support agent from metadata
+    // Check if this is a support agent from auth metadata
     if (metadataRole === 'support' || appMetadataRole === 'support') {
       console.log('🛑 Skipping restaurant fetch for support agent (metadata)');
       return;
     }
     
-    // Also check the users table for role
+    // Also check the public.users table for role (most reliable)
     const { data: userRecord } = await supabase
       .from('users')
       .select('role')
@@ -135,6 +135,18 @@ const fetchRestaurant = async (userId: string) => {
     
     if (userRecord?.role === 'support') {
       console.log('🛑 Skipping restaurant fetch for support agent (database)');
+      return;
+    }
+    
+    // Additional check: see if user exists in support_agents table
+    const { data: supportAgentRecord } = await supabase
+      .from('support_agents')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (supportAgentRecord) {
+      console.log('🛑 Skipping restaurant fetch for support agent (support_agents table)');
       return;
     }
 
@@ -169,7 +181,7 @@ const fetchRestaurant = async (userId: string) => {
 
   const createDefaultRestaurant = async (userId: string) => {
   try {
-    // Skip for support agents - check both metadata and database
+    // Skip for support agents - comprehensive checking
     const { data: userData } = await supabase.auth.getUser();
     const metadataRole = userData.user?.user_metadata?.role;
     const appMetadataRole = userData.user?.app_metadata?.role;
@@ -179,7 +191,7 @@ const fetchRestaurant = async (userId: string) => {
       return;
     }
     
-    // Also check the users table for role
+    // Check the public.users table for role
     const { data: userRecord } = await supabase
       .from('users')
       .select('role')
@@ -188,6 +200,18 @@ const fetchRestaurant = async (userId: string) => {
     
     if (userRecord?.role === 'support') {
       console.log('🛑 Skipping restaurant creation for support agent (database)');
+      return;
+    }
+    
+    // Final check: see if user exists in support_agents table
+    const { data: supportAgentRecord } = await supabase
+      .from('support_agents')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (supportAgentRecord) {
+      console.log('🛑 Skipping restaurant creation for support agent (support_agents table)');
       return;
     }
 
