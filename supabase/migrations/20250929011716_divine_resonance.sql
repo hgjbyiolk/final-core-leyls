@@ -44,8 +44,8 @@ BEGIN
   ON CONFLICT (id) DO UPDATE SET
     email = EXCLUDED.email,
     user_metadata = EXCLUDED.user_metadata,
-    role = COALESCE(EXCLUDED.user_metadata->>'role', COALESCE(NEW.app_metadata->>'role', 'restaurant_owner')),
-    is_super_admin = COALESCE((NEW.app_metadata->>'is_super_admin')::boolean, false),
+    role = COALESCE(EXCLUDED.user_metadata->>'role', 'restaurant_owner'),
+    is_super_admin = COALESCE((EXCLUDED.user_metadata->>'is_super_admin')::boolean, false),
     updated_at = NOW();
   
   RETURN NEW;
@@ -73,11 +73,9 @@ FROM auth.users au
 ON CONFLICT (id) DO UPDATE SET
   email = EXCLUDED.email,
   user_metadata = EXCLUDED.user_metadata,
-  role = COALESCE(EXCLUDED.user_metadata->>'role', COALESCE(auth.users.app_metadata->>'role', 'restaurant_owner')),
-  is_super_admin = COALESCE((auth.users.app_metadata->>'is_super_admin')::boolean, false),
-  updated_at = NOW()
-FROM auth.users
-WHERE auth.users.id = public.users.id;
+  role = COALESCE(EXCLUDED.user_metadata->>'role', 'restaurant_owner'),
+  is_super_admin = COALESCE((EXCLUDED.user_metadata->>'is_super_admin')::boolean, false),
+  updated_at = NOW();
 
 -- Drop the existing FK constraint to auth.users
 ALTER TABLE support_agents DROP CONSTRAINT IF EXISTS support_agents_id_fkey;
@@ -235,7 +233,5 @@ FROM support_agents sa
 WHERE sa.id NOT IN (SELECT id FROM public.users)
 ON CONFLICT (id) DO UPDATE SET
   role = 'support',
-  user_metadata = jsonb_build_object('name', support_agents.name, 'role', 'support'),
-  updated_at = NOW()
-FROM support_agents
-WHERE support_agents.id = public.users.id;
+  user_metadata = jsonb_build_object('name', EXCLUDED.user_metadata->>'name', 'role', 'support'),
+  updated_at = NOW();
