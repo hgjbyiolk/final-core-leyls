@@ -292,34 +292,8 @@ const { data, error } = await supabase
     }
   }
 
- // Close chat session
-export async function closeChatSession(sessionId: string, isSupportAgent = false) {
-  try {
-    console.log("🛑 Closing chat session:", sessionId);
-
-    // Prevent support agents from re-opening closed chats
-    if (isSupportAgent) {
-      console.warn("⚠️ Support agents cannot close chat sessions directly.");
-      return { error: "Support agents cannot close chat sessions" };
-    }
-
-    const { data, error } = await supabase
-      .from("chat_sessions")
-      .update({ status: "closed" })
-      .eq("id", sessionId)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    console.log("✅ Chat session closed:", data);
-    return { data };
-  } catch (err) {
-    console.error("❌ Error closing chat session:", err);
-    return { error: err };
-  }
-}
-
+  // Close chat session
+ 
   // Assign agent to session
   static async assignAgentToSession(
     sessionId: string,
