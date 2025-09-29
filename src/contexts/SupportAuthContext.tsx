@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supportSupabase as supabase } from '../lib/supportSupabase';
 import { ChatService, SupportAgent } from '../services/chatService';
 
 interface SupportAuthContextType {
