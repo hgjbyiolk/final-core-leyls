@@ -801,76 +801,74 @@ static async addParticipant(
     }
   }
 
-  static async getSupportAgents(): Promise<SupportAgent[]> {
-    try {
-      console.log('👥 Fetching support agents using public.users FK relationship...');
-      
-      // Use direct query with the new public.users FK relationship
-      const { data, error } = await supabase
-        .from('users')
-        .select(`
-          id,
-          email,
-          role,
-          created_at,
-          updated_at,
-          support_agents!inner (
-            name,
-            is_active,
-            last_login_at,
-            updated_at
-          )
-        `)
-        .eq('role', 'support')
-        .order('created_at', { ascending: false });
+static async getSupportAgents(): Promise<SupportAgent[]> {
+  try {
+    console.log('👥 Fetching support agents using public.users FK relationship...');
 
-      if (error) {
-        console.error('❌ Direct query failed, trying RPC fallback:', error);
-        // Fallback to RPC function
-        return await this.getSupportAgentsViaRPC();
-      }
+    // Try direct query first
+    const { data, error } = await supabase
+      .from('users')
+      .select(`
+        id,
+        email,
+        role,
+        created_at,
+        updated_at,
+        support_agents!inner (
+          name,
+          is_active,
+          last_login_at,
+          updated_at
+        )
+      `)
+      .eq('role', 'support')
+      .order('created_at', { ascending: false });
 
-      console.log('✅ Support agents fetched via direct FK join:', data?.length || 0);
-      
-      if (!error && data) {
-  console.log('✅ Support agents fetched via direct FK join:', data.length);
+    if (!error && data) {
+      console.log('✅ Support agents fetched via direct FK join:', data.length);
 
-  return data.map((user: any) => ({
-    id: user.id,
-    name: user.support_agents.name || 'Unknown',
-    email: user.email,
-    role: 'support_agent',
-    is_active: user.support_agents.is_active,
-    last_login_at: user.support_agents.last_login_at,
-    created_at: user.created_at,
-    updated_at: user.support_agents.updated_at,
-    password_hash: '' // Not needed for auth users
-  }));
-}
+      return data.map((user: any) => ({
+        id: user.id,
+        name: user.support_agents.name || 'Unknown',
+        email: user.email,
+        role: 'support_agent',
+        is_active: user.support_agents.is_active,
+        last_login_at: user.support_agents.last_login_at,
+        created_at: user.created_at,
+        updated_at: user.support_agents.updated_at,
+        password_hash: '' // Not needed for auth users
+      }));
+    }
 
-// 🔄 Fallback to RPC if direct query fails
-console.warn('⚠️ Direct query failed, falling back to RPC:', error);
+    // 🔄 Fallback to RPC if direct query fails
+    console.warn('⚠️ Direct query failed, falling back to RPC:', error);
 
-const { data: rpcData, error: rpcError } = await supabase.rpc('get_support_agents_with_users');
+    const { data: rpcData, error: rpcError } = await supabase.rpc('get_support_agents_with_users');
 
-if (rpcError) {
-  console.error('❌ Error fetching support agents via RPC:', rpcError);
-  throw rpcError;
-}
+    if (rpcError) {
+      console.error('❌ Error fetching support agents via RPC:', rpcError);
+      throw rpcError;
+    }
 
-console.log('✅ Support agents fetched via RPC function:', rpcData?.length || 0);
+    console.log('✅ Support agents fetched via RPC function:', rpcData?.length || 0);
 
-return (rpcData || []).map((agent: any) => ({
-  id: agent.id,
-  name: agent.name || 'Unknown',
-  email: agent.email,
-  role: 'support_agent',
-  is_active: agent.is_active,
-  last_login_at: agent.last_login_at,
-  created_at: agent.created_at,
-  updated_at: agent.updated_at,
-  password_hash: '' // Not needed for auth users
-}));
+    return (rpcData || []).map((agent: any) => ({
+      id: agent.id,
+      name: agent.name || 'Unknown',
+      email: agent.email,
+      role: 'support_agent',
+      is_active: agent.is_active,
+      last_login_at: agent.last_login_at,
+      created_at: agent.created_at,
+      updated_at: agent.updated_at,
+      password_hash: '' // Not needed for auth users
+    }));
+  } catch (error: any) {
+    console.error('Error fetching support agents:', error);
+    return [];
+  }
+} // 👈 don’t forget this
+
 
 
   static async updateSupportAgent(
