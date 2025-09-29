@@ -803,9 +803,47 @@ static async addParticipant(
 
   static async getSupportAgents(): Promise<SupportAgent[]> {
     try {
-      console.log('👥 Fetching support agents using proper FK relationship...');
+      console.log('👥 Fetching support agents using public.users FK relationship...');
       
-      // Use the new function that properly joins users and support_agents
+      // Use direct query with the new public.users FK relationship
+      const { data, error } = await supabase
+        .from('users')
+        .select(`
+          id,
+          email,
+          role,
+          created_at,
+          updated_at,
+          support_agents!inner (
+            name,
+            is_active,
+            last_login_at,
+            updated_at
+          )
+        `)
+        .eq('role', 'support')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Direct query failed, trying RPC fallback:', error);
+        // Fallback to RPC function
+        return await this.getSupportAgentsViaRPC();
+      }
+
+      console.log('✅ Support agents fetched via direct FK join:', data?.length || 0);
+      
+      // Transform the data to match the expected interface
+      const transformedData = (data || []).map((user: any) => ({
+        id: user.id,
+        name: user.support_agents.name || 'Unknown',
+        email: user.email,
+        role: 'support_agent',
+        is_active: user.support_agents.is_active,
+        last_login_at: user.support_agents.last_login_at,
+        created_at: user.created_at,
+        updated_at: user.support_agents.updated_at,
+        password_hash: '' // Not needed for auth users
+      }));
       const { data, error } = await supabase.rpc('get_support_agents_with_users');
 
       if (error) {

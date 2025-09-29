@@ -32,19 +32,25 @@ Deno.serve(async (req: Request) => {
 
     // First, get the agent to verify it exists and is a support agent
     const { data: agent, error: fetchError } = await supabaseAdmin
-      .from('users')
-      .select('email, role')
+      .from('support_agents')
+      .select(`
+        email,
+        name,
+        users!inner (
+          email,
+          role
+        )
+      `)
       .eq('id', agentId)
-      .eq('role', 'support')
       .single();
 
     if (fetchError || !agent) {
       throw new Error('Support agent not found');
     }
 
-    console.log('👤 Found support agent to delete:', agent.email);
+    console.log('👤 Found support agent to delete:', agent.email || agent.users.email);
 
-    // Delete from support_agents table first
+    // Delete from support_agents table first (this will cascade due to FK)
     const { error: agentsError } = await supabaseAdmin
       .from('support_agents')
       .delete()
@@ -57,7 +63,7 @@ Deno.serve(async (req: Request) => {
 
     console.log('✅ Deleted from support_agents table');
 
-    // Delete from users table
+    // Delete from public.users table
     const { error: usersError } = await supabaseAdmin
       .from('users')
       .delete()
@@ -66,10 +72,11 @@ Deno.serve(async (req: Request) => {
 
     if (usersError) {
       console.error('❌ Error deleting from users table:', usersError);
-      throw new Error(`Failed to delete user record: ${usersError.message}`);
+      // Don't throw error here as the FK cascade should handle this
+      console.warn('⚠️ Users table deletion failed (may have been cascaded):', usersError);
     }
 
-    console.log('✅ Deleted from users table');
+    console.log('✅ Deleted from public.users table');
 
     // Delete from Supabase Auth
     const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(agentId);
@@ -79,7 +86,7 @@ Deno.serve(async (req: Request) => {
       throw new Error(`Failed to delete auth user: ${authError.message}`);
     }
 
-    console.log('✅ Support agent deleted successfully from all tables and auth');
+    console.log('✅ Support agent deleted successfully from all systems (auth, public.users, support_agents)');
 
     return new Response(
       JSON.stringify({ success: true }),

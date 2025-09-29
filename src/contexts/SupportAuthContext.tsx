@@ -107,7 +107,7 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
         appMetadataRole: appMetadataRole
       });
       
-      // Get user and support agent data using the FK relationship
+      // Get user and support agent data using the new public.users FK relationship
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select(`
@@ -115,7 +115,7 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
           email, 
           role, 
           user_metadata,
-          support_agents!inner(
+          support_agents!inner (
             name,
             is_active,
             last_login_at
@@ -126,12 +126,12 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
         .maybeSingle();
 
       if (userError || !userData) {
-        console.error('❌ [SUPPORT AUTH] User is not a support agent or FK relationship missing:', userError);
+        console.error('❌ [SUPPORT AUTH] User is not a support agent or public.users FK relationship missing:', userError);
         await supabase.auth.signOut(); // Sign out if not a support agent
-        return { error: 'Access denied - not a support agent or account not properly configured' };
+        return { error: 'Access denied - not a support agent or account not properly configured. Please contact your administrator.' };
       }
 
-      console.log('✅ [SUPPORT AUTH] Support agent verified via FK relationship');
+      console.log('✅ [SUPPORT AUTH] Support agent verified via public.users FK relationship');
       
       // Extract support agent data from the joined query
       const agentData = userData.support_agents;

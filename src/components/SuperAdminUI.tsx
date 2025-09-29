@@ -137,12 +137,17 @@ const SuperAdminUI: React.FC = () => {
       console.log('✅ Support agent created via Supabase Auth:', newAgent);
 
       // Refresh agents list
-      setTimeout(async () => {
+      const refreshAgents = async () => {
         const updatedAgents = await ChatService.getSupportAgents();
         setSupportAgents(updatedAgents);
         console.log('✅ Agents list refreshed, total agents:', updatedAgents.length);
-      }, 1000); // Small delay to ensure database consistency
+      };
       
+      // Immediate refresh
+      await refreshAgents();
+      
+      // Also refresh after a delay to ensure all triggers have fired
+      setTimeout(refreshAgents, 2000);
 
       // Reset form
       setAgentFormData({
