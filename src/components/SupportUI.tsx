@@ -8,7 +8,6 @@ import {
   Image, Camera, Smile, MoreVertical, Copy, Archive,
   UserX, Shield, Activity, Wifi, WifiOff
 } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 import { ChatService, ChatSession, ChatMessage, ChatParticipant, QuickResponse } from '../services/chatService';
 import { useAuth } from '../contexts/AuthContext';
 
