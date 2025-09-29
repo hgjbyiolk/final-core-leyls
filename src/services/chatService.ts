@@ -293,19 +293,7 @@ const { data, error } = await supabase
   }
 
   // Close chat session
- export async function closeChatSession(sessionId: string) {
-  const { error } = await supabase.rpc("close_chat_session", {
-    p_session_id: sessionId,
-  });
-
-  if (error) {
-    console.error("❌ [CHAT SERVICE] Failed to close chat session:", error);
-    throw error;
-  }
-
-  console.log("✅ [CHAT SERVICE] Chat session closed:", sessionId);
-  return { success: true };
-}
+  
   // Assign agent to session
   static async assignAgentToSession(
     sessionId: string,
