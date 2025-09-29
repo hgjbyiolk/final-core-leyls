@@ -293,7 +293,32 @@ const { data, error } = await supabase
   }
 
   // Close chat session
-  
+    static async closeChatSession(sessionId: string, agentName: string): Promise<void> {
+    try {
+      console.log('🔒 Closing chat session:', sessionId);
+      
+      // Update session status
+      await this.updateChatSession(sessionId, {
+        status: 'closed',
+        updated_at: new Date().toISOString()
+      });
+
+      // Send system message
+      await this.sendMessage({
+        session_id: sessionId,
+        sender_type: 'support_agent',
+        sender_id: 'system',
+        sender_name: 'System',
+        message: `Chat closed by ${agentName}. Thank you for contacting support!`,
+        is_system_message: true
+      });
+
+      console.log('✅ Chat session closed successfully');
+    } catch (error) {
+      console.error('❌ Error closing chat session:', error);
+      throw error;
+    }
+  }
   // Assign agent to session
   static async assignAgentToSession(
     sessionId: string,
