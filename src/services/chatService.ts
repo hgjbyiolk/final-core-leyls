@@ -832,46 +832,46 @@ static async addParticipant(
 
       console.log('✅ Support agents fetched via direct FK join:', data?.length || 0);
       
-      // Transform the data to match the expected interface
-      const transformedData = (data || []).map((user: any) => ({
-        id: user.id,
-        name: user.support_agents.name || 'Unknown',
-        email: user.email,
-        role: 'support_agent',
-        is_active: user.support_agents.is_active,
-        last_login_at: user.support_agents.last_login_at,
-        created_at: user.created_at,
-        updated_at: user.support_agents.updated_at,
-        password_hash: '' // Not needed for auth users
-      }));
-      const { data, error } = await supabase.rpc('get_support_agents_with_users');
+      if (!error && data) {
+  console.log('✅ Support agents fetched via direct FK join:', data.length);
 
-      if (error) {
-        console.error('❌ Error fetching support agents:', error);
-        throw error;
-      }
+  return data.map((user: any) => ({
+    id: user.id,
+    name: user.support_agents.name || 'Unknown',
+    email: user.email,
+    role: 'support_agent',
+    is_active: user.support_agents.is_active,
+    last_login_at: user.support_agents.last_login_at,
+    created_at: user.created_at,
+    updated_at: user.support_agents.updated_at,
+    password_hash: '' // Not needed for auth users
+  }));
+}
 
-      console.log('✅ Support agents fetched via RPC function:', data?.length || 0);
-      
-      // Transform the data to match the expected interface
-      const transformedData = (data || []).map((agent: any) => ({
-        id: agent.id,
-        name: agent.name || 'Unknown',
-        email: agent.email,
-        role: 'support_agent',
-        is_active: agent.is_active,
-        last_login_at: agent.last_login_at,
-        created_at: agent.created_at,
-        updated_at: agent.updated_at,
-        password_hash: '' // Not needed for auth users
-      }));
+// 🔄 Fallback to RPC if direct query fails
+console.warn('⚠️ Direct query failed, falling back to RPC:', error);
 
-      return transformedData;
-    } catch (error: any) {
-      console.error('Error fetching support agents:', error);
-      return [];
-    }
-  }
+const { data: rpcData, error: rpcError } = await supabase.rpc('get_support_agents_with_users');
+
+if (rpcError) {
+  console.error('❌ Error fetching support agents via RPC:', rpcError);
+  throw rpcError;
+}
+
+console.log('✅ Support agents fetched via RPC function:', rpcData?.length || 0);
+
+return (rpcData || []).map((agent: any) => ({
+  id: agent.id,
+  name: agent.name || 'Unknown',
+  email: agent.email,
+  role: 'support_agent',
+  is_active: agent.is_active,
+  last_login_at: agent.last_login_at,
+  created_at: agent.created_at,
+  updated_at: agent.updated_at,
+  password_hash: '' // Not needed for auth users
+}));
+
 
   static async updateSupportAgent(
     agentId: string,
