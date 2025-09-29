@@ -10,8 +10,10 @@ import {
   UserX, Shield, Activity, Wifi, WifiOff, LogOut,
   Headphones, Bell, Menu
 } from 'lucide-react';
+import { supportSupabase as supabase } from '../lib/supportSupabase';
 import { ChatService, ChatSession, ChatMessage, ChatParticipant, QuickResponse } from '../services/chatService';
 import { useSupportAuth } from '../contexts/SupportAuthContext';
+
 
 const SupportPortal: React.FC = () => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);

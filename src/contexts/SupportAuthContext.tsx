@@ -1,13 +1,12 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supportSupabase as supabase } from '../lib/supportSupabase';
 import { ChatService, SupportAgent } from '../services/chatService';
 
 interface SupportAuthContextType {
   agent: SupportAgent | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signOut: () => void;
+  signOut: () => Promise<void>;
 }
 
 const SupportAuthContext = createContext<SupportAuthContextType | undefined>(undefined);
@@ -34,8 +33,7 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
         if (agentData && loginTime) {
           const loginDate = new Date(loginTime);
           const now = new Date();
-          const hoursSinceLogin =
-            (now.getTime() - loginDate.getTime()) / (1000 * 60 * 60);
+          const hoursSinceLogin = (now.getTime() - loginDate.getTime()) / (1000 * 60 * 60);
 
           if (hoursSinceLogin < 24) {
             const parsedAgent: SupportAgent = JSON.parse(agentData);
@@ -71,13 +69,13 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Sign in
   const signIn = async (email: string, password: string) => {
+    setLoading(true);
     try {
       console.log('🔐 [SUPPORT AUTH] Starting Supabase Auth for:', email);
 
-      // Use Supabase Auth for authentication
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
       });
 
       if (authError) {
@@ -95,19 +93,7 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
       console.log('🔐 [SUPPORT AUTH] Supabase Auth successful:', authData.user.id);
 
-      // Verify this is a support agent using the proper FK relationship
-      console.log('🔍 [SUPPORT AUTH] Verifying support agent status...');
-      
-      // Check both auth metadata and database record
-      const metadataRole = authData.user.user_metadata?.role;
-      const appMetadataRole = authData.user.app_metadata?.role;
-      
-      console.log('🔍 [SUPPORT AUTH] Auth metadata roles:', {
-        userMetadataRole: metadataRole,
-        appMetadataRole: appMetadataRole
-      });
-      
-      // Get user and support agent data using the new public.users FK relationship
+      // Verify support agent via users + support_agents relationship
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select(`
@@ -126,18 +112,16 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
         .maybeSingle();
 
       if (userError || !userData) {
-        console.error('❌ [SUPPORT AUTH] User is not a support agent or public.users FK relationship missing:', userError);
-        await supabase.auth.signOut(); // Sign out if not a support agent
-        return { error: 'Access denied - not a support agent or account not properly configured. Please contact your administrator.' };
+        console.error('❌ [SUPPORT AUTH] User not a support agent:', userError);
+        await supabase.auth.signOut();
+        return { error: 'Access denied - not a support agent or misconfigured account.' };
       }
 
-      console.log('✅ [SUPPORT AUTH] Support agent verified via public.users FK relationship');
-      
-      // Extract support agent data from the joined query
-      const agentData = userData.support_agents;
+      console.log('✅ [SUPPORT AUTH] Verified support agent');
 
+      const agentData = userData.support_agents;
       if (!agentData || !agentData.is_active) {
-        console.error('❌ [SUPPORT AUTH] Agent not found or inactive');
+        console.error('❌ [SUPPORT AUTH] Agent inactive');
         await supabase.auth.signOut();
         return { error: 'Account inactive or not found' };
       }
@@ -150,41 +134,58 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
         is_active: agentData.is_active,
         created_at: authData.user.created_at,
         updated_at: agentData.last_login_at || new Date().toISOString(),
-        password_hash: '' // Not needed for auth users
+        password_hash: '',
       };
-      
-      console.log('✅ [SUPPORT AUTH] Agent authenticated via Supabase Auth:', {
+
+      console.log('✅ [SUPPORT AUTH] Authenticated agent:', {
         id: authenticatedAgent.id,
-        name: authenticatedAgent.name,
-        email: authenticatedAgent.email
+        email: authenticatedAgent.email,
       });
 
-      // Update last login time
+      // Update last login
       await supabase
         .from('support_agents')
         .update({ last_login_at: new Date().toISOString() })
         .eq('id', authenticatedAgent.id);
+
       setAgent(authenticatedAgent);
       localStorage.setItem('support_agent_data', JSON.stringify(authenticatedAgent));
       localStorage.setItem('support_agent_login_time', new Date().toISOString());
 
-      // Set database context for RLS
       await ChatService.setSupportAgentContext(authenticatedAgent.email);
 
       return { error: null };
     } catch (err: any) {
       console.error('❌ [SUPPORT AUTH] Sign in error:', err);
       return { error: err.message || 'Authentication failed' };
+    } finally {
+      setLoading(false);
     }
   };
 
-  const signOut = () => {
-    console.log('🔐 [SUPPORT AUTH] Signing out agent:', agent?.email);
-    // Sign out from Supabase Auth
-    supabase.auth.signOut();
-    setAgent(null);
-    localStorage.removeItem('support_agent_data');
-    localStorage.removeItem('support_agent_login_time');
+  // Sign out
+  const signOut = async () => {
+    try {
+      console.log('🔐 [SUPPORT AUTH] Signing out agent:', agent?.email);
+
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('❌ [SUPPORT AUTH] Supabase sign out error:', error);
+      }
+
+      setAgent(null);
+      localStorage.removeItem('support_agent_data');
+      localStorage.removeItem('support_agent_login_time');
+
+      if (ChatService.clearSupportAgentContext) {
+        await ChatService.clearSupportAgentContext();
+      }
+
+      console.log('✅ [SUPPORT AUTH] Agent signed out');
+    } catch (err) {
+      console.error('💥 [SUPPORT AUTH] Unexpected error during sign out:', err);
+      setAgent(null);
+    }
   };
 
   const value = {

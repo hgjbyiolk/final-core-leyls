@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useSupportAuth } from '../contexts/SupportAuthContext';
 
+
 const SupportPortalLogin: React.FC = () => {
   const [credentials, setCredentials] = useState({
     email: '',
