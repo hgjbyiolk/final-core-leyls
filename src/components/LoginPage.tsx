@@ -53,8 +53,34 @@ const LoginPage: React.FC = () => {
         Welcome to VOYA
       </h2>
       <p className="mt-2 text-gray-600">
-        Sign in to your restaurant dashboard
+        {loginType === 'restaurant' ? 'Sign in to your restaurant dashboard' : 'Sign in to support portal'}
       </p>
+    </div>
+
+    {/* Login Type Toggle */}
+    <div className="flex bg-gray-100 rounded-lg p-1 mb-6">
+      <button
+        type="button"
+        onClick={() => setLoginType('restaurant')}
+        className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+          loginType === 'restaurant'
+            ? 'bg-white text-gray-900 shadow-sm'
+            : 'text-gray-600 hover:text-gray-900'
+        }`}
+      >
+        Restaurant Owner
+      </button>
+      <button
+        type="button"
+        onClick={() => setLoginType('support')}
+        className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+          loginType === 'support'
+            ? 'bg-white text-gray-900 shadow-sm'
+            : 'text-gray-600 hover:text-gray-900'
+        }`}
+      >
+        Support Agent
+      </button>
     </div>
 
     <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
