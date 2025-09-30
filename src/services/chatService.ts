@@ -299,7 +299,10 @@ static async closeChatSession(sessionId: string, agentName: string, agentId?: st
     const { error } = await supabase
       .from("chat_sessions")
       .update({
-        status: "closed",
+        status: "closed",                  // mark as closed
+        is_active: false,                  // ✅ force inactive
+        closed_at: new Date().toISOString(), // ✅ record close time
+        closed_by: agentName,              // optional: who closed
         assigned_agent_name: agentName,
         assigned_agent_id: agentId || null,
         updated_at: new Date().toISOString(),
@@ -324,7 +327,6 @@ static async closeChatSession(sessionId: string, agentName: string, agentId?: st
     throw error;
   }
 }
-
 
   // Assign agent to session
   static async assignAgentToSession(
