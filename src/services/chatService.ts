@@ -73,6 +73,7 @@ export interface CreateMessageData {
   message_type?: 'text' | 'image' | 'file';
   has_attachments?: boolean;
   is_system_message?: boolean;
+  attachments?: any[];
 }
 
 export interface CreateParticipantData {
