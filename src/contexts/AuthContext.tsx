@@ -269,23 +269,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-const signIn = async (
-  email: string,
-  password: string,
-  loginType: 'restaurant' | 'support'
-) => {
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+const signIn = async (email: string, password: string, type: 'restaurant' | 'support') => {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      if (error.message === 'Invalid login credentials') {
-        return { error: 'Incorrect email or password. Please try again.' };
-      }
-      return { error: error.message };
-    }
+  if (error) return { error: error.message, role: null };
 
-    const user = data.user;
-    const userRole = user?.user_metadata?.role ?? user?.app_metadata?.role;
+  // ✅ Get user role from metadata or database
+  const user = data.user;
+  const role = user?.user_metadata?.role || null;
+
+  return { error: null, role };
+};
+
 
     // ✅ Validate role against login type
     if (loginType === 'restaurant' && userRole !== 'restaurant_owner') {
