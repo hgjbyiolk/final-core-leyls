@@ -221,7 +221,7 @@ export class ChatService {
         restaurant:restaurants(name, slug)
       `)
       .eq('restaurant_id', restaurantId)
-      .neq('status', 'closed')   // 👈 exclude closed
+      // .neq('status', 'closed')   // 👈 exclude closed 
      
       .order('last_message_at', { ascending: false });
 
