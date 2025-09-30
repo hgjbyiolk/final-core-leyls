@@ -269,34 +269,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-const signIn = async (email: string, password: string, type: 'restaurant' | 'support') => {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+const signIn = async (
+  email: string,
+  password: string,
+  loginType: 'restaurant' | 'support'
+): Promise<{ error: string | null; role: string | null }> => {
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-  if (error) return { error: error.message, role: null };
-
-  // ✅ Get user role from metadata or database
-  const user = data.user;
-  const role = user?.user_metadata?.role || null;
-
-  return { error: null, role };
-
-
+    if (error) {
+      if (error.message === 'Invalid login credentials') {
+        return { error: 'Incorrect email or password. Please try again.', role: null };
+      }
+      return { error: error.message, role: null };
     }
 
     const user = data.user;
-    const userRole = user?.user_metadata?.role ?? user?.app_metadata?.role;
+    const userRole = user?.user_metadata?.role ?? user?.app_metadata?.role ?? null;
 
     // ✅ Validate role against login type
     if (loginType === 'restaurant' && userRole !== 'restaurant_owner') {
-      return { error: 'This account is not a restaurant owner account.' };
+      return { error: 'This account is not a restaurant owner account.', role: userRole };
     }
     if (loginType === 'support' && userRole !== 'support') {
-      return { error: 'This account is not a support agent account.' };
+      return { error: 'This account is not a support agent account.', role: userRole };
     }
 
-    return { error: null };
+    return { error: null, role: userRole };
   } catch (error: any) {
-    return { error: error.message };
+    return { error: error.message, role: null };
   }
 };
 
