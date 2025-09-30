@@ -279,7 +279,7 @@ const signIn = async (email: string, password: string, type: 'restaurant' | 'sup
   const role = user?.user_metadata?.role || null;
 
   return { error: null, role };
-};
+
 
     }
 
