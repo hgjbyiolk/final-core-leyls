@@ -210,30 +210,32 @@ export class ChatService {
 
   // Get chat sessions for a specific restaurant (for restaurant managers)
   static async getRestaurantChatSessions(restaurantId: string): Promise<ChatSession[]> {
-    try {
-      console.log('🔍 Fetching chat sessions for restaurant:', restaurantId);
-      
-      const { data, error } = await supabase
-        .from('chat_sessions')
-        .select(`
-          *,
-          restaurant:restaurants(name, slug)
-        `)
-        .eq('restaurant_id', restaurantId)
-        .order('last_message_at', { ascending: false });
+  try {
+    console.log('🔍 Fetching chat sessions for restaurant:', restaurantId);
+    
+    const { data, error } = await supabase
+      .from('chat_sessions')
+      .select(`
+        *,
+        restaurant:restaurants(name, slug)
+      `)
+      .eq('restaurant_id', restaurantId)
+      .neq('status', 'closed')   // 👈 exclude closed
+      .order('last_message_at', { ascending: false });
 
-      if (error) {
-        console.error('❌ Error fetching restaurant chat sessions:', error);
-        throw error;
-      }
-      
-      console.log('✅ Fetched restaurant chat sessions:', data?.length || 0);
-      return data || [];
-    } catch (error: any) {
-      console.error('Error fetching restaurant chat sessions:', error);
-      return [];
+    if (error) {
+      console.error('❌ Error fetching restaurant chat sessions:', error);
+      throw error;
     }
+    
+    console.log('✅ Fetched restaurant chat sessions:', data?.length || 0);
+    return data || [];
+  } catch (error: any) {
+    console.error('Error fetching restaurant chat sessions:', error);
+    return [];
   }
+}
+
 
   // Create a new chat session
   static async createChatSession(sessionData: CreateSessionData): Promise<ChatSession> {
