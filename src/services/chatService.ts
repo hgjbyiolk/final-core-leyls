@@ -916,26 +916,25 @@ static async getSupportAgents(): Promise<SupportAgent[]> {
   }
 
   // Quick Responses
+// inside chatService.ts (where other static methods live)
 static async getQuickResponses(): Promise<QuickResponse[]> {
   try {
-    console.log("⚡ [SUPPORT PORTAL] Fetching quick responses via service role...");
+    console.log('⚡ [SUPPORT PORTAL] Fetching quick responses via RPC (service role bypass)...');
 
-    const { data, error } = await supabaseAdmin
-      .from("quick_responses")
-      .select("*")
-      .eq("is_active", true)
-      .order("category", { ascending: true })
-      .order("title", { ascending: true });
+    // Use the support client that can call RPCs; if you use `supabase` or `supportSupabase` elsewhere,
+    // import the same instance at top of file.
+    const { data, error } = await supportSupabase.rpc('get_all_quick_responses');
 
     if (error) {
-      console.error("❌ Error fetching quick responses via service role:", error);
+      console.error('❌ Error fetching quick responses via RPC:', error);
       return [];
     }
 
-    console.log("📋 [SUPPORT PORTAL] Quick responses data:", data);
-    return data || [];
-  } catch (error: any) {
-    console.error("❌ Error fetching quick responses:", error);
+    // `data` should be an array of quick_responses
+    console.log('📋 [SUPPORT PORTAL] Quick responses data (RPC):', data);
+    return (data as QuickResponse[]) || [];
+  } catch (err: any) {
+    console.error('❌ Unexpected error in getQuickResponses RPC:', err);
     return [];
   }
 }
