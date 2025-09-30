@@ -268,37 +268,27 @@ if (role === 'restaurant_owner') {
     }
   };
 
-const signIn = async (
-  email: string,
-  password: string,
-  loginType: 'restaurant' | 'support'
-): Promise<{ error: string | null; role: string | null }> => {
-  try {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+const signIn = async (email: string, password: string, loginType: 'restaurant' | 'support') => {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) {
-      if (error.message === 'Invalid login credentials') {
-        return { error: 'Incorrect email or password. Please try again.', role: null };
-      }
-      return { error: error.message, role: null };
-    }
+  if (error) return { error: error.message };
 
-    const user = data.user;
-    const userRole = user?.user_metadata?.role ?? user?.app_metadata?.role ?? null;
+  const { user } = data;
 
-    // ✅ Validate role against login type
-    if (loginType === 'restaurant' && userRole !== 'restaurant_owner') {
-      return { error: 'This account is not a restaurant owner account.', role: userRole };
-    }
-    if (loginType === 'support' && userRole !== 'support') {
-      return { error: 'This account is not a support agent account.', role: userRole };
-    }
+  // 👇 ADD THIS CHECK
+  const role = user?.user_metadata?.role;
 
-    return { error: null, role: userRole };
-  } catch (error: any) {
-    return { error: error.message, role: null };
+  if (loginType === 'restaurant' && role !== 'restaurant_owner') {
+    return { error: 'Invalid credentials for restaurant dashboard' };
   }
+
+  if (loginType === 'support' && role !== 'support') {
+    return { error: 'Invalid credentials for support portal' };
+  }
+
+  return { role, error: null };
 };
+
 
   const signUp = async (
     email: string,
