@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { supportSupabase } from '../lib/supportSupabase';
 
 export interface ChatSession {
   id: string;
