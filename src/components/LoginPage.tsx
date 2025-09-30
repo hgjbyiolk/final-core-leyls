@@ -28,7 +28,7 @@ const handleSubmit = async (e: React.FormEvent) => {
   setIsLoading(true);
   setError('');
 
-  try {
+ try {
   const { error, role } = await signIn(email, password, loginType);
 
   if (error) {
@@ -43,6 +43,12 @@ const handleSubmit = async (e: React.FormEvent) => {
     }
   }
 
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'An error occurred');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
 
   return (
