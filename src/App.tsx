@@ -30,14 +30,6 @@ import SupportProtectedRoute from "./components/SupportProtectedRoute";
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
 
-  // Check if user is a support agent trying to access restaurant dashboard
-  const userRole = user?.user_metadata?.role ?? user?.app_metadata?.role ?? 'restaurant_owner';
-  
-  if (user && userRole === 'support') {
-    console.log('🚫 Support agent blocked from restaurant dashboard');
-    return <Navigate to="/support-portal" replace />;
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
