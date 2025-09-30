@@ -315,6 +315,7 @@ const signIn = async (
             first_name: metadata.firstName,
             last_name: metadata.lastName,
             restaurant_name: metadata.restaurantName,
+               role: 'restaurant_owner', // ✅ ensures role is stored
           }
         }
       });
