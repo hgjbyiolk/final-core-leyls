@@ -29,24 +29,20 @@ const handleSubmit = async (e: React.FormEvent) => {
   setError('');
 
   try {
-    const { error } = await signIn(email, password, loginType);
+  const { error, role } = await signIn(email, password, loginType);
 
-    if (error) {
-      setError(error);
+  if (error) {
+    setError(error);
+  } else {
+    if (role === 'restaurant_owner') {
+      navigate('/dashboard');
+    } else if (role === 'support') {
+      navigate('/support-portal');
     } else {
-      // ✅ Redirect based on login type
-      if (loginType === 'restaurant') {
-        navigate('/dashboard'); 
-      } else {
-        navigate('/support-portal');
-      }
+      setError('Unknown role. Please contact support.');
     }
-  } catch (err) {
-    setError(err instanceof Error ? err.message : 'An error occurred');
-  } finally {
-    setIsLoading(false);
   }
-};
+
 
 
   return (
