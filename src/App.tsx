@@ -24,6 +24,8 @@ import SupportPortalLogin from './components/SupportPortalLogin';
 import PrivacyPage from './components/PrivacyPage';
 import TermsPage from './components/TermsPage';
 import BillingPage from './components/BillingPage';
+import SupportProtectedRoute from "./components/SupportProtectedRoute";
+
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
