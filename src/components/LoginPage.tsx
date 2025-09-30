@@ -10,8 +10,8 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const { signIn } = useAuth();
 
-  // 👇 Added missing state for login type
-  const [loginType, setLoginType] = useState<'restaurant' | 'support'>('restaurant');
+const [loginType, setLoginType] = useState<'restaurant' | 'support'>('restaurant');
+
 
   // Check for success message from signup
   const successMessage = location.state?.message;
