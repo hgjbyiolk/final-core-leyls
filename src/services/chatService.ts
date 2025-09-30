@@ -293,44 +293,6 @@ const { data, error } = await supabase
   }
 
   // Close chat session
-   static async closeChatSession(sessionId: string, agentName: string): Promise<void> {
-  try {
-    console.log("🔒 Closing chat session:", sessionId);
-
-    // Fetch session status first
-    const { data: existing } = await supabase
-      .from("chat_sessions")
-      .select("status")
-      .eq("id", sessionId)
-      .single();
-
-    if (existing?.status === "closed") {
-      console.log("⏹️ Session already closed, skipping update.");
-      return;
-    }
-
-    // Update session status
-    await this.updateChatSession(sessionId, {
-      status: "closed",
-      updated_at: new Date().toISOString(),
-    });
-
-    // Send system message
-    await this.sendMessage({
-      session_id: sessionId,
-      sender_type: "support_agent",
-      sender_id: "system",
-      sender_name: "System",
-      message: `Chat closed by ${agentName}. Thank you for contacting support!`,
-      is_system_message: true,
-    });
-
-    console.log("✅ Chat session closed successfully");
-  } catch (error) {
-    console.error("❌ Error closing chat session:", error);
-    throw error;
-  }
-}
 
   // Assign agent to session
   static async assignAgentToSession(
@@ -954,37 +916,30 @@ static async getSupportAgents(): Promise<SupportAgent[]> {
   }
 
   // Quick Responses
-  static async getQuickResponses(): Promise<QuickResponse[]> {
-    try {
-      console.log('⚡ [SUPPORT PORTAL] Fetching quick responses...');
-      
-      const { data, error } = await supabase
-        .from('quick_responses')
-        .select('*')
-        .eq('is_active', true)
-        .order('category', { ascending: true })
-        .order('title', { ascending: true });
+static async getQuickResponses(): Promise<QuickResponse[]> {
+  try {
+    console.log("⚡ [SUPPORT PORTAL] Fetching quick responses via service role...");
 
-      if (error) {
-        console.error('❌ [SUPPORT PORTAL] Error fetching quick responses:', error);
-        console.error('❌ [SUPPORT PORTAL] Error details:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        });
-        return [];
-      }
+    const { data, error } = await supabaseAdmin
+      .from("quick_responses")
+      .select("*")
+      .eq("is_active", true)
+      .order("category", { ascending: true })
+      .order("title", { ascending: true });
 
-      console.log('✅ [SUPPORT PORTAL] Quick responses loaded:', data?.length || 0);
-      console.log('📋 [SUPPORT PORTAL] Quick responses data:', data);
-      
-      return data || [];
-    } catch (error: any) {
-      console.error('💥 [SUPPORT PORTAL] Error fetching quick responses:', error);
+    if (error) {
+      console.error("❌ Error fetching quick responses via service role:", error);
       return [];
     }
+
+    console.log("📋 [SUPPORT PORTAL] Quick responses data:", data);
+    return data || [];
+  } catch (error: any) {
+    console.error("❌ Error fetching quick responses:", error);
+    return [];
   }
+}
+
 
   // Clean up subscriptions
   static cleanupSubscription(subscription: any): void {
@@ -997,5 +952,4 @@ static async getSupportAgents(): Promise<SupportAgent[]> {
       }
     }
   }
-}
-
+} 
