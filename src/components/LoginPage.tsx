@@ -23,20 +23,31 @@ const LoginPage: React.FC = () => {
     }
   }, [prefilledEmail]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
+  setError('');
 
-    try {
-      // If you need to send loginType to backend, pass it here:
-      await signIn(email, password /*, loginType */);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setIsLoading(false);
+  try {
+    const { error } = await signIn(email, password, loginType);
+
+    if (error) {
+      setError(error);
+    } else {
+      // ✅ Redirect based on login type
+      if (loginType === 'restaurant') {
+        navigate('/dashboard'); 
+      } else {
+        navigate('/support-portal');
+      }
     }
-  };
+  } catch (err) {
+    setError(err instanceof Error ? err.message : 'An error occurred');
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-gray-100 to-gray-200 flex items-center justify-center p-4">
