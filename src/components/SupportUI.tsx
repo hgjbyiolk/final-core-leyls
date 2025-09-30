@@ -509,7 +509,18 @@ const SupportUI: React.FC = () => {
       );
       
       setShowCloseChatModal(false);
-      // Don't clear selected session immediately - let real-time update handle it
+      
+      // Update local state immediately to prevent reopening
+      setSessions(prev => prev.map(session => 
+        session.id === selectedSession.id 
+          ? { ...session, status: 'closed' }
+          : session
+      ));
+      
+      // Clear selected session after a brief delay
+      setTimeout(() => {
+        setSelectedSession(null);
+      }, 1000);
     } catch (error) {
       console.error('Error closing chat:', error);
       alert('Failed to close chat');
