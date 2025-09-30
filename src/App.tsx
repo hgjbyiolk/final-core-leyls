@@ -24,8 +24,6 @@ import SupportPortalLogin from './components/SupportPortalLogin';
 import PrivacyPage from './components/PrivacyPage';
 import TermsPage from './components/TermsPage';
 import BillingPage from './components/BillingPage';
-import SupportProtectedRoute from "./components/SupportProtectedRoute";
-
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -46,17 +44,12 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
     return <Navigate to="/login" replace />;
   }
 
-  const userRole = user?.user_metadata?.role ?? user?.app_metadata?.role ?? 'restaurant_owner';
-
-  // 🚫 Block support users completely
-  if (userRole === 'support') {
-    console.warn('🚫 Support agent tried to access restaurant dashboard — redirecting.');
-    return <Navigate to="/support-portal" replace />;
-  }
-
-  return <SubscriptionGuard>{children}</SubscriptionGuard>;
+  return (
+    <SubscriptionGuard>
+      {children}
+    </SubscriptionGuard>
+  );
 };
-
 
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -115,9 +108,7 @@ function App() {
             path="/support-portal" 
             element={
               <SupportAuthProvider>
-                <SupportProtectedRoute>
-                  <SupportPortal />
-                </SupportProtectedRoute>
+                <SupportPortal />
               </SupportAuthProvider>
             }
           />

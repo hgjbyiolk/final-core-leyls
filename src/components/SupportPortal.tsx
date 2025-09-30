@@ -13,7 +13,7 @@ import {
 import { supportSupabase as supabase } from '../lib/supportSupabase';
 import { ChatService, ChatSession, ChatMessage, ChatParticipant, QuickResponse } from '../services/chatService';
 import { useSupportAuth } from '../contexts/SupportAuthContext';
-
+import { useSupportAuth } from '../contexts/SupportAuthContext';
 
 const SupportPortal: React.FC = () => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -510,21 +510,10 @@ const SupportPortal: React.FC = () => {
 
     try {
       setClosingChat(true);
-      await ChatService.closeChatSession(selectedSession.id, agent.name);
+      await ChatService.closeChatSession(selectedSession.id, agent.email);
       
       setShowCloseChatModal(false);
-      
-      // Update local state immediately to prevent reopening
-      setSessions(prev => prev.map(session => 
-        session.id === selectedSession.id 
-          ? { ...session, status: 'closed' }
-          : session
-      ));
-      
-      // Clear selected session after a brief delay
-      setTimeout(() => {
-        setSelectedSession(null);
-      }, 1000);
+      // Don't clear selected session immediately - let real-time update handle it
     } catch (error) {
       console.error('❌ [SUPPORT PORTAL] Error closing chat:', error);
       alert('Failed to close chat');
