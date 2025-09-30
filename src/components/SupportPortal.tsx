@@ -363,6 +363,12 @@ const SupportPortal: React.FC = () => {
   const joinSession = async () => {
     if (!selectedSession || !agent) return;
     
+    // Check if session is closed before attempting to join
+    if (selectedSession.status === 'closed') {
+      console.log('🚫 Cannot join closed session:', selectedSession.id);
+      return;
+    }
+    
     try {
       console.log('👤 [SUPPORT PORTAL] Joining session as support agent:', {
         sessionId: selectedSession.id,

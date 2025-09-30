@@ -104,10 +104,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!user) return;
 
-    const role = user?.user_metadata?.role ?? user?.app_metadata?.role ?? null;
+    const role = user?.user_metadata?.role ?? user?.app_metadata?.role ?? 'restaurant_owner';
 
+    console.log('🔍 User role detected:', role, 'for user:', user.email);
+    
     if (role === 'support') {
-      console.log('🛑 Skipping restaurant operations for support agent');
+      console.log('🛑 Support agent detected - blocking restaurant access');
       setRestaurant(null);
       return;
     }
