@@ -92,6 +92,8 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
       }
 
       console.log('🔐 [SUPPORT AUTH] Supabase Auth successful:', authData.user.id);
+      console.log('🔍 [SUPPORT AUTH] User metadata:', authData.user.user_metadata);
+      console.log('🔍 [SUPPORT AUTH] App metadata:', authData.user.app_metadata);
 
       // Verify support agent via users + support_agents relationship
       const { data: userData, error: userError } = await supabase
@@ -112,9 +114,10 @@ export const SupportAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
         .maybeSingle();
 
       if (userError || !userData) {
-        console.error('❌ [SUPPORT AUTH] User not a support agent:', userError);
+        console.error('❌ [SUPPORT AUTH] User not a support agent or query failed:', userError);
+        console.error('❌ [SUPPORT AUTH] User data returned:', userData);
         await supabase.auth.signOut();
-        return { error: 'Access denied - not a support agent or misconfigured account.' };
+        return { error: 'Access denied. This account is not configured as a support agent.' };
       }
 
       console.log('✅ [SUPPORT AUTH] Verified support agent');

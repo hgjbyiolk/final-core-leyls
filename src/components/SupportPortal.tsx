@@ -510,10 +510,21 @@ const SupportPortal: React.FC = () => {
 
     try {
       setClosingChat(true);
-      await ChatService.closeChatSession(selectedSession.id, agent.email);
+      await ChatService.closeChatSession(selectedSession.id, agent.name);
       
       setShowCloseChatModal(false);
-      // Don't clear selected session immediately - let real-time update handle it
+      
+      // Update local state immediately to prevent reopening
+      setSessions(prev => prev.map(session => 
+        session.id === selectedSession.id 
+          ? { ...session, status: 'closed' }
+          : session
+      ));
+      
+      // Clear selected session after a brief delay
+      setTimeout(() => {
+        setSelectedSession(null);
+      }, 1000);
     } catch (error) {
       console.error('❌ [SUPPORT PORTAL] Error closing chat:', error);
       alert('Failed to close chat');
@@ -1024,24 +1035,6 @@ const SupportPortal: React.FC = () => {
                           </button>
                         ))}
                       </div>
-                    </div>
-                  )}
-
-                  {/* Show message if no quick responses available */}
-                  {showQuickResponses && quickResponses.length === 0 && (
-                    <div className="mb-3 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-yellow-700">Quick Responses</span>
-                        <button
-                          onClick={() => setShowQuickResponses(false)}
-                          className="text-yellow-400 hover:text-yellow-600"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <p className="text-sm text-yellow-700">
-                        No quick responses available. Contact your administrator to set up quick responses.
-                      </p>
                     </div>
                   )}
 
