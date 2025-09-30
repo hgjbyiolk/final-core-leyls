@@ -281,6 +281,10 @@ const signIn = async (email: string, password: string, type: 'restaurant' | 'sup
   return { error: null, role };
 };
 
+    }
+
+    const user = data.user;
+    const userRole = user?.user_metadata?.role ?? user?.app_metadata?.role;
 
     // ✅ Validate role against login type
     if (loginType === 'restaurant' && userRole !== 'restaurant_owner') {
