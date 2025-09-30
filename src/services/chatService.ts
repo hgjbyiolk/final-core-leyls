@@ -296,33 +296,29 @@ const { data, error } = await supabase
   // Close chat session
 
   // Close chat session
-   static async closeChatSession(sessionId: string, agentName: string): Promise<void> {
+// Close chat session
+static async closeChatSession(sessionId: string, agentName: string, agentId?: string): Promise<void> {
   try {
     console.log("🔒 Closing chat session:", sessionId);
 
-    // Fetch session status first
-    const { data: existing } = await supabase
+    // Update session status and store who closed it
+    const { error } = await supabase
       .from("chat_sessions")
-      .select("status")
-      .eq("id", sessionId)
-      .single();
+      .update({
+        status: "closed",
+        assigned_agent_name: agentName,
+        assigned_agent_id: agentId || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", sessionId);
 
-    if (existing?.status === "closed") {
-      console.log("⏹️ Session already closed, skipping update.");
-      return;
-    }
-
-    // Update session status
-    await this.updateChatSession(sessionId, {
-      status: "closed",
-      updated_at: new Date().toISOString(),
-    });
+    if (error) throw error;
 
     // Send system message
     await this.sendMessage({
       session_id: sessionId,
       sender_type: "support_agent",
-      sender_id: "system",
+      sender_id: agentId || "system",
       sender_name: "System",
       message: `Chat closed by ${agentName}. Thank you for contacting support!`,
       is_system_message: true,
