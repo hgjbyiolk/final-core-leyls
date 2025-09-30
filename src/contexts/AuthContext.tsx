@@ -269,22 +269,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signIn = async (email: string, password: string) => {
-    try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+const signIn = async (
+  email: string,
+  password: string,
+  loginType: 'restaurant' | 'support'
+) => {
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (error) {
-        if (error.message === 'Invalid login credentials') {
-          return { error: 'Incorrect email or password. Please try again.' };
-        }
-        return { error: error.message };
+    if (error) {
+      if (error.message === 'Invalid login credentials') {
+        return { error: 'Incorrect email or password. Please try again.' };
       }
-
-      return { error: null };
-    } catch (error: any) {
       return { error: error.message };
     }
-  };
+
+    const user = data.user;
+    const userRole = user?.user_metadata?.role ?? user?.app_metadata?.role;
+
+    // ✅ Validate role against login type
+    if (loginType === 'restaurant' && userRole !== 'restaurant_owner') {
+      return { error: 'This account is not a restaurant owner account.' };
+    }
+    if (loginType === 'support' && userRole !== 'support') {
+      return { error: 'This account is not a support agent account.' };
+    }
+
+    return { error: null };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+};
 
   const signUp = async (
     email: string,
