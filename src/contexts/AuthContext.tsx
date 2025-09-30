@@ -104,17 +104,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (!user) return;
 
-    const role = user?.user_metadata?.role ?? user?.app_metadata?.role ?? 'restaurant_owner';
+  const role = user?.user_metadata?.role ?? user?.app_metadata?.role;
+console.log('🔍 User role detected:', role, 'for user:', user.email);
 
-    console.log('🔍 User role detected:', role, 'for user:', user.email);
-    
-    if (role === 'support') {
-      console.log('🛑 Support agent detected - blocking restaurant access');
-      setRestaurant(null);
-      return;
-    }
+// Only fetch restaurant data if it's a restaurant_owner
+if (role === 'restaurant_owner') {
+  fetchRestaurant(user.id);
+} else {
+  setRestaurant(null);
+}
 
-    fetchRestaurant(user.id);
   }, [user]);
 
   // Subscription updates (refresh restaurant instead of full reload)
