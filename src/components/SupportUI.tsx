@@ -451,19 +451,51 @@ const SupportUI: React.FC = () => {
           throw new Error(`File ${file.name} is too large. Maximum size is 5MB.`);
         }
 
-        // Create message first
-        const message = await ChatService.sendMessage({
+        // Create optimistic message for immediate UI feedback
+        const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const optimisticMessage: ChatMessage = {
+          id: tempId,
           session_id: selectedSession.id,
           sender_type: 'restaurant_manager',
           sender_id: user.id,
           sender_name: user.email?.split('@')[0] || 'Restaurant Manager',
           message: `📷 Shared an image: ${file.name}`,
           message_type: 'image',
-          has_attachments: true
-        });
+          has_attachments: true,
+          is_system_message: false,
+          created_at: new Date().toISOString()
+        };
 
-        // Upload attachment
-        await ChatService.uploadAttachment(file, message.id);
+        // Add optimistic message to UI immediately
+        setMessages(prev => [...prev, optimisticMessage]);
+        scrollToBottom();
+
+        try {
+          // Create actual message
+          const message = await ChatService.sendMessage({
+            session_id: selectedSession.id,
+            sender_type: 'restaurant_manager',
+            sender_id: user.id,
+            sender_name: user.email?.split('@')[0] || 'Restaurant Manager',
+            message: `📷 Shared an image: ${file.name}`,
+            message_type: 'image',
+            has_attachments: true
+          });
+
+          // Upload attachment
+          const attachment = await ChatService.uploadAttachment(file, message.id);
+
+          // Update the optimistic message with real data and attachment
+          setMessages(prev => prev.map(msg => 
+            msg.id === tempId 
+              ? { ...message, attachments: [attachment] }
+              : msg
+          ));
+        } catch (err) {
+          // Remove optimistic message on error
+          setMessages(prev => prev.filter(msg => msg.id !== tempId));
+          throw err;
+        }
       }
     } catch (err: any) {
       console.error('Error uploading files:', err);
