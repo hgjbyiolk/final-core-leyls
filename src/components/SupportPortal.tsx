@@ -35,6 +35,9 @@ const SupportPortal: React.FC = () => {
   const [closingChat, setClosingChat] = useState(false);
   const [chatStats, setChatStats] = useState<any>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [activeSessionsTab, setActiveSessionsTab] = useState<'active' | 'archived'>('active');
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState('');
   
   // Real-time state
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -572,12 +575,16 @@ const SupportPortal: React.FC = () => {
                          session.restaurant?.name?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === 'all' || session.status === statusFilter;
     const matchesPriority = priorityFilter === 'all' || session.priority === priorityFilter;
+    const matchesTab = activeSessionsTab === 'active' 
+      ? session.status !== 'closed' 
+      : session.status === 'closed';
     
-    return matchesSearch && matchesStatus && matchesPriority;
+    return matchesSearch && matchesStatus && matchesPriority && matchesTab;
   });
 
   const activeSessions = sessions.filter(s => s.status === 'active');
   const myAssignedSessions = sessions.filter(s => s.assigned_agent_id === agent?.id);
+  const archivedSessions = sessions.filter(s => s.status === 'closed');
 
   if (!agent) {
     return (
@@ -688,6 +695,32 @@ const SupportPortal: React.FC = () => {
       <div className="flex h-[calc(100vh-80px)]">
         {/* Sessions Sidebar */}
         <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+          {/* Sessions Tab Toggle */}
+          <div className="p-4 border-b border-gray-200">
+            <div className="flex bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setActiveSessionsTab('active')}
+                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                  activeSessionsTab === 'active'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Active ({sessions.filter(s => s.status !== 'closed').length})
+              </button>
+              <button
+                onClick={() => setActiveSessionsTab('archived')}
+                className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
+                  activeSessionsTab === 'archived'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Archived ({archivedSessions.length})
+              </button>
+            </div>
+          </div>
+
           {/* Filters */}
           <div className="p-4 border-b border-gray-200 space-y-3">
             <div className="relative">
@@ -966,16 +999,24 @@ const SupportPortal: React.FC = () => {
                                   <div key={attachment.id} className="bg-white/10 rounded-lg p-2">
                                     {attachment.file_type.startsWith('image/') ? (
                                       <div className="space-y-2">
-                                        <img
+                                        <button
+                                          onClick={() => {
+                                            setPreviewImageUrl(attachment.file_url);
+                                            setShowImagePreview(true);
+                                          }}
+                                          className="block max-w-full h-auto rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                                        >
+                                          <img
                                           src={attachment.file_url}
                                           alt={attachment.file_name}
-                                          className="max-w-full h-auto rounded-lg shadow-sm"
+                                            className="max-w-full h-auto rounded-lg"
                                           style={{ maxHeight: '200px' }}
                                           onError={(e) => {
                                             console.error('❌ Failed to load image:', attachment.file_url);
                                             e.currentTarget.style.display = 'none';
                                           }}
-                                        />
+                                          />
+                                        </button>
                                         <p className="text-xs opacity-75">{attachment.file_name}</p>
                                       </div>
                                     ) : (
@@ -1175,6 +1216,26 @@ const SupportPortal: React.FC = () => {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Preview Modal */}
+      {showImagePreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4">
+          <div className="relative max-w-4xl max-h-[90vh] w-full h-full flex items-center justify-center">
+            <button
+              onClick={() => setShowImagePreview(false)}
+              className="absolute top-4 right-4 p-3 bg-white/20 hover:bg-white/30 rounded-full text-white transition-colors z-10"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <img
+              src={previewImageUrl}
+              alt="Preview"
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              onClick={() => setShowImagePreview(false)}
+            />
           </div>
         </div>
       )}
