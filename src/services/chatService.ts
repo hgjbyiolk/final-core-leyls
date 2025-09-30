@@ -128,93 +128,85 @@ export class ChatService {
 
   // Get all chat sessions (for support agents - sees ALL restaurants)
   static async getAllChatSessions(): Promise<ChatSession[]> {
-    try {
-      console.log('🔍 [SUPPORT PORTAL] Fetching ALL chat sessions across ALL restaurants');
-      
-      // Try using the service role bypass function first
-      console.log('🔍 [SUPPORT PORTAL] Trying service role bypass function...');
-      const { data: bypassData, error: bypassError } = await supabase.rpc('get_all_chat_sessions_for_support');
-      
-      if (!bypassError && bypassData) {
-        console.log('✅ [SUPPORT PORTAL] Service role bypass successful:', {
-          totalSessions: bypassData.length,
-          restaurants: [...new Set(bypassData.map((s: any) => s.restaurant_name))].filter(Boolean)
-        });
-        
-        // Transform the data to match our interface
-       // Transform the data to match our interface
-const transformedData = bypassData.map((session: any) => ({
-  ...session,
-  restaurant: session.restaurant_name ? {
-    name: session.restaurant_name,
-    slug: session.restaurant_slug
-  } : null,
-  participants: session.chat_participants || []  // ✅ add this line
-}));
-
-
-        
-        return transformedData;
-      }
-      
-      console.warn('⚠️ [SUPPORT PORTAL] Service role bypass failed, trying direct query:', bypassError);
-      
-      // Fallback to direct query
-      console.log('🔍 [SUPPORT PORTAL] Executing direct chat sessions query...');
-const { data, error } = await supabase
-  .from('chat_sessions')
-  .select(`
-    *,
-    restaurant:restaurants(name, slug),
-    chat_participants (
-      id,
-      user_id,
-      user_name,
-      user_type,
-      is_online,
-      joined_at
-    )
-  `)
-  .order('last_message_at', { ascending: false });
-
-
-
-      if (error) {
-        console.error('❌ [SUPPORT PORTAL] Error fetching all chat sessions:', error);
-        console.error('❌ [SUPPORT PORTAL] Error details:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-          hint: error.hint
-        });
-        
-        throw error;
-      }
-      
-      const breakdown = data?.reduce((acc, session) => {
-        const restaurantName = session.restaurant?.name || 'Unknown Restaurant';
-        acc[restaurantName] = (acc[restaurantName] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>) || {};
-      
-      console.log('✅ [SUPPORT PORTAL] Successfully fetched ALL chat sessions:', {
-        totalSessions: data?.length || 0,
-        uniqueRestaurants: Object.keys(breakdown).length,
-        sessionsByRestaurant: breakdown,
-        sampleSessions: data?.slice(0, 3).map(s => ({
-          id: s.id,
-          title: s.title,
-          restaurant: s.restaurant?.name,
-          status: s.status
-        })) || []
+  try {
+    console.log('🔍 [SUPPORT PORTAL] Fetching ALL chat sessions across ALL restaurants');
+    
+    // Try using the service role bypass function first
+    console.log('🔍 [SUPPORT PORTAL] Trying service role bypass function...');
+    const { data: bypassData, error: bypassError } = await supabase.rpc('get_all_chat_sessions_for_support');
+    
+    if (!bypassError && bypassData) {
+      console.log('✅ [SUPPORT PORTAL] Service role bypass successful:', {
+        totalSessions: bypassData.length,
+        restaurants: [...new Set(bypassData.map((s: any) => s.restaurant_name))].filter(Boolean)
       });
       
-      return data || [];
-    } catch (error: any) {
-      console.error('❌ [SUPPORT PORTAL] Critical error fetching all chat sessions:', error);
-      return [];
+      // Transform and filter out closed sessions
+      const transformedData = bypassData
+        .filter((session: any) => session.status !== 'closed')
+        .map((session: any) => ({
+          ...session,
+          restaurant: session.restaurant_name ? {
+            name: session.restaurant_name,
+            slug: session.restaurant_slug
+          } : null,
+          participants: session.chat_participants || []
+        }));
+
+      return transformedData;
     }
+    
+    console.warn('⚠️ [SUPPORT PORTAL] Service role bypass failed, trying direct query:', bypassError);
+    
+    // Fallback to direct query
+    console.log('🔍 [SUPPORT PORTAL] Executing direct chat sessions query...');
+    const { data, error } = await supabase
+      .from('chat_sessions')
+      .select(`
+        *,
+        restaurant:restaurants(name, slug),
+        chat_participants (
+          id,
+          user_id,
+          user_name,
+          user_type,
+          is_online,
+          joined_at
+        )
+      `)
+      .neq('status', 'closed')   // 👈 exclude closed
+      .order('last_message_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ [SUPPORT PORTAL] Error fetching all chat sessions:', error);
+      throw error;
+    }
+    
+    const breakdown = data?.reduce((acc, session) => {
+      const restaurantName = session.restaurant?.name || 'Unknown Restaurant';
+      acc[restaurantName] = (acc[restaurantName] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>) || {};
+    
+    console.log('✅ [SUPPORT PORTAL] Successfully fetched ALL chat sessions:', {
+      totalSessions: data?.length || 0,
+      uniqueRestaurants: Object.keys(breakdown).length,
+      sessionsByRestaurant: breakdown,
+      sampleSessions: data?.slice(0, 3).map(s => ({
+        id: s.id,
+        title: s.title,
+        restaurant: s.restaurant?.name,
+        status: s.status
+      })) || []
+    });
+    
+    return data || [];
+  } catch (error: any) {
+    console.error('❌ [SUPPORT PORTAL] Critical error fetching all chat sessions:', error);
+    return [];
   }
+}
+
 
   // Get chat sessions for a specific restaurant (for restaurant managers)
   static async getRestaurantChatSessions(restaurantId: string): Promise<ChatSession[]> {
