@@ -174,7 +174,7 @@ export class ChatService {
           joined_at
         )
       `)
-      .neq('status', 'closed')   // 👈 exclude closed
+      // .neq('status', 'closed')   // 👈 exclude closed 
      .eq('is_active', true)   // ✅ only fetch active sessions
       .order('last_message_at', { ascending: false });
 
