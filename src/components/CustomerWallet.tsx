@@ -316,14 +316,14 @@ const CustomerWallet: React.FC<CustomerWalletProps> = ({ isDemo = false, onClose
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            <img 
-              src="/image.png" 
-              alt="VOYA" 
-              className="w-12 h-12 object-contain"
+            <img
+              src="/leyls.png"
+              alt="Leyls"
+              className="h-10 w-auto object-contain"
             />
             <div>
-              <h1 className="font-bold text-gray-900 font-['Space_Grotesk',sans-serif]">{restaurant.name}</h1>
-              <p className="text-xs text-gray-500">Loyalty Program</p>
+              <h1 className="text-lg font-semibold text-gray-900">{restaurant.name}</h1>
+              <p className="text-xs text-gray-500 font-light">Loyalty Program</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -352,13 +352,13 @@ const CustomerWallet: React.FC<CustomerWalletProps> = ({ isDemo = false, onClose
         {activeTab === 'home' && (
           <div className="p-4 space-y-6">
             {/* Customer Info Card */}
-            <div className="bg-white rounded-2xl p-6 border border-gray-200">
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 bg-gradient-to-br from-[#E6A85C] via-[#E85A9B] to-[#D946EF] rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg">
                   {customer.first_name[0]}{customer.last_name[0]}
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-xl font-bold text-gray-900 font-['Space_Grotesk',sans-serif]">
+                  <h2 className="text-xl font-semibold text-gray-900">
                     {customer.first_name} {customer.last_name}
                   </h2>
                   <div className="flex items-center gap-2 mt-1">
@@ -369,7 +369,7 @@ const CustomerWallet: React.FC<CustomerWalletProps> = ({ isDemo = false, onClose
               </div>
 
               {/* Tier Progress */}
-              <div className={`${tierInfo.bgColor} ${tierInfo.borderColor} border rounded-xl p-4 mb-4`}>
+              <div className={`${tierInfo.bgColor} ${tierInfo.borderColor} border rounded-2xl p-4 mb-4`}>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-gray-700">Tier Progress</span>
                   {nextTierProgress.nextTier && (
@@ -398,15 +398,15 @@ const CustomerWallet: React.FC<CustomerWalletProps> = ({ isDemo = false, onClose
                   <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-2">
                     <TrendingUp className="h-6 w-6 text-green-600" />
                   </div>
-                  <p className="text-sm text-gray-600">Available Points</p>
-                  <p className="text-2xl font-bold text-gray-900">{customer.total_points.toLocaleString()}</p>
+                  <p className="text-sm text-gray-600 font-light">Available Points</p>
+                  <p className="text-3xl font-bold text-gray-900">{customer.total_points.toLocaleString()}</p>
                 </div>
                 <div className="text-center">
                   <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-2">
                     <Star className="h-6 w-6 text-blue-600" />
                   </div>
-                  <p className="text-sm text-gray-600">Total Spent</p>
-                  <p className="text-2xl font-bold text-gray-900">{customer.total_spent}</p>
+                  <p className="text-sm text-gray-600 font-light">Total Spent</p>
+                  <p className="text-3xl font-bold text-gray-900">{customer.total_spent}</p>
                   <p className="text-xs text-gray-500">AED</p>
                 </div>
               </div>
@@ -414,7 +414,7 @@ const CustomerWallet: React.FC<CustomerWalletProps> = ({ isDemo = false, onClose
               {/* QR Code Button */}
               <button
                 onClick={() => setShowQRCode(true)}
-                className="w-full bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] text-white font-bold py-4 px-6 rounded-xl hover:shadow-lg transition-all duration-200 flex items-center justify-center gap-2"
+                className="w-full bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] text-white font-semibold py-4 px-6 rounded-2xl hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2"
               >
                 <QrCode className="h-5 w-5" />
                 Show QR to Earn Points
@@ -423,7 +423,7 @@ const CustomerWallet: React.FC<CustomerWalletProps> = ({ isDemo = false, onClose
 
             {/* Quick Stats */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white rounded-xl p-4 border border-gray-200">
+              <div className="bg-white rounded-2xl p-4 border border-gray-100">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                     <Gift className="h-5 w-5 text-purple-600" />
@@ -434,8 +434,8 @@ const CustomerWallet: React.FC<CustomerWalletProps> = ({ isDemo = false, onClose
                   </div>
                 </div>
               </div>
-              
-              <div className="bg-white rounded-xl p-4 border border-gray-200">
+
+              <div className="bg-white rounded-2xl p-4 border border-gray-100">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
                     <Sparkles className="h-5 w-5 text-yellow-600" />
@@ -449,9 +449,9 @@ const CustomerWallet: React.FC<CustomerWalletProps> = ({ isDemo = false, onClose
             </div>
 
             {/* Available Rewards Preview */}
-            <div className="bg-white rounded-2xl p-6 border border-gray-200">
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-bold text-gray-900 font-['Space_Grotesk',sans-serif]">Available Rewards</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Available Rewards</h3>
                 <button
                   onClick={() => setActiveTab('rewards')}
                   className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
@@ -494,7 +494,7 @@ const CustomerWallet: React.FC<CustomerWalletProps> = ({ isDemo = false, onClose
         {/* Rewards Tab */}
         {activeTab === 'rewards' && (
           <div className="p-4 space-y-4">
-            <h2 className="text-xl font-bold text-gray-900 font-['Space_Grotesk',sans-serif]">Available Rewards</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Available Rewards</h2>
             
             {rewards.length === 0 ? (
               <div className="bg-white rounded-2xl p-12 border border-gray-200 text-center">

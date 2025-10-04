@@ -91,7 +91,7 @@ const LandingPage: React.FC = () => {
     {
       name: 'Ahmed Al-Rashid',
       role: 'Owner, Spice Route Restaurant',
-      content: 'Voya transformed our customer retention. We saw a 40% increase in repeat customers within 3 months.',
+      content: 'Leyls transformed our customer retention. We saw a 40% increase in repeat customers within 3 months.',
       rating: 5,
       avatar: 'AR'
     },
@@ -173,10 +173,7 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <img src="/image.png" alt="VOYA" className="w-10 h-10 object-contain" />
-              <span className="text-2xl font-bold font-['Space_Grotesk'] bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] bg-clip-text text-transparent">
-                VOYA
-              </span>
+              <img src="/leyls.png" alt="Leyls" className="h-8 w-auto object-contain" />
             </div>
 
             {/* Desktop Navigation */}
@@ -256,18 +253,16 @@ const LandingPage: React.FC = () => {
               transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
               className="mb-8"
             >
-              <img src="/image.png" alt="VOYA" className="w-24 h-24 mx-auto mb-6" />
-              <h1 className="text-5xl md:text-7xl font-bold font-['Space_Grotesk'] mb-6 leading-tight">
+              <img src="/leyls.png" alt="Leyls" className="h-16 w-auto mx-auto mb-8" />
+              <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight tracking-tight">
                 <span className="bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] bg-clip-text text-transparent">
-                  Transform
+                  Restaurant Loyalty,
                 </span>
                 <br />
-                <span className="text-gray-900">Your Restaurant's</span>
-                <br />
-                <span className="text-gray-900">Customer Loyalty</span>
+                <span className="text-gray-900">Simplified</span>
               </h1>
-              <p className="text-xl md:text-2xl text-gray-600 mb-8 leading-relaxed max-w-3xl mx-auto">
-                The complete loyalty platform that increases customer retention by 40% and boosts revenue through intelligent rewards and analytics.
+              <p className="text-lg md:text-xl text-gray-600 mb-8 leading-relaxed max-w-2xl mx-auto font-light">
+                Build stronger customer relationships with an elegant loyalty platform designed for modern restaurants
               </p>
             </motion.div>
 
@@ -327,14 +322,11 @@ const LandingPage: React.FC = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-bold font-['Space_Grotesk'] text-gray-900 mb-6">
-              Everything You Need to Build
-              <span className="block bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] bg-clip-text text-transparent">
-                Customer Loyalty
-              </span>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
+              Everything you need
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              From QR-based point collection to advanced analytics, Voya provides all the tools you need to create a thriving loyalty program.
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto font-light">
+              A complete loyalty platform with the essentials
             </p>
           </motion.div>
 
@@ -348,15 +340,15 @@ const LandingPage: React.FC = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                   viewport={{ once: true }}
-                  className="bg-white rounded-2xl p-8 border border-gray-200 hover:border-gray-300 hover:shadow-lg transition-all duration-300 group"
+                  className="bg-white rounded-3xl p-8 border border-gray-100 hover:border-gray-200 hover:shadow-xl transition-all duration-300 group"
                 >
-                  <div className={`w-16 h-16 bg-gradient-to-r ${feature.color} rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+                  <div className={`w-14 h-14 bg-gradient-to-r ${feature.color} rounded-2xl flex items-center justify-center mb-5 group-hover:scale-105 transition-transform duration-300`}>
                     <Icon className="h-8 w-8 text-white" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-4 font-['Space_Grotesk']">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
                     {feature.title}
                   </h3>
-                  <p className="text-gray-600 leading-relaxed">
+                  <p className="text-sm text-gray-600 leading-relaxed font-light">
                     {feature.description}
                   </p>
                 </motion.div>
@@ -376,14 +368,11 @@ const LandingPage: React.FC = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-bold font-['Space_Grotesk'] text-gray-900 mb-6">
-              Simple, Transparent
-              <span className="block bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] bg-clip-text text-transparent">
-                Pricing
-              </span>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
+              Simple pricing
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Choose the plan that fits your restaurant's needs. Start with our free trial and upgrade anytime.
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto font-light">
+              Choose the plan that works for you
             </p>
           </motion.div>
 
@@ -455,11 +444,8 @@ const LandingPage: React.FC = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-4xl md:text-5xl font-bold font-['Space_Grotesk'] text-gray-900 mb-6">
-              Loved by Restaurant
-              <span className="block bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] bg-clip-text text-transparent">
-                Owners
-              </span>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
+              Trusted by restaurants
             </h2>
           </motion.div>
 
@@ -518,11 +504,11 @@ const LandingPage: React.FC = () => {
             transition={{ duration: 0.8 }}
             viewport={{ once: true }}
           >
-            <h2 className="text-4xl md:text-5xl font-bold font-['Space_Grotesk'] text-white mb-6">
-              Ready to Transform Your Restaurant?
+            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+              Ready to get started?
             </h2>
-            <p className="text-xl text-white/90 mb-8 leading-relaxed">
-              Join hundreds of restaurants already using Voya to build stronger customer relationships and increase revenue.
+            <p className="text-lg text-white/90 mb-8 leading-relaxed font-light">
+              Join restaurants using Leyls to build customer loyalty
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button 
@@ -548,8 +534,7 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center gap-3 mb-4 md:mb-0">
-              <img src="/image.png" alt="VOYA" className="w-8 h-8 object-contain" />
-              <span className="text-xl font-bold font-['Space_Grotesk']">VOYA</span>
+              <img src="/leyls.png" alt="Leyls" className="h-6 w-auto object-contain" />
             </div>
             <div className="flex items-center gap-6 text-gray-400">
               <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
@@ -558,7 +543,7 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2025 Voya. All rights reserved.</p>
+            <p>&copy; 2025 Leyls. All rights reserved.</p>
           </div>
         </div>
       </footer>

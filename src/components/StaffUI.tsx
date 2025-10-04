@@ -365,8 +365,8 @@ const StaffUI: React.FC = () => {
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3">
               <img 
-                src="/image.png" 
-                alt="VOYA" 
+                src="/leyls.png" 
+                alt="Leyls" 
                 className="w-12 h-12 object-contain"
               />
               <div>
@@ -381,8 +381,8 @@ const StaffUI: React.FC = () => {
           <div className="w-full max-w-2xl">
             <div className="text-center mb-8">
               <img 
-                src="/image.png" 
-                alt="VOYA" 
+                src="/leyls.png" 
+                alt="Leyls" 
                 className="w-20 h-20 object-contain mx-auto mb-4"
               />
               <h2 className="text-2xl font-bold text-gray-900 mb-2 font-['Space_Grotesk']">Select Your Branch</h2>
@@ -434,8 +434,8 @@ const StaffUI: React.FC = () => {
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3">
               <img 
-                src="/image.png" 
-                alt="VOYA" 
+                src="/leyls.png" 
+                alt="Leyls" 
                 className="w-12 h-12 object-contain"
               />
               <div>
@@ -462,8 +462,8 @@ const StaffUI: React.FC = () => {
               <div className="text-center mb-6">
                 {/* <div className="w-16 h-16 bg-gradient-to-br from-[#E6A85C] via-[#E85A9B] to-[#D946EF] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
                   <img 
-                    src="/image.png" 
-                    alt="VOYA" 
+                    src="/leyls.png" 
+                    alt="Leyls" 
                     className="w-16 h-16 object-contain"
                   /> 
                 </div> */}
@@ -532,8 +532,8 @@ const StaffUI: React.FC = () => {
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <img 
-              src="/image.png" 
-              alt="VOYA" 
+              src="/leyls.png" 
+              alt="Leyls" 
               className="w-12 h-12 object-contain"
             />
             <div>

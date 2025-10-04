@@ -45,12 +45,12 @@ const LoginPage: React.FC = () => {
     
     <div className="text-center">
       <img
-        src="/image.png"
-        alt="VOYA"
+        src="/leyls.png"
+        alt="Leyls"
         className="mx-auto h-16 w-auto mb-4"
       />
       <h2 className="text-3xl font-bold text-gray-900 font-['Space_Grotesk']">
-        Welcome to VOYA
+        Welcome to Leyls
       </h2>
       <p className="mt-2 text-gray-600">
         Sign in to your restaurant dashboard

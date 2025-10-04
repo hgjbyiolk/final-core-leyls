@@ -27,12 +27,14 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.011em;
 }
 
 body {
-  background-color: var(--color-bg);
+  background-color: #fafafa;
   color: var(--color-dark);
-  line-height: 1.6;
+  line-height: 1.7;
+  font-weight: 400;
 }
 
 /* Modern glass morphism */
@@ -101,7 +103,8 @@ body {
 
 /* Modern scrollbar */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -109,12 +112,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(13, 27, 42, 0.2);
-  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(13, 27, 42, 0.4);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 /* Reduced motion support */

@@ -209,10 +209,7 @@ const SignupPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link to="/" className="flex items-center gap-3">
-              <img src="/image.png" alt="VOYA" className="w-10 h-10 object-contain" />
-              <span className="text-2xl font-bold font-['Space_Grotesk'] bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] bg-clip-text text-transparent">
-                VOYA
-              </span>
+              <img src="/leyls.png" alt="Leyls" className="h-8 w-auto object-contain" />
             </Link>
             <Link to="/login" className="text-gray-600 hover:text-gray-900 transition-colors">
               Already have an account? Sign in
@@ -263,7 +260,7 @@ const SignupPage: React.FC = () => {
                     Create Your Account
                   </h2>
                   <p className="text-gray-600">
-                    Get started with Voya's loyalty platform in minutes
+                    Get started with Leyls loyalty platform in minutes
                   </p>
                 </div>
 
