@@ -2,24 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { SubscriptionService } from '../services/subscriptionService';
 import { useAuth } from '../contexts/AuthContext';
-import {
-  Home,
-  Users,
-  Gift,
-  Settings,
-  LogOut,
-  Menu,
-  X,
-  ChefHat,
-  MapPin,
-  HeadphonesIcon,
-  Wallet,
-  BarChart3,
-  Crown,
-  Clock,
-  ArrowRight,
-  CreditCard
-} from 'lucide-react';
+import { Home, Users, Gift, Settings, LogOut, Menu, X, ChefHat, MapPin, Headphones as HeadphonesIcon, Wallet, BarChart3, Crown, Clock, ArrowRight, CreditCard } from 'lucide-react';
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
