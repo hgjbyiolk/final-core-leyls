@@ -309,7 +309,6 @@ html {
   }
 }
 
-
 @keyframes shimmer {
   0% {
     transform: translateX(-100%);
@@ -320,7 +319,8 @@ html {
 }
 
 .animate-shimmer {
-  animation: shimmer 1.2s linear infinite;
+  animation: shimmer 0.8s linear infinite;
   background-size: 200% 100%;
   mix-blend-mode: screen;
 }
+
