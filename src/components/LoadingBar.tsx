@@ -3,10 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 
 interface LoadingBarProps {
   isLoading: boolean;
-  duration?: number; // seconds per full sweep
+  duration?: number; // seconds per shimmer pass
 }
 
-const LoadingBar: React.FC<LoadingBarProps> = ({ isLoading, duration = 1.2 }) => {
+const LoadingBar: React.FC<LoadingBarProps> = ({ isLoading, duration = 0.8 }) => {
   const [shouldShow, setShouldShow] = useState(isLoading);
   const [finishing, setFinishing] = useState(false);
 
@@ -15,7 +15,7 @@ const LoadingBar: React.FC<LoadingBarProps> = ({ isLoading, duration = 1.2 }) =>
       setFinishing(false);
       setShouldShow(true);
     } else {
-      // allow one final loop before fade
+      // Let one last shimmer complete before fading
       setFinishing(true);
       const timer = setTimeout(() => setShouldShow(false), duration * 1000);
       return () => clearTimeout(timer);
@@ -28,14 +28,18 @@ const LoadingBar: React.FC<LoadingBarProps> = ({ isLoading, duration = 1.2 }) =>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0.5, ease: "easeOut" } }}
-          className="fixed top-0 left-0 right-0 z-50 h-[6px] md:h-[8px]"
+          exit={{
+            opacity: 0,
+            scaleY: 0.3,
+            transition: { duration: 0.4, ease: "easeInOut" },
+          }}
+          className="fixed top-0 left-0 right-0 z-50 h-[8px] rounded-b-xl overflow-hidden"
         >
-          <div className="relative h-full w-full overflow-hidden bg-gray-900/10">
-            {/* vibrant main gradient that keeps moving */}
+          <div className="relative h-full w-full bg-transparent">
+            {/* Core gradient shimmer */}
             <motion.div
               key={isLoading ? "loop" : "finish"}
-              className="absolute top-0 left-0 h-full w-full"
+              className="absolute top-0 left-0 h-full w-full rounded-b-xl"
               initial={{ x: "-100%" }}
               animate={{
                 x: finishing ? "0%" : ["-100%", "100%"],
@@ -47,14 +51,14 @@ const LoadingBar: React.FC<LoadingBarProps> = ({ isLoading, duration = 1.2 }) =>
               }}
               style={{
                 background:
-                  "linear-gradient(90deg, #E6A85C 0%, #E85A9B 50%, #C874EC 100%)",
-                backgroundSize: "200% 100%",
-                filter: "brightness(1.2) saturate(1.2)",
+                  "linear-gradient(90deg, #FFB86C 0%, #FF61A6 35%, #9D5CFF 70%, #3AC5FF 100%)",
+                filter: "brightness(1.3) saturate(1.4)",
+                boxShadow: "0 0 20px rgba(157,92,255,0.6)",
               }}
             />
 
-            {/* bright shimmer band revealing effect */}
-            <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.6),transparent)] animate-shimmer" />
+            {/* White gloss reveal */}
+            <div className="absolute inset-0 rounded-b-xl bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.85),transparent)] animate-shimmer" />
           </div>
         </motion.div>
       )}
