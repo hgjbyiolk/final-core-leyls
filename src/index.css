@@ -309,18 +309,20 @@ html {
   }
 }
 
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
+@keyframes continuous-flash {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
-.animate-shimmer {
-  animation: shimmer 0.8s linear infinite;
-  background-size: 200% 100%;
-  mix-blend-mode: screen;
+@keyframes flash-gloss {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
+.animate-continuous-flash {
+  animation: continuous-flash 1s linear infinite;
+}
+
+.animate-flash-gloss {
+  animation: flash-gloss 1s linear infinite;
+}
