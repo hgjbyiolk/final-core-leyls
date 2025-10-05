@@ -148,7 +148,7 @@ const CustomerOnboarding: React.FC<CustomerOnboardingProps> = ({ restaurant, onC
             transition={{ delay: 0.2, duration: 0.8 }}
           >
             <div className="w-10 h-10 flex items-center justify-center">
-              <img src="/leyls.png" alt="Leyls" className="w-8 h-8 object-contain" />
+              <img src="/ely.svg" alt="Leyls" className="w-8 h-8 object-contain" />
             </div>
             <div>
               <h1 className="font-bold text-gray-900 text-lg font-['Space_Grotesk',sans-serif]">{restaurant.name}</h1>
@@ -194,7 +194,7 @@ const CustomerOnboarding: React.FC<CustomerOnboardingProps> = ({ restaurant, onC
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.2, duration: 0.8 }}
                   >
-                    <img src="/leyls.png" alt="Leyls" className="w-32 h-32 object-contain" />
+                    <img src="/ely.svg" alt="Leyls" className="w-32 h-32 object-contain" />
                   </motion.div>
                   
                   {/* Welcome Text with Reveal Animation */}
@@ -268,7 +268,7 @@ const CustomerOnboarding: React.FC<CustomerOnboardingProps> = ({ restaurant, onC
                     transition={{ delay: 0.1, duration: 0.6 }}
                   >
                     <div className="w-16 h-16 bg-gradient-to-br from-[#E6A85C] via-[#E85A9B] to-[#D946EF] rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                      <img src="/leyls.png" alt="Leyls" className="w-10 h-10 object-contain" />
+                      <img src="/ely.svg" alt="Leyls" className="w-10 h-10 object-contain" />
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 mb-2 font-['Space_Grotesk',sans-serif]">
                       {authMode === 'login' ? 'Welcome Back!' : 'Join Our Program'}

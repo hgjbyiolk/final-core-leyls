@@ -152,7 +152,7 @@ export default function DashboardLayout() {
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white shadow-xl">
           <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200">
             <div className="flex items-center space-x-3">
-              <img src="/leyls.png" alt="Leyls" className="h-8 w-auto object-contain" />
+              <img src="/ely.svg" alt="Leyls" className="h-7 w-auto object-contain" />
             </div>
             <button
               onClick={() => setSidebarOpen(false)}
@@ -200,7 +200,7 @@ export default function DashboardLayout() {
         <div className="flex flex-col flex-grow bg-white border-r border-gray-200 shadow-sm">
           <div className="flex h-16 items-center px-4 border-b border-gray-100">
             <div className="flex items-center space-x-3">
-              <img src="/leyls.png" alt="Leyls" className="h-9 w-auto object-contain" />
+              <img src="/ely.svg" alt="Leyls" className="h-8 w-auto object-contain" />
             </div>
           </div>
           <nav className="flex-1 px-4 py-4 space-y-2">

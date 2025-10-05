@@ -45,7 +45,7 @@ const LoginPage: React.FC = () => {
     
     <div className="text-center">
       <img
-        src="/leyls.png"
+        src="/ely.svg"
         alt="Leyls"
         className="mx-auto h-16 w-auto mb-4"
       />

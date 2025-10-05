@@ -13,6 +13,7 @@ import { CustomerService } from '../services/customerService';
 import { RewardService } from '../services/rewardService';
 import CustomerOnboarding from './CustomerOnboarding';
 import CustomerRedemptionModal from './CustomerRedemptionModal';
+import LoadingBar from './LoadingBar';
 
 interface Restaurant {
   id: string;
@@ -260,12 +261,15 @@ const CustomerWallet: React.FC<CustomerWalletProps> = ({ isDemo = false, onClose
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <>
+        <LoadingBar isLoading={loading} />
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
+      </>
     );
   }
 
@@ -311,15 +315,17 @@ const CustomerWallet: React.FC<CustomerWalletProps> = ({ isDemo = false, onClose
   const nextTierProgress = getNextTierProgress();
 
   return (
-    <div className="min-h-screen bg-gray-50 font-['Inter',sans-serif]">
+    <>
+      <LoadingBar isLoading={loading} />
+      <div className="min-h-screen bg-gray-50 font-['Inter',sans-serif]">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <img
-              src="/leyls.png"
+              src="/ely.svg"
               alt="Leyls"
-              className="h-10 w-auto object-contain"
+              className="h-8 w-auto object-contain"
             />
             <div>
               <h1 className="text-lg font-semibold text-gray-900">{restaurant.name}</h1>
@@ -749,7 +755,8 @@ const CustomerWallet: React.FC<CustomerWalletProps> = ({ isDemo = false, onClose
           }}
         />
       )}
-    </div>
+      </div>
+    </>
   );
 };
 

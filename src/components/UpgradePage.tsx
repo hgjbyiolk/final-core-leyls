@@ -161,7 +161,7 @@ const currentPlan = plans.find(p => p.planId === selectedPlan);
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <img src="/leyls.png" alt="Leyls" className="w-10 h-10 object-contain" />
+              <img src="/ely.svg" alt="Leyls" className="w-10 h-10 object-contain" />
               <span className="text-2xl font-bold font-['Space_Grotesk'] bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] bg-clip-text text-transparent">
                 VOYA
               </span>

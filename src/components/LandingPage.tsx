@@ -173,7 +173,7 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <img src="/leyls.png" alt="Leyls" className="h-8 w-auto object-contain" />
+              <img src="/ely.svg" alt="Leyls" className="h-7 w-auto object-contain" />
             </div>
 
             {/* Desktop Navigation */}
@@ -253,7 +253,7 @@ const LandingPage: React.FC = () => {
               transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
               className="mb-8"
             >
-              <img src="/leyls.png" alt="Leyls" className="h-16 w-auto mx-auto mb-8" />
+              <img src="/ely.svg" alt="Leyls" className="h-16 w-auto mx-auto mb-8" />
               <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight tracking-tight">
                 <span className="bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] bg-clip-text text-transparent">
                   Restaurant Loyalty,
@@ -319,7 +319,7 @@ const LandingPage: React.FC = () => {
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, amount: 0.3 }}
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
@@ -339,7 +339,7 @@ const LandingPage: React.FC = () => {
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
-                  viewport={{ once: true }}
+                  viewport={{ once: true, amount: 0.2 }}
                   className="bg-white rounded-3xl p-8 border border-gray-100 hover:border-gray-200 hover:shadow-xl transition-all duration-300 group"
                 >
                   <div className={`w-14 h-14 bg-gradient-to-r ${feature.color} rounded-2xl flex items-center justify-center mb-5 group-hover:scale-105 transition-transform duration-300`}>
@@ -365,7 +365,7 @@ const LandingPage: React.FC = () => {
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, amount: 0.3 }}
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
@@ -441,7 +441,7 @@ const LandingPage: React.FC = () => {
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, amount: 0.3 }}
             className="text-center mb-16"
           >
             <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
@@ -502,7 +502,7 @@ const LandingPage: React.FC = () => {
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, amount: 0.3 }}
           >
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
               Ready to get started?
@@ -534,7 +534,7 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center gap-3 mb-4 md:mb-0">
-              <img src="/leyls.png" alt="Leyls" className="h-6 w-auto object-contain" />
+              <img src="/ely.svg" alt="Leyls" className="h-6 w-auto object-contain" />
             </div>
             <div className="flex items-center gap-6 text-gray-400">
               <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>

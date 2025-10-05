@@ -12,6 +12,7 @@ import {
 import { useDashboardData } from '../hooks/useDashboardData';
 import { useAuth } from '../contexts/AuthContext';
 import LoyaltyROIDashboard from './LoyaltyROIDashboard';
+import LoadingBar from './LoadingBar';
 
 import { Link } from 'react-router-dom';
 const DashboardHome = () => {
@@ -65,7 +66,9 @@ const DashboardHome = () => {
   };
   if (loading) {
     return (
-      <div className="animate-pulse space-y-6">
+      <>
+        <LoadingBar isLoading={loading} />
+        <div className="animate-pulse space-y-6">
         <div className="flex items-center justify-between">
           <div className="h-8 bg-gray-200 rounded w-64"></div>
           <div className="h-10 bg-gray-200 rounded w-32"></div>
@@ -87,7 +90,8 @@ const DashboardHome = () => {
             <div className="h-64 bg-gray-200 rounded"></div>
           </div>
         </div>
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -177,7 +181,9 @@ const DashboardHome = () => {
   }
 
   return (
-    <div className="animate-fade-in space-y-6">
+    <>
+      <LoadingBar isLoading={loading} />
+      <div className="animate-fade-in space-y-6">
       {/* Time Range Selector */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
@@ -676,7 +682,8 @@ const DashboardHome = () => {
       )}
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 };
 
