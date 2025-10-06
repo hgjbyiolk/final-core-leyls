@@ -350,7 +350,7 @@ const DashboardHome = () => {
         <p className="text-sm text-gray-400">Start adding customers to see growth trends</p> 
       </div>
     </div>
-  </div>
+  </div> 
 )}
         {/* Popular Rewards Distribution */}
         {rewardDistribution.length > 0 ? (
