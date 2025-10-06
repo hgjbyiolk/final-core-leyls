@@ -401,6 +401,7 @@ const DashboardHome = () => {
           </div>
         )}
       </div>
+    </div> 
 
       {/* Loyalty Program ROI Analysis */}
       {loyaltyROI && (
