@@ -263,27 +263,33 @@ const DashboardHome = () => {
       {/* Enhanced Charts Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Customer Growth Chart */}
-{/* Customer Growth Chart (Minimal Version) */}
+{/* Customer Growth Chart — Minimal Glassy Style */}
 {customerGrowthData.length > 0 ? (
-  <div className="xl:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 hover:shadow-md transition-all duration-300">
+  <div className="xl:col-span-2 bg-white/60 backdrop-blur-xl border border-gray-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
     <div className="flex items-center justify-between mb-6">
       <div>
-        <h2 className="text-lg font-semibold text-gray-900">Customer Growth</h2>
-        <p className="text-sm text-gray-500">New vs returning customers</p>
+        <h2 className="text-lg font-semibold text-gray-800">Customer Growth</h2>
+        <p className="text-sm text-gray-500">Monthly overview</p>
       </div>
       <div className="flex items-center gap-2">
-        <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-colors">
+        <button className="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-50 transition-colors">
           <Filter className="h-4 w-4" />
         </button>
-        <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-colors">
+        <button className="p-2 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-50 transition-colors">
           <Download className="h-4 w-4" />
         </button>
       </div>
     </div>
 
-    <div className="h-80">
+    <div className="h-72">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={customerGrowthData} margin={{ top: 10, right: 20, bottom: 10, left: 0 }}>
+        <LineChart data={customerGrowthData} margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
+          <defs>
+            <linearGradient id="growthGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#34D399" stopOpacity={0.3} />
+              <stop offset="100%" stopColor="#34D399" stopOpacity={0} />
+            </linearGradient>
+          </defs>
           <XAxis
             dataKey="date"
             axisLine={false}
@@ -297,45 +303,44 @@ const DashboardHome = () => {
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: 'white',
+              background: 'rgba(255,255,255,0.9)',
               border: '1px solid #E5E7EB',
-              borderRadius: '10px',
-              boxShadow: '0 4px 8px rgba(0,0,0,0.05)',
+              borderRadius: '12px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
             }}
           />
           <Line
             type="monotone"
-            dataKey="newCustomers"
-            stroke="#E6A85C"
+            dataKey="totalCustomers"
+            stroke="#34D399"
             strokeWidth={3}
             dot={false}
-            name="New Customers"
+            fill="url(#growthGradient)"
+            name="Total Customers"
           />
-          <Line
+          <Area
             type="monotone"
-            dataKey="returningCustomers"
-            stroke="#E85A9B"
-            strokeWidth={2}
-            dot={false}
-            name="Returning Customers"
+            dataKey="totalCustomers"
+            stroke="none"
+            fill="url(#growthGradient)"
           />
         </LineChart>
       </ResponsiveContainer>
     </div>
   </div>
 ) : (
-  <div className="xl:col-span-2 bg-white rounded-2xl p-6 border border-gray-200">
+  <div className="xl:col-span-2 bg-white/70 backdrop-blur-md rounded-3xl p-6 border border-gray-100">
     <div className="flex items-center justify-between mb-6">
       <div>
-        <h2 className="text-lg font-semibold text-gray-900">Customer Growth</h2>
-        <p className="text-sm text-gray-500">New vs returning customers</p>
+        <h2 className="text-lg font-semibold text-gray-800">Customer Growth</h2>
+        <p className="text-sm text-gray-500">Monthly overview</p>
       </div>
     </div>
-    <div className="h-80 flex items-center justify-center">
+    <div className="h-72 flex items-center justify-center">
       <div className="text-center">
-        <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-        <p className="text-gray-500">No customer data available yet</p>
-        <p className="text-sm text-gray-400">Start adding customers to see growth trends</p>
+        <Users className="h-14 w-14 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">No customer data yet</p>
+        <p className="text-sm text-gray-400">Add customers to see growth trends</p>
       </div>
     </div>
   </div>
