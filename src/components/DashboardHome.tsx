@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { motion } from "framer-motion";
+
 import { 
   Users, TrendingUp, Gift, DollarSign, ArrowUpRight, ArrowDownRight,
   Filter, Download, Eye, MoreVertical, RefreshCw, AlertCircle, Plus,
