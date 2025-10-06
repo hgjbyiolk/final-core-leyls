@@ -13,7 +13,7 @@ import { useDashboardData } from '../hooks/useDashboardData';
 import { useAuth } from '../contexts/AuthContext';
 import LoyaltyROIDashboard from './LoyaltyROIDashboard';
 import LoadingBar from './LoadingBar';
-import { Filter, Download, Users } from 'lucide-react'; 
+import { Download, Users } from 'lucide-react'; 
 
 
 const DashboardHome = () => {
