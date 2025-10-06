@@ -45,9 +45,9 @@ const LoginPage: React.FC = () => {
     
     <div className="text-center">
       <img
-        src="/ely.svg"
+        src="/leyls-svg.svg"
         alt="Leyls"
-        className="mx-auto h-16 w-auto mb-4"
+        className="mx-auto h-14 w-auto mb-4"
       />
       <h2 className="text-3xl font-bold text-gray-900 font-['Space_Grotesk']">
         Welcome to Leyls

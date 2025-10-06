@@ -323,9 +323,9 @@ const CustomerWallet: React.FC<CustomerWalletProps> = ({ isDemo = false, onClose
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <img
-              src="/ely.svg"
+              src="/leyls-svg.svg"
               alt="Leyls"
-              className="h-8 w-auto object-contain"
+              className="h-9 w-auto object-contain"
             />
             <div>
               <h1 className="text-lg font-semibold text-gray-900">{restaurant.name}</h1>

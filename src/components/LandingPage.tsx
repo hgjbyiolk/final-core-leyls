@@ -173,7 +173,7 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <img src="/ely.svg" alt="Leyls" className="h-7 w-auto object-contain" />
+              <img src="/leyls-svg.svg" alt="Leyls" className="h-9 w-auto object-contain" />
             </div>
 
             {/* Desktop Navigation */}
@@ -253,7 +253,7 @@ const LandingPage: React.FC = () => {
               transition={{ duration: 0.8, ease: [0.4, 0, 0.2, 1] }}
               className="mb-8"
             >
-              <img src="/ely.svg" alt="Leyls" className="h-16 w-auto mx-auto mb-8" />
+              <img src="/leyls-svg.svg" alt="Leyls" className="h-20 w-auto mx-auto mb-8" />
               <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight tracking-tight">
                 <span className="bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] bg-clip-text text-transparent">
                   Restaurant Loyalty,
@@ -534,7 +534,7 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between">
             <div className="flex items-center gap-3 mb-4 md:mb-0">
-              <img src="/ely.svg" alt="Leyls" className="h-6 w-auto object-contain" />
+              <img src="/leyls-svg.svg" alt="Leyls" className="h-7 w-auto object-contain" />
             </div>
             <div className="flex items-center gap-6 text-gray-400">
               <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>

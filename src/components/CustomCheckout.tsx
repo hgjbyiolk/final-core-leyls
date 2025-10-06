@@ -283,7 +283,7 @@ const CustomCheckout: React.FC<CustomCheckoutProps> = ({ plan, autoRenew, onSucc
         className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 max-w-md w-full"
       >
         <div className="text-center mb-8">
-          <img src="/ely.svg" alt="Leyls" className="w-16 h-16 mx-auto mb-4" />
+          <img src="/leyls-svg.svg" alt="Leyls" className="w-16 h-16 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2 font-['Space_Grotesk']">
             Complete Your Upgrade
           </h2>
