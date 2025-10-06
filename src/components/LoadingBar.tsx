@@ -52,3 +52,4 @@ const LoadingBar: React.FC<LoadingBarProps> = ({ isLoading, speed = 1 }) => {
 };
 
 export default LoadingBar;
+ 
