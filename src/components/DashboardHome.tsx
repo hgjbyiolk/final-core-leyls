@@ -261,7 +261,7 @@ const DashboardHome = () => {
 
       {/* Enhanced Charts Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-      {/* Customer Growth Chart */}
+       {/* Customer Growth Chart */}
 {customerGrowthData.length > 0 ? (
   <div className="xl:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition-all duration-300">
     <div className="flex items-center justify-between mb-6">
@@ -294,18 +294,18 @@ const DashboardHome = () => {
             </linearGradient>
           </defs>
           
-          {/* CartesianGrid is REMOVED for a cleaner look */}
+          {/* REMOVED CartesianGrid for minimalism and clean background */}
           
           <XAxis 
             dataKey="date" 
             axisLine={false}
             tickLine={false}
-            className="text-xs text-gray-400" 
+            className="text-xs text-gray-400" // Minimal axis text
           />
           <YAxis 
             axisLine={false}
             tickLine={false}
-            className="text-xs text-gray-400" 
+            className="text-xs text-gray-400" // Minimal axis text
           />
           <Tooltip content={renderCustomTooltip} />
           
@@ -313,7 +313,7 @@ const DashboardHome = () => {
           <Area
             type="monotone"
             dataKey="returningCustomers"
-            stackId="1" // STACKED
+            stackId="1" // ADDED STACK ID
             stroke="#E85A9B"
             strokeWidth={3}
             fill="url(#returningCustomersVoya)"
@@ -325,7 +325,7 @@ const DashboardHome = () => {
           <Area
             type="monotone"
             dataKey="newCustomers"
-            stackId="1" // STACKED
+            stackId="1" // ADDED STACK ID
             stroke="#E6A85C"
             strokeWidth={3}
             fill="url(#newCustomersVoya)"
@@ -337,8 +337,21 @@ const DashboardHome = () => {
     </div>
   </div>
 ) : (
-// ... (Empty state remains the same)
-// ...
+  <div className="xl:col-span-2 bg-white rounded-2xl p-6 border border-gray-200">
+    <div className="flex items-center justify-between mb-6">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Customer Growth</h2>
+        <p className="text-sm text-gray-500">New vs returning customers</p>
+      </div>
+    </div>
+    <div className="h-80 flex items-center justify-center">
+      <div className="text-center">
+        <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">No customer data available yet</p>
+        <p className="text-sm text-gray-400">Start adding customers to see growth trends</p> 
+      </div> 
+    </div>
+  </div> 
 )}
         {/* Popular Rewards Distribution */}
         {rewardDistribution.length > 0 ? (
