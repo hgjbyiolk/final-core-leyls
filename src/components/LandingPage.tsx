@@ -258,6 +258,8 @@ const LandingPage: React.FC = () => {
               className="mb-8"
             >
               {/* <img src="/leyls-svg.svg" alt="Leyls" className="h-20 w-auto mx-auto mb-8" /> */} 
+              <br>
+              </br>
               <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight tracking-tight">
                 <span className="bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] bg-clip-text text-transparent">
                   Restaurant Loyalty,
