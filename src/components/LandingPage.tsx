@@ -393,7 +393,7 @@ const LandingPage: React.FC = () => {
 
 ---
 
-      {/* Pricing Section (Remains unchanged for this request) */}
+      {/* Pricing Section */}
       <section id="pricing" className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-white">
         <div className="max-w-7xl mx-auto">
           <motion.div
@@ -411,8 +411,9 @@ const LandingPage: React.FC = () => {
             </p>
           </motion.div>
 
+          {/* Use variants for staggered animation here */}
           <motion.div
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8" // Increased gap from gap-6 to gap-8
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
@@ -421,10 +422,10 @@ const LandingPage: React.FC = () => {
             {plans.map((plan) => (
               <motion.div
                 key={plan.name}
-                variants={childVariants}
+                variants={childVariants} // Apply child variant
                 className={`relative bg-white rounded-2xl p-8 border-2 transition-all duration-300 hover:shadow-xl ${
                   plan.popular 
-                    ? 'border-[#E6A85C] shadow-lg scale-[1.02] lg:scale-105' 
+                    ? 'border-[#E6A85C] shadow-lg scale-[1.02] lg:scale-105' // Slightly increased scale for emphasis
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
@@ -436,7 +437,7 @@ const LandingPage: React.FC = () => {
                   </div>
                 )}
 
-                <div className="text-center mb-8 pt-4">
+                <div className="text-center mb-8 pt-4"> {/* Added pt-4 for spacing under the popular badge */}
                   <h3 className="text-2xl font-bold text-gray-900 mb-2 font-['Space_Grotesk']">
                     {plan.name}
                   </h3>
@@ -449,8 +450,8 @@ const LandingPage: React.FC = () => {
 
                 <ul className="space-y-4 mb-8">
                   {plan.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                    <li key={featureIndex} className="flex items-start gap-3"> {/* Changed items-center to items-start for better alignment */}
+                      <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" /> {/* Added mt-0.5 for fine-tuning */}
                       <span className="text-gray-700">{feature}</span>
                     </li>
                   ))}
@@ -472,9 +473,7 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
----
-
-      {/* Testimonials Section (Remains unchanged for this request) */}
+      {/* Testimonials Section */}
       <section id="testimonials" className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-4xl mx-auto">
           <motion.div
@@ -489,11 +488,12 @@ const LandingPage: React.FC = () => {
             </h2>
           </motion.div>
 
-          <div className="relative mb-12">
+          <div className="relative mb-12"> {/* Added mb-12 for better flow to indicator dots */}
             <motion.div
               key={activeTestimonial}
               initial={{ opacity: 0, x: 50 }}
               animate={{ opacity: 1, x: 0 }}
+              // Remove exit prop here, as it conflicts with key-based transition when unmounting
               transition={{ duration: 0.6 }}
               className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-8 border border-gray-200 text-center"
             >
@@ -517,26 +517,25 @@ const LandingPage: React.FC = () => {
             </motion.div>
 
             {/* Testimonial Indicators */}
-            <div className="flex justify-center gap-3 mt-8">
+            <div className="flex justify-center gap-3 mt-8"> {/* Increased gap from gap-2 to gap-3 */}
               {testimonials.map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setActiveTestimonial(index)}
                   className={`w-3 h-3 rounded-full transition-all duration-300 ${
                     index === activeTestimonial 
-                      ? 'w-8 bg-gradient-to-r from-[#E6A85C] to-[#E85A9B]' 
+                      ? 'w-8 bg-gradient-to-r from-[#E6A85C] to-[#E85A9B]' // Added w-8 for a more prominent active state
                       : 'bg-gray-300 hover:bg-gray-400'
                   }`}
                 />
               ))}
             </div>
           </div>
+        </div>
       </section>
 
----
-
-      {/* CTA Section (Remains unchanged for this request) */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF]">
+      {/* CTA Section */}
+      <section className="py-32 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF]"> {/* Increased py-20 to py-32 for more visual weight */}
         <div className="max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -569,9 +568,7 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
----
-
-      {/* Footer (Remains unchanged for this request) */}
+      {/* Footer */}
       <footer className="py-12 px-4 sm:px-6 lg:px-8 bg-gray-900 text-white">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between">
