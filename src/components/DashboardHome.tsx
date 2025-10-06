@@ -259,8 +259,6 @@ const DashboardHome = () => {
         })}
       </div>
 
-      {/* Enhanced Charts Grid */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 {/* Customer Growth Chart - Minimalist Stacked Bar Chart Version */}
 {customerGrowthData.length > 0 ? (
   <div className="xl:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition-all duration-300">
@@ -305,7 +303,7 @@ const DashboardHome = () => {
             stackId="customerStack" 
             fill="#E6A85C" // Brand Color 1
             name="New Customers"
-            radius={[0, 0, 0, 0]} // Optional: keep corners sharp for minimalism
+            radius={[0, 0, 0, 0]} 
             animationDuration={1500}
           />
           
@@ -315,7 +313,7 @@ const DashboardHome = () => {
             stackId="customerStack" 
             fill="#E85A9B" // Brand Color 2
             name="Returning Customers"
-            radius={[4, 4, 0, 0]} // Add a subtle top-only radius for a modern finish
+            radius={[4, 4, 0, 0]} // Subtle top-only radius
             animationDuration={1500}
           />
         </BarChart>
@@ -323,7 +321,6 @@ const DashboardHome = () => {
     </div>
   </div>
 ) : (
-  {/* (Your existing No Data state remains the same) */}
   <div className="xl:col-span-2 bg-white rounded-2xl p-6 border border-gray-200">
     <div className="flex items-center justify-between mb-6">
       <div> 
