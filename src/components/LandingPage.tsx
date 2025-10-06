@@ -16,29 +16,6 @@ const LandingPage: React.FC = () => {
   const headerOpacity = useTransform(scrollY, [0, 100], [0.95, 1]);
   const heroY = useTransform(scrollY, [0, 300], [0, -50]);
 
-  // --- Animation Variants (Kept from previous fix) ---
-  const containerVariants = {
-    hidden: {},
-    visible: {
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const childVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.6,
-        ease: [0.4, 0, 0.2, 1],
-      },
-    },
-  };
-  // --- End Animation Variants ---
-
   const plans = [
     {
       name: 'Free Trial',
@@ -186,6 +163,29 @@ const LandingPage: React.FC = () => {
     setMobileMenuOpen(false);
   };
 
+  // 1. Define motion variants for smooth staggered entry
+
+  const containerVariants = {
+    hidden: {},
+    visible: {
+      transition: {
+        staggerChildren: 0.1, // Stagger delay between children
+      },
+    },
+  };
+
+  const childVariants = {
+    hidden: { opacity: 0, y: 30 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.6,
+        ease: [0.4, 0, 0.2, 1],
+      },
+    },
+  };
+
   return (
     <div className="min-h-screen bg-white font-['Inter',sans-serif]">
       {/* Header */}
@@ -194,13 +194,13 @@ const LandingPage: React.FC = () => {
         style={{ opacity: headerOpacity }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20"> {/* h-20 provides good vertical padding */}
+          <div className="flex items-center justify-between h-20">
             <div className="flex items-center gap-3">
               <img 
-        src="/leyls-svg.svg" 
-        alt="Leyls" 
-        className="h-10 sm:h-12 md:h-14 w-auto object-contain" 
-      /> {/* REDUCED LOGO SIZE: h-12/16/20 -> h-10/12/14 */}
+                src="/leyls-svg.svg" 
+                alt="Leyls" 
+                className="h-12 sm:h-16 md:h-20 w-auto object-contain" 
+              />
             </div>
 
             {/* Desktop Navigation */}
@@ -267,10 +267,8 @@ const LandingPage: React.FC = () => {
         )}
       </motion.header>
 
----
-
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 via-white to-gray-50"> {/* INCREASED PADDING: pt-24 pb-16 -> pt-32 pb-20 */}
+      <section className="pt-24 pb-16 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 via-white to-gray-50">
         <div className="max-w-7xl mx-auto">
           <motion.div 
             className="text-center max-w-4xl mx-auto"
@@ -340,9 +338,7 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
----
-
-      {/* Features Section (Remains unchanged for this request) */}
+      {/* Features Section */}
       <section id="features" className="py-24 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto">
           <motion.div
@@ -360,8 +356,9 @@ const LandingPage: React.FC = () => {
             </p>
           </motion.div>
 
+          {/* Use variants for staggered animation here */}
           <motion.div
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10" // Increased gap from gap-8 to gap-10
             variants={containerVariants}
             initial="hidden"
             whileInView="visible"
@@ -372,7 +369,7 @@ const LandingPage: React.FC = () => {
               return (
                 <motion.div
                   key={feature.title}
-                  variants={childVariants}
+                  variants={childVariants} // Apply child variant
                   className="bg-white rounded-3xl p-8 border border-gray-100 hover:border-gray-200 hover:shadow-xl transition-all duration-300 group"
                 >
                   <div className={`w-14 h-14 bg-gradient-to-r ${feature.color} rounded-2xl flex items-center justify-center mb-5 group-hover:scale-105 transition-transform duration-300`}>
@@ -390,8 +387,6 @@ const LandingPage: React.FC = () => {
           </motion.div>
         </div>
       </section>
-
----
 
       {/* Pricing Section */}
       <section id="pricing" className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-50 to-white">
@@ -590,4 +585,4 @@ const LandingPage: React.FC = () => {
   );
 };
 
-export default LandingPage;
+export default LandingPage; 
