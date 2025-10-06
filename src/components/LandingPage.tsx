@@ -171,19 +171,11 @@ const LandingPage: React.FC = () => {
         style={{ opacity: headerOpacity }}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-  <div className="flex items-center justify-between h-16">
-    <div className="flex items-center gap-3">
-      <img 
-        src="/leyls-svg.svg" 
-        alt="Leyls" 
-        className="h-12 sm:h-16 md:h-20 w-auto object-contain" 
-      />
-    </div>
-    {/* Other items like nav links or buttons can go here */}
-  </div>
-</div>
-
-
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-3">
+              <img src="/leyls-svg.svg" alt="Leyls" className="h-9 w-auto object-contain" />
+            </div>
+ 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-8">
               <button onClick={() => scrollToSection('features')} className="text-gray-600 hover:text-gray-900 transition-colors">
