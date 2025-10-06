@@ -176,7 +176,7 @@ const LandingPage: React.FC = () => {
               <img 
         src="/leyls-svg.svg" 
         alt="Leyls" 
-        className="h-12 sm:h-16 md:h-20 w-auto object-contain" 
+        className="h-14 sm:h-18 md:h-22 w-auto object-contain" 
       />
             </div>
 
