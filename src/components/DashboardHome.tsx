@@ -259,84 +259,87 @@ const DashboardHome = () => {
         })}
       </div>
 
-{/* Customer Growth Chart - Minimalist Stacked Bar Chart Version */}
-{customerGrowthData.length > 0 ? (
-  <div className="xl:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition-all duration-300">
-    <div className="flex items-center justify-between mb-6">
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900">Customer Growth</h2>
-        <p className="text-sm text-gray-500">New vs returning customers</p>
+// ... (The Enhanced Stats Grid <div> is correctly closed above this)
+
+{/* Charts Grid: This is the missing <div> wrapper */}
+<div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+  {/* Customer Growth Chart - Minimalist Stacked Bar Chart Version (COL SPAN 2) */}
+  {customerGrowthData.length > 0 ? (
+    <div className="xl:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition-all duration-300">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Customer Growth</h2>
+          <p className="text-sm text-gray-500">New vs returning customers</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-colors">
+            <Filter className="h-4 w-4" />
+          </button>
+          <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-colors">
+            <Download className="h-4 w-4" />
+          </button>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-colors">
-          <Filter className="h-4 w-4" />
-        </button>
-        <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-colors">
-          <Download className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
-    <div className="h-80">
-      <ResponsiveContainer width="100%" height="100%">
-        {/* Switched to BarChart with no gaps for a continuous look */}
-        <BarChart data={customerGrowthData} barGap={0} barCategoryGap="1%">
-          
-          {/* REMOVED: CartesianGrid */}
-          
-          <XAxis 
-            dataKey="date" 
-            axisLine={false} 
-            tickLine={false} 
-            className="text-sm text-gray-500"
-          />
-          <YAxis 
-            axisLine={false} 
-            tickLine={false} 
-            className="text-sm text-gray-500"
-            tickCount={4} 
-          />
-          <Tooltip content={renderCustomTooltip} />
-          
-          {/* Bar for New Customers - base of the stack */}
-          <Bar 
-            dataKey="newCustomers" 
-            stackId="customerStack" 
-            fill="#E6A85C" // Brand Color 1
-            name="New Customers"
-            radius={[0, 0, 0, 0]} 
-            animationDuration={1500}
-          />
-          
-          {/* Bar for Returning Customers - stacked on top */}
-          <Bar 
-            dataKey="returningCustomers" 
-            stackId="customerStack" 
-            fill="#E85A9B" // Brand Color 2
-            name="Returning Customers"
-            radius={[4, 4, 0, 0]} // Subtle top-only radius
-            animationDuration={1500}
-          />
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  </div>
-) : (
-  <div className="xl:col-span-2 bg-white rounded-2xl p-6 border border-gray-200">
-    <div className="flex items-center justify-between mb-6">
-      <div> 
-        <h2 className="text-lg font-semibold text-gray-900">Customer Growth</h2> 
-        <p className="text-sm text-gray-500">New vs returning customers</p> 
+      <div className="h-80">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={customerGrowthData} barGap={0} barCategoryGap="1%">
+            <XAxis 
+              dataKey="date" 
+              axisLine={false} 
+              tickLine={false} 
+              className="text-sm text-gray-500"
+            />
+            <YAxis 
+              axisLine={false} 
+              tickLine={false} 
+              className="text-sm text-gray-500"
+              tickCount={4} 
+            />
+            <Tooltip content={renderCustomTooltip} />
+            
+            {/* Bar for New Customers - base of the stack */}
+            <Bar 
+              dataKey="newCustomers" 
+              stackId="customerStack" 
+              fill="#E6A85C" // Brand Color 1
+              name="New Customers"
+              radius={[0, 0, 0, 0]} 
+              animationDuration={1500}
+            />
+            
+            {/* Bar for Returning Customers - stacked on top */}
+            <Bar 
+              dataKey="returningCustomers" 
+              stackId="customerStack" 
+              fill="#E85A9B" // Brand Color 2
+              name="Returning Customers"
+              radius={[4, 4, 0, 0]} // Subtle top-only radius
+              animationDuration={1500}
+            />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </div>
-    <div className="h-80 flex items-center justify-center">
-      <div className="text-center"> 
-        <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" /> 
-        <p className="text-gray-500">No customer data available yet</p> 
-        <p className="text-sm text-gray-400">Start adding customers to see growth trends</p> 
+  ) : (
+    <div className="xl:col-span-2 bg-white rounded-2xl p-6 border border-gray-200">
+      <div className="flex items-center justify-between mb-6">
+        <div> 
+          <h2 className="text-lg font-semibold text-gray-900">Customer Growth</h2> 
+          <p className="text-sm text-gray-500">New vs returning customers</p> 
+        </div>
+      </div>
+      <div className="h-80 flex items-center justify-center">
+        <div className="text-center"> 
+          <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" /> 
+          <p className="text-gray-500">No customer data available yet</p> 
+          <p className="text-sm text-gray-400">Start adding customers to see growth trends</p> 
+        </div>
       </div>
     </div>
-  </div>
-)}
+  )}
+
+
         {/* Popular Rewards Distribution */}
         {rewardDistribution.length > 0 ? (
             <div className="bg-white rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition-all duration-300">
