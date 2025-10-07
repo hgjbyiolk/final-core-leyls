@@ -25,6 +25,7 @@ const DashboardHome = () => {
   const { restaurant } = useAuth();
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
+  
   const {
     stats,
     recentActivity,
@@ -266,7 +267,7 @@ const DashboardHome = () => {
 
       {/* Enhanced Charts Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
 
 {/* Customer Growth Chart */}
 <div className="xl:col-span-2 bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
@@ -379,8 +380,7 @@ const [selectedDay, setSelectedDay] = useState<string | null>(null);
     </ResponsiveContainer>
   </div>
 </div>
-</div>
-)}
+
 
         {/* Popular Rewards Distribution */}
         {rewardDistribution.length > 0 ? (
