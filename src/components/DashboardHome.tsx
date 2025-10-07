@@ -291,32 +291,27 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
         onMouseLeave={() => setHoveredDay(null)}
       >
         <defs>
-          {/* Softer brand gradients */}
-          <linearGradient id="gradNew" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#FCE7F3" stopOpacity={0.9}/>
-            <stop offset="50%" stopColor="#E85A9B" stopOpacity={0.85}/>
+          {/* Brand gradients (light at bottom → dark at top, drastic) */}
+          <linearGradient id="gradNew" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor="#FCE7F3" stopOpacity={0.8}/> 
+            <stop offset="50%" stopColor="#E85A9B" stopOpacity={0.9}/>
             <stop offset="100%" stopColor="#D946EF" stopOpacity={1}/>
           </linearGradient>
-          <linearGradient id="gradReturning" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#EEF2FF" stopOpacity={0.9}/>
-            <stop offset="50%" stopColor="#7F9CF5" stopOpacity={0.85}/>
+          <linearGradient id="gradReturning" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor="#EEF2FF" stopOpacity={0.8}/>
+            <stop offset="50%" stopColor="#7F9CF5" stopOpacity={0.9}/>
             <stop offset="100%" stopColor="#4338CA" stopOpacity={1}/>
           </linearGradient>
 
-          {/* Greyscale gradients */}
-          <linearGradient id="greyNew" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#d1d5db" stopOpacity={0.7}/>
-            <stop offset="100%" stopColor="#4b5563" stopOpacity={0.5}/>
+          {/* Greyscale gradients (matte) */}
+          <linearGradient id="greyNew" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor="#d1d5db" stopOpacity={0.6}/>
+            <stop offset="100%" stopColor="#4b5563" stopOpacity={0.4}/>
           </linearGradient>
-          <linearGradient id="greyReturning" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#e5e7eb" stopOpacity={0.7}/>
-            <stop offset="100%" stopColor="#6b7280" stopOpacity={0.5}/>
+          <linearGradient id="greyReturning" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor="#e5e7eb" stopOpacity={0.6}/>
+            <stop offset="100%" stopColor="#6b7280" stopOpacity={0.4}/>
           </linearGradient>
-
-          {/* Optional subtle texture for highlighted bars */}
-          <pattern id="texturePattern" patternUnits="userSpaceOnUse" width="6" height="6">
-            <path d="M0 6 L6 0" stroke="rgba(255,255,255,0.2)" strokeWidth="2"/>
-          </pattern>
         </defs>
 
         <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f3f3f3" />
@@ -335,6 +330,7 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
         />
 
         <Tooltip 
+          cursor={{ fill: 'transparent' }}   // 👈 removes grey hover box
           content={({ active, payload, label }) =>
             active && payload ? (
               <div className="bg-white/90 backdrop-blur-sm p-3 rounded-xl shadow-lg animate-fade-in">
@@ -350,16 +346,16 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
         />
 
         {/* New Customers */}
-        <Bar dataKey="newCustomers" name="New Customers" radius={[10, 10, 10, 10]} barSize={44}>
+        <Bar dataKey="newCustomers" name="New Customers" radius={[10, 10, 10, 10]} barSize={44} isAnimationActive={false}>
           {customerGrowthData.map((entry, i) => {
             const isToday = entry.date === todayLabel || entry.date === "Today";
             const isSelected = selectedDay === entry.date;
             const isHovered = hoveredDay === entry.date;
 
-            // Default highlight today → brand gradient
-            const highlight = selectedDay ? isSelected : isToday;
+            // Priority: hovered > selected > today
+            const highlight = isHovered || (!hoveredDay && (selectedDay ? isSelected : isToday));
 
-            const fill = highlight || isHovered ? "url(#gradNew)" : "url(#greyNew)";
+            const fill = highlight ? "url(#gradNew)" : "url(#greyNew)";
             return (
               <Cell 
                 key={`new-${i}`} 
@@ -371,15 +367,15 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
         </Bar>
 
         {/* Returning Customers */}
-        <Bar dataKey="returningCustomers" name="Returning Customers" radius={[10, 10, 10, 10]} barSize={44}>
+        <Bar dataKey="returningCustomers" name="Returning Customers" radius={[10, 10, 10, 10]} barSize={44} isAnimationActive={false}>
           {customerGrowthData.map((entry, i) => {
             const isToday = entry.date === todayLabel || entry.date === "Today";
             const isSelected = selectedDay === entry.date;
             const isHovered = hoveredDay === entry.date;
 
-            const highlight = selectedDay ? isSelected : isToday;
+            const highlight = isHovered || (!hoveredDay && (selectedDay ? isSelected : isToday));
 
-            const fill = highlight || isHovered ? "url(#gradReturning)" : "url(#greyReturning)";
+            const fill = highlight ? "url(#gradReturning)" : "url(#greyReturning)";
             return (
               <Cell 
                 key={`ret-${i}`} 
