@@ -267,8 +267,6 @@ const DashboardHome = () => {
 
       {/* Enhanced Charts Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-
-
 {/* Customer Growth Chart */}
 <div className="xl:col-span-2 bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
   <div className="mb-6">
@@ -391,6 +389,8 @@ const DashboardHome = () => {
     </ResponsiveContainer>
   </div>
 </div>
+
+
 
 
         {/* Popular Rewards Distribution */}
