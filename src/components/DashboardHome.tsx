@@ -295,17 +295,19 @@ const DashboardHome = () => {
             <stop offset="100%" stopColor="#8B5CF6" stopOpacity={0.75}/>
           </linearGradient>
 
-          {/* Greyscale gradients */}
+          {/* Soft black gradient for "new" greyscale */}
           <linearGradient id="greyNew" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#111" stopOpacity={0.6}/>
-            <stop offset="100%" stopColor="#444" stopOpacity={0.4}/>
+            <stop offset="0%" stopColor="#222" stopOpacity={0.6}/>
+            <stop offset="100%" stopColor="#555" stopOpacity={0.4}/>
           </linearGradient>
+
+          {/* Soft grey gradient for "returning" greyscale */}
           <linearGradient id="greyReturning" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#aaa" stopOpacity={0.6}/>
             <stop offset="100%" stopColor="#e5e7eb" stopOpacity={0.4}/>
           </linearGradient>
 
-          {/* Texture pattern (for current/selected) */}
+          {/* Texture pattern */}
           <pattern id="texturePattern" patternUnits="userSpaceOnUse" width="6" height="6">
             <path d="M0 6 L6 0" stroke="rgba(255,255,255,0.25)" strokeWidth="2"/>
           </pattern>
@@ -346,14 +348,14 @@ const DashboardHome = () => {
         <Bar 
           dataKey="newCustomers"
           name="New Customers"
-          radius={[8, 8, 0, 0]}   // softer rounding
+          radius={[8, 8, 8, 8]}   // round top and bottom
           barSize={44}
         >
           {customerGrowthData.map((entry, i) => {
             const isCurrent = entry.date === "Today";
             const isSelected = selectedDay === entry.date;
-            // current day is always brand gradient, unless another is selected
-            const highlight = isSelected || (isCurrent && !selectedDay);
+            // current day always brand unless another is selected
+            const highlight = isSelected || isCurrent;
             const fill = highlight ? "url(#gradNew)" : "url(#greyNew)";
             return (
               <Cell 
@@ -369,13 +371,13 @@ const DashboardHome = () => {
         <Bar 
           dataKey="returningCustomers"
           name="Returning Customers"
-          radius={[8, 8, 0, 0]}   // softer rounding
+          radius={[8, 8, 8, 8]}   // round top and bottom
           barSize={44}
         >
           {customerGrowthData.map((entry, i) => {
             const isCurrent = entry.date === "Today";
             const isSelected = selectedDay === entry.date;
-            const highlight = isSelected || (isCurrent && !selectedDay);
+            const highlight = isSelected || isCurrent;
             const fill = highlight ? "url(#gradReturning)" : "url(#greyReturning)";
             return (
               <Cell 
