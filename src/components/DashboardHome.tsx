@@ -290,29 +290,30 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
         onMouseMove={(state) => setHoveredDay(state?.activeLabel || null)}
         onMouseLeave={() => setHoveredDay(null)}
       >
-        <defs>
-          {/* Brand gradients (light at bottom → dark at top, drastic) */}
-          <linearGradient id="gradNew" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stopColor="#FCE7F3" stopOpacity={0.8}/> 
-            <stop offset="50%" stopColor="#E85A9B" stopOpacity={0.9}/>
-            <stop offset="100%" stopColor="#D946EF" stopOpacity={1}/>
-          </linearGradient>
-          <linearGradient id="gradReturning" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stopColor="#EEF2FF" stopOpacity={0.8}/>
-            <stop offset="50%" stopColor="#7F9CF5" stopOpacity={0.9}/>
-            <stop offset="100%" stopColor="#4338CA" stopOpacity={1}/>
-          </linearGradient>
+       <defs>
+  {/* Brand gradients: dark at bottom → light at top */}
+  <linearGradient id="gradNew" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stopColor="#D946EF" stopOpacity={1}/>       {/* deep at base */}
+    <stop offset="60%" stopColor="#E85A9B" stopOpacity={0.7}/>    {/* mid transition */}
+    <stop offset="100%" stopColor="#FCE7F3" stopOpacity={0.4}/>   {/* very light top */}
+  </linearGradient>
+  <linearGradient id="gradReturning" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stopColor="#4338CA" stopOpacity={1}/>       {/* dark indigo base */}
+    <stop offset="60%" stopColor="#7F9CF5" stopOpacity={0.65}/>   {/* mid transition */}
+    <stop offset="100%" stopColor="#EEF2FF" stopOpacity={0.35}/>  {/* soft light top */}
+  </linearGradient>
 
-          {/* Greyscale gradients (matte) */}
-          <linearGradient id="greyNew" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stopColor="#d1d5db" stopOpacity={0.6}/>
-            <stop offset="100%" stopColor="#4b5563" stopOpacity={0.4}/>
-          </linearGradient>
-          <linearGradient id="greyReturning" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stopColor="#e5e7eb" stopOpacity={0.6}/>
-            <stop offset="100%" stopColor="#6b7280" stopOpacity={0.4}/>
-          </linearGradient>
-        </defs>
+  {/* Greyscale gradients: dark at base → light top */}
+  <linearGradient id="greyNew" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stopColor="#4b5563" stopOpacity={0.8}/>
+    <stop offset="100%" stopColor="#d1d5db" stopOpacity={0.4}/>
+  </linearGradient>
+  <linearGradient id="greyReturning" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stopColor="#6b7280" stopOpacity={0.7}/>
+    <stop offset="100%" stopColor="#e5e7eb" stopOpacity={0.35}/>
+  </linearGradient>
+</defs>
+
 
         <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f3f3f3" />
 
