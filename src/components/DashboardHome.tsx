@@ -373,7 +373,7 @@ const [selectedDay, setSelectedDay] = useState<string | null>(null);
     </ResponsiveContainer>
   </div>
 </div>
-      </div>
+</div>
 )}
 
         {/* Popular Rewards Distribution */}
