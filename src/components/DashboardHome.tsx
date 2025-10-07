@@ -291,7 +291,7 @@ const DashboardHome = () => {
         )}
       </div>
           
-
+        <div/>
         {/* Popular Rewards Distribution */}
         {rewardDistribution.length > 0 ? (
             <div className="bg-white rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition-all duration-300">
