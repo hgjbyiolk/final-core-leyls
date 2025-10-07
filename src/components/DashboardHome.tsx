@@ -23,7 +23,12 @@ const DashboardHome = () => {
   const [timeRange, setTimeRange] = useState('7d');
   const [showROIDashboard, setShowROIDashboard] = useState(false);
   const { restaurant } = useAuth();
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+ // top of DashboardHome
+const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
+// You may need to adjust this format depending on your data labels
+const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
 
   
   const {
