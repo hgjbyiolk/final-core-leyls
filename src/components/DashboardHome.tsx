@@ -23,28 +23,10 @@ const DashboardHome = () => {
   const [timeRange, setTimeRange] = useState('7d');
   const [showROIDashboard, setShowROIDashboard] = useState(false);
   const { restaurant } = useAuth();
- const [selectedDay, setSelectedDay] = useState<string | null>(null);
+const [selectedDay, setSelectedDay] = useState<string | null>(null);
+const [hoveredDay, setHoveredDay] = useState<string | null>(null);
 
-// Match your dataset's date labels (adjust if needed)
 const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
-
-// Custom highlight shape for hover
-const CustomActiveBar = (props: any) => {
-  const { x, y, width, height } = props;
-  return (
-    <rect
-      x={x}
-      y={y}
-      rx={8}
-      ry={8}
-      width={width}
-      height={height}
-      fill="rgba(156,163,175,0.15)"  // subtle grey (Tailwind gray-400 @ 15%)
-      style={{ transition: "all 0.25s ease-in-out" }}
-    />
-  );
-};
-
 
   
   const {
@@ -288,128 +270,6 @@ const CustomActiveBar = (props: any) => {
 
       {/* Enhanced Charts Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-{/* Customer Growth Chart */}
-<div className="xl:col-span-2 bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
-  <div className="mb-6">
-    <h2 className="text-xl font-semibold text-gray-900 tracking-tight">Customer Growth</h2>
-    <p className="text-sm text-gray-500">New vs returning customers</p>
-  </div>
-
-  <div className="h-80">
-    <ResponsiveContainer width="100%" height="100%">
-      <BarChart 
-        data={customerGrowthData} 
-        barCategoryGap="30%"
-        onClick={(data) => setSelectedDay(data?.activeLabel || null)}
-      >
-        <defs>
-          {/* Brand gradients */}
-          <linearGradient id="gradNew" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#E6A85C" stopOpacity={0.95}/>
-            <stop offset="60%" stopColor="#E85A9B" stopOpacity={0.85}/>
-            <stop offset="100%" stopColor="#D946EF" stopOpacity={0.75}/>
-          </linearGradient>
-          <linearGradient id="gradReturning" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2B3A67" stopOpacity={0.9}/>
-            <stop offset="100%" stopColor="#8B5CF6" stopOpacity={0.75}/>
-          </linearGradient>
-
-          {/* Greyscale gradients */}
-          <linearGradient id="greyNew" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#222" stopOpacity={0.6}/>
-            <stop offset="100%" stopColor="#555" stopOpacity={0.4}/>
-          </linearGradient>
-          <linearGradient id="greyReturning" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#aaa" stopOpacity={0.6}/>
-            <stop offset="100%" stopColor="#e5e7eb" stopOpacity={0.4}/>
-          </linearGradient>
-
-          {/* Texture pattern (optional for later) */}
-          <pattern id="texturePattern" patternUnits="userSpaceOnUse" width="6" height="6">
-            <path d="M0 6 L6 0" stroke="rgba(255,255,255,0.25)" strokeWidth="2"/>
-          </pattern>
-        </defs>
-
-        <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f3f3f3" />
-
-        <XAxis 
-          dataKey="date"
-          axisLine={false}
-          tickLine={false}
-          tick={{ fill: '#9CA3AF', fontSize: 12 }}
-          interval={2}
-        />
-        <YAxis 
-          axisLine={false}
-          tickLine={false}
-          tick={{ fill: '#9CA3AF', fontSize: 12 }}
-        />
-
-        {/* Tooltip */}
-        <Tooltip 
-          content={({ active, payload, label }) =>
-            active && payload ? (
-              <div className="bg-white/90 backdrop-blur-sm p-3 rounded-xl shadow-lg animate-fade-in">
-                <p className="font-medium text-gray-900 mb-1">{label}</p>
-                {payload.map((entry, i) => (
-                  <p key={i} className="text-sm" style={{ color: entry.color }}>
-                    {entry.name}: {entry.value}
-                  </p>
-                ))}
-              </div>
-            ) : null
-          }
-        />
-
-        {/* New Customers */}
-        <Bar 
-          dataKey="newCustomers"
-          name="New Customers"
-          radius={[8, 8, 8, 8]}
-          barSize={44}
-          activeBar={<CustomActiveBar />}   // 👈 rounded hover highlight
-        >
-          {customerGrowthData.map((entry, i) => {
-            const isToday = entry.date === todayLabel || entry.date === "Today";
-            const isSelected = selectedDay === entry.date;
-            const highlight = selectedDay ? isSelected : isToday; // default highlight = today
-            const fill = highlight ? "url(#gradNew)" : "url(#greyNew)";
-            return (
-              <Cell 
-                key={`new-${i}`} 
-                fill={fill}
-                style={{ transition: "all 0.4s ease" }}
-              />
-            );
-          })}
-        </Bar>
-
-        {/* Returning Customers */}
-        <Bar 
-          dataKey="returningCustomers"
-          name="Returning Customers"
-          radius={[8, 8, 8, 8]}
-          barSize={44}
-          activeBar={<CustomActiveBar />}   // 👈 rounded hover highlight
-        >
-          {customerGrowthData.map((entry, i) => {
-            const isToday = entry.date === todayLabel || entry.date === "Today";
-            const isSelected = selectedDay === entry.date;
-            const highlight = selectedDay ? isSelected : isToday;
-            const fill = highlight ? "url(#gradReturning)" : "url(#greyReturning)";
-            return (
-              <Cell 
-                key={`ret-${i}`} 
-                fill={fill}
-                style={{ transition: "all 0.4s ease" }}
-              />
-            );
-          })}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  </div>
-</div>
 
 
 
