@@ -391,7 +391,7 @@ const DashboardHome = () => {
       </BarChart>
     </ResponsiveContainer>
   </div>
-</div>
+</div> 
 
 
         {/* Popular Rewards Distribution */}
