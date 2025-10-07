@@ -260,90 +260,84 @@ const DashboardHome = () => {
 
       {/* Enhanced Charts Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Customer Growth Chart */}
-        {customerGrowthData.length > 0 ? (
-          <div className="xl:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition-all duration-300">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Customer Growth</h2>
-                <p className="text-sm text-gray-500">New vs returning customers</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-colors">
-                  <Filter className="h-4 w-4" />
-                </button>
-                <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50 transition-colors">
-                  <Download className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={customerGrowthData}>
-                  <defs>
-                    <linearGradient id="newCustomersVoya" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#E6A85C" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#E6A85C" stopOpacity={0.05}/>
-                    </linearGradient>
-                    <linearGradient id="returningCustomersVoya" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#E85A9B" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#E85A9B" stopOpacity={0.05}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="date" 
-                    axisLine={false}
-                    tickLine={false}
-                    className="text-sm text-gray-500"
-                  />
-                  <YAxis 
-                    axisLine={false}
-                    tickLine={false}
-                    className="text-sm text-gray-500"
-                  />
-                  <Tooltip content={renderCustomTooltip} />
-                  <Area
-                    type="monotone"
-                    dataKey="newCustomers"
-                    stroke="#E6A85C"
-                    strokeWidth={3}
-                    fill="url(#newCustomersVoya)"
-                    name="New Customers"
-                    animationBegin={200}
-                    animationDuration={1500}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="returningCustomers"
-                    stroke="#E85A9B"
-                    strokeWidth={2}
-                    fill="url(#returningCustomersVoya)"
-                    name="Returning Customers"
-                    animationBegin={400}
-                    animationDuration={1500}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        ) : (
-          <div className="xl:col-span-2 bg-white rounded-2xl p-6 border border-gray-200">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Customer Growth</h2>
-                <p className="text-sm text-gray-500">New vs returning customers</p>
-              </div> 
-            </div>
-            <div className="h-80 flex items-center justify-center">
-              <div className="text-center">
-                <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500">No customer data available yet</p>
-                <p className="text-sm text-gray-400">Start adding customers to see growth trends</p> 
-              </div>
-            </div>
-          </div> 
-        )}
+{/* Customer Growth Chart */}
+{customerGrowthData.length > 0 ? (
+  <div className="xl:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+    <div className="mb-6">
+      <h2 className="text-lg font-semibold text-gray-900">Customer Growth</h2>
+      <p className="text-sm text-gray-500">New vs returning customers</p>
+    </div>
+    <div className="h-80">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={customerGrowthData}>
+          <defs>
+            <linearGradient id="growthNew" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#E6A85C" stopOpacity={0.35}/>
+              <stop offset="95%" stopColor="#E6A85C" stopOpacity={0.05}/>
+            </linearGradient>
+            <linearGradient id="growthReturning" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#E85A9B" stopOpacity={0.35}/>
+              <stop offset="95%" stopColor="#E85A9B" stopOpacity={0.05}/>
+            </linearGradient>
+          </defs>
+
+          {/* Subtle grid, not cluttered */}
+          <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
+
+          <XAxis 
+            dataKey="date" 
+            axisLine={false}
+            tickLine={false}
+            tick={{ fill: '#9CA3AF', fontSize: 12 }}
+          />
+          <YAxis 
+            axisLine={false}
+            tickLine={false}
+            tick={{ fill: '#9CA3AF', fontSize: 12 }}
+          />
+          <Tooltip content={renderCustomTooltip} />
+
+          {/* New Customers Line */}
+          <Area
+            type="monotone"
+            dataKey="newCustomers"
+            stroke="#E6A85C"
+            strokeWidth={2.5}
+            fill="url(#growthNew)"
+            name="New Customers"
+            animationDuration={1200}
+          />
+
+          {/* Returning Customers Line */}
+          <Area
+            type="monotone"
+            dataKey="returningCustomers"
+            stroke="#E85A9B"
+            strokeWidth={2.5}
+            fill="url(#growthReturning)"
+            name="Returning Customers"
+            animationDuration={1500}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  </div>
+) : (
+  <div className="xl:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+    <div className="mb-6">
+      <h2 className="text-lg font-semibold text-gray-900">Customer Growth</h2>
+      <p className="text-sm text-gray-500">New vs returning customers</p>
+    </div>
+    <div className="h-80 flex items-center justify-center">
+      <div className="text-center">
+        <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+        <p className="text-gray-500">No customer data available yet</p>
+        <p className="text-sm text-gray-400">Start adding customers to see growth trends</p>
+      </div>
+    </div>
+  </div>
+)}
+
 
         {/* Popular Rewards Distribution */}
         {rewardDistribution.length > 0 ? (
