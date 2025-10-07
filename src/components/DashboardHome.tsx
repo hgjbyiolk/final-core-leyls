@@ -14,6 +14,9 @@ import { useAuth } from '../contexts/AuthContext';
 import LoyaltyROIDashboard from './LoyaltyROIDashboard';
 import LoadingBar from './LoadingBar';
 
+const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
+
 import { Link } from 'react-router-dom';
 const DashboardHome = () => {
   const [timeRange, setTimeRange] = useState('7d');
