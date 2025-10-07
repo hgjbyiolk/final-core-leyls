@@ -290,6 +290,7 @@ const DashboardHome = () => {
           </div>
         )}
       </div>
+          </div>
 
         {/* Popular Rewards Distribution */}
         {rewardDistribution.length > 0 ? (
@@ -349,7 +350,7 @@ const DashboardHome = () => {
                 <p className="text-sm text-gray-400">Rewards will appear here once customers start redeeming</p>
               </div>
             </div>
-          
+          </div>
         )}
       </div>
 
