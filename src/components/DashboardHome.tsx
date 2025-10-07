@@ -272,51 +272,56 @@ const DashboardHome = () => {
       <ResponsiveContainer width="100%" height="100%">
         <BarChart 
           data={customerGrowthData} 
-          barCategoryGap="30%"   // ensures bars align with ticks
+          barCategoryGap="20%" // tighter grouping → aligns with ticks
         >
           <defs>
-            {/* Gradient for New Customers */}
-            <linearGradient id="gradNew" x1="0" y1="0" x2="0" y2="1">
+            {/* Brand Gradient for New Customers */}
+            <linearGradient id="gradNewBrand" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#E6A85C" stopOpacity={0.9}/>
-              <stop offset="100%" stopColor="#E6A85C" stopOpacity={0.2}/>
+              <stop offset="50%" stopColor="#E85A9B" stopOpacity={0.7}/>
+              <stop offset="100%" stopColor="#D946EF" stopOpacity={0.4}/>
             </linearGradient>
-            {/* Gradient for Returning Customers */}
-            <linearGradient id="gradReturning" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#E85A9B" stopOpacity={0.9}/>
-              <stop offset="100%" stopColor="#E85A9B" stopOpacity={0.2}/>
+            {/* Brand Gradient for Returning Customers */}
+            <linearGradient id="gradReturningBrand" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#D946EF" stopOpacity={0.9}/>
+              <stop offset="50%" stopColor="#E85A9B" stopOpacity={0.7}/>
+              <stop offset="100%" stopColor="#E6A85C" stopOpacity={0.4}/>
             </linearGradient>
           </defs>
 
-          {/* Clean grid, only horizontal lines */}
-          <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f5f5f5" />
+          {/* Clean grid */}
+          <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f3f3f3" />
 
+          {/* Show fewer dates: only every 3rd tick */}
           <XAxis 
             dataKey="date"
             axisLine={false}
             tickLine={false}
             tick={{ fill: '#9CA3AF', fontSize: 12 }}
+            interval={2} // show every 3rd tick
           />
           <YAxis 
             axisLine={false}
             tickLine={false}
             tick={{ fill: '#9CA3AF', fontSize: 12 }}
           />
+
           <Tooltip content={renderCustomTooltip} />
 
-          {/* Bars: thicker, gradient fill, aligned */}
+          {/* Bars with brand gradient, thickened, aligned */}
           <Bar 
             dataKey="newCustomers" 
             name="New Customers" 
-            fill="url(#gradNew)" 
-            radius={[6, 6, 0, 0]} 
-            barSize={28}    // thickness control
+            fill="url(#gradNewBrand)" 
+            radius={[8, 8, 0, 0]} 
+            barSize={36}   // thicker bars
           />
           <Bar 
             dataKey="returningCustomers" 
             name="Returning Customers" 
-            fill="url(#gradReturning)" 
-            radius={[6, 6, 0, 0]} 
-            barSize={28}
+            fill="url(#gradReturningBrand)" 
+            radius={[8, 8, 0, 0]} 
+            barSize={36}
           />
         </BarChart>
       </ResponsiveContainer>
