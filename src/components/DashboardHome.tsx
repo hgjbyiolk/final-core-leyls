@@ -295,13 +295,11 @@ const DashboardHome = () => {
             <stop offset="100%" stopColor="#8B5CF6" stopOpacity={0.75}/>
           </linearGradient>
 
-          {/* Soft black gradient for "new" greyscale */}
+          {/* Soft greyscale gradients */}
           <linearGradient id="greyNew" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#222" stopOpacity={0.6}/>
             <stop offset="100%" stopColor="#555" stopOpacity={0.4}/>
           </linearGradient>
-
-          {/* Soft grey gradient for "returning" greyscale */}
           <linearGradient id="greyReturning" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#aaa" stopOpacity={0.6}/>
             <stop offset="100%" stopColor="#e5e7eb" stopOpacity={0.4}/>
@@ -348,21 +346,22 @@ const DashboardHome = () => {
         <Bar 
           dataKey="newCustomers"
           name="New Customers"
-          radius={[8, 8, 8, 8]}   // round top and bottom
+          radius={[8, 8, 8, 8]}
           barSize={44}
         >
           {customerGrowthData.map((entry, i) => {
             const isCurrent = entry.date === "Today";
             const isSelected = selectedDay === entry.date;
-            // current day always brand unless another is selected
-            const highlight = isSelected || isCurrent;
+            const highlight = selectedDay ? isSelected : isCurrent; // default = current day
             const fill = highlight ? "url(#gradNew)" : "url(#greyNew)";
             return (
               <Cell 
                 key={`new-${i}`} 
                 fill={fill} 
-                style={{ transition: "all 0.4s ease" }} 
-              />
+                style={{ transition: "all 0.4s ease" }}
+              >
+                {highlight && <title>Highlighted</title>}
+              </Cell>
             );
           })}
         </Bar>
@@ -371,19 +370,19 @@ const DashboardHome = () => {
         <Bar 
           dataKey="returningCustomers"
           name="Returning Customers"
-          radius={[8, 8, 8, 8]}   // round top and bottom
+          radius={[8, 8, 8, 8]}
           barSize={44}
         >
           {customerGrowthData.map((entry, i) => {
             const isCurrent = entry.date === "Today";
             const isSelected = selectedDay === entry.date;
-            const highlight = isSelected || isCurrent;
+            const highlight = selectedDay ? isSelected : isCurrent;
             const fill = highlight ? "url(#gradReturning)" : "url(#greyReturning)";
             return (
               <Cell 
                 key={`ret-${i}`} 
                 fill={fill} 
-                style={{ transition: "all 0.4s ease" }} 
+                style={{ transition: "all 0.4s ease" }}
               />
             );
           })}
@@ -391,7 +390,7 @@ const DashboardHome = () => {
       </BarChart>
     </ResponsiveContainer>
   </div>
-</div> 
+</div>
 
 
         {/* Popular Rewards Distribution */}
