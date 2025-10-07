@@ -23,11 +23,27 @@ const DashboardHome = () => {
   const [timeRange, setTimeRange] = useState('7d');
   const [showROIDashboard, setShowROIDashboard] = useState(false);
   const { restaurant } = useAuth();
- // top of DashboardHome
-const [selectedDay, setSelectedDay] = useState<string | null>(null);
+ const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-// You may need to adjust this format depending on your data labels
+// Match your dataset's date labels (adjust if needed)
 const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+// Custom highlight shape for hover
+const CustomActiveBar = (props: any) => {
+  const { x, y, width, height } = props;
+  return (
+    <rect
+      x={x}
+      y={y}
+      rx={8}
+      ry={8}
+      width={width}
+      height={height}
+      fill="rgba(156,163,175,0.15)"  // subtle grey (Tailwind gray-400 @ 15%)
+      style={{ transition: "all 0.25s ease-in-out" }}
+    />
+  );
+};
 
 
   
