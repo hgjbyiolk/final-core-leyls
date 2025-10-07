@@ -456,7 +456,7 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
       </div>
 
       {/* Loyalty Program ROI Analysis */}
-      {loyaltyROI && (
+      {/* {loyaltyROI && (
         <div className="bg-white rounded-2xl p-6 border border-gray-200 hover:shadow-lg transition-all duration-300">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -529,10 +529,10 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
               </div>
               <p className="text-lg font-bold text-gray-900">{loyaltyROI.retentionRate.toFixed(1)}%</p>
               <p className="text-xs text-gray-500">Returning customers</p>
-            </div>
+            </div> 
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Monthly Revenue Trends */}
       {monthlyTrends.length > 0 && (
