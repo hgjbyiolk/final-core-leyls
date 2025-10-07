@@ -300,8 +300,8 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
 
 <linearGradient id="gradReturning" x1="0" y1="1" x2="0" y2="0">
   <stop offset="0%" stopColor="#FDF2F8" stopOpacity={0.85}/>   {/* champagne-pink bottom */}
-  <stop offset="50%" stopColor="#9333EA" stopOpacity={0.95}/>  {/* deep violet mid */}
-  <stop offset="100%" stopColor="#E6A85C" stopOpacity={0.9}/>  {/* soft gold top */}
+  <stop offset="50%" stopColor="#C084FC" stopOpacity={0.9}/>   {/* soft violet mid */}
+  <stop offset="100%" stopColor="#9333EA" stopOpacity={0.95}/> {/* deep violet top */}
 </linearGradient>
 
 
