@@ -274,6 +274,12 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
 
 
+// Top of DashboardHome
+const [selectedDay, setSelectedDay] = useState<string | null>(null);
+const [hoveredDay, setHoveredDay] = useState<string | null>(null);
+
+const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
 {/* Customer Growth Chart */}
 <div className="xl:col-span-2 bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
   <div className="mb-6">
@@ -283,64 +289,59 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
 
   <div className="h-80">
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart 
-        data={customerGrowthData} 
+      <BarChart
+        data={customerGrowthData}
         barCategoryGap="30%"
         onClick={(data) => setSelectedDay(data?.activeLabel || null)}
         onMouseMove={(state) => setHoveredDay(state?.activeLabel || null)}
         onMouseLeave={() => setHoveredDay(null)}
       >
         <defs>
-          {/* Brand gradients (dark → light) */}
-          <linearGradient id="gradNew" x1="0" y1="0" x2="0" y2="1">
+          {/* Brand gradients (dark bottom → light top) */}
+          <linearGradient id="gradNew" x1="0" y1="1" x2="0" y2="0">
             <stop offset="0%" stopColor="#D946EF" stopOpacity={1}/>
             <stop offset="60%" stopColor="#E85A9B" stopOpacity={0.7}/>
-            <stop offset="100%" stopColor="#FCE7F3" stopOpacity={0.35}/>
+            <stop offset="100%" stopColor="#FCE7F3" stopOpacity={0.3}/>
           </linearGradient>
-          <linearGradient id="gradReturning" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id="gradReturning" x1="0" y1="1" x2="0" y2="0">
             <stop offset="0%" stopColor="#4338CA" stopOpacity={1}/>
             <stop offset="60%" stopColor="#7F9CF5" stopOpacity={0.65}/>
             <stop offset="100%" stopColor="#EEF2FF" stopOpacity={0.3}/>
           </linearGradient>
 
           {/* Greyscale gradients */}
-          <linearGradient id="greyNew" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#374151" stopOpacity={0.75}/>
+          <linearGradient id="greyNew" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor="#374151" stopOpacity={0.7}/>
             <stop offset="100%" stopColor="#d1d5db" stopOpacity={0.4}/>
           </linearGradient>
-          <linearGradient id="greyReturning" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#6b7280" stopOpacity={0.65}/>
+          <linearGradient id="greyReturning" x1="0" y1="1" x2="0" y2="0">
+            <stop offset="0%" stopColor="#6b7280" stopOpacity={0.6}/>
             <stop offset="100%" stopColor="#f3f4f6" stopOpacity={0.3}/>
           </linearGradient>
 
-          {/* Texture pattern (transparent diagonal stripes) */}
+          {/* Texture pattern (diagonal lines) */}
           <pattern id="barTexture" patternUnits="userSpaceOnUse" width="6" height="6">
-            <path d="M0 6 L6 0" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
+            <path d="M0 6 L6 0" stroke="rgba(255,255,255,0.2)" strokeWidth="1"/>
           </pattern>
-
-          {/* Mask that applies the texture */}
-          <mask id="texturedMask">
-            <rect x="0" y="0" width="100%" height="100%" fill="url(#barTexture)" />
-          </mask>
         </defs>
 
         <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f3f3f3" />
 
-        <XAxis 
+        <XAxis
           dataKey="date"
           axisLine={false}
           tickLine={false}
           tick={{ fill: '#9CA3AF', fontSize: 12 }}
           interval={2}
         />
-        <YAxis 
+        <YAxis
           axisLine={false}
           tickLine={false}
           tick={{ fill: '#9CA3AF', fontSize: 12 }}
         />
 
-        <Tooltip 
-          cursor={{ fill: 'transparent' }}   // removes grey hover box
+        <Tooltip
+          cursor={{ fill: 'transparent' }} // no grey box
           content={({ active, payload, label }) =>
             active && payload ? (
               <div className="bg-white/90 backdrop-blur-sm p-3 rounded-xl shadow-lg animate-fade-in">
@@ -362,25 +363,13 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
             const isSelected = selectedDay === entry.date;
             const isHovered = hoveredDay === entry.date;
 
-            // Priority: hovered > selected > today
             const highlight = isHovered || (!hoveredDay && (selectedDay ? isSelected : isToday));
-
-            if (highlight) {
-              // Gradient + texture mask
-              return (
-                <Cell 
-                  key={`new-${i}`} 
-                  fill="url(#gradNew)"
-                  mask="url(#texturedMask)"
-                  style={{ transition: "all 0.3s ease" }}
-                />
-              );
-            }
+            const fill = highlight ? "url(#gradNew)" : "url(#greyNew)";
 
             return (
-              <Cell 
-                key={`new-${i}`} 
-                fill="url(#greyNew)"
+              <Cell
+                key={`new-${i}`}
+                fill={fill}
                 style={{ transition: "all 0.3s ease" }}
               />
             );
@@ -395,22 +384,12 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
             const isHovered = hoveredDay === entry.date;
 
             const highlight = isHovered || (!hoveredDay && (selectedDay ? isSelected : isToday));
-
-            if (highlight) {
-              return (
-                <Cell 
-                  key={`ret-${i}`} 
-                  fill="url(#gradReturning)"
-                  mask="url(#texturedMask)"
-                  style={{ transition: "all 0.3s ease" }}
-                />
-              );
-            }
+            const fill = highlight ? "url(#gradReturning)" : "url(#greyReturning)";
 
             return (
-              <Cell 
-                key={`ret-${i}`} 
-                fill="url(#greyReturning)"
+              <Cell
+                key={`ret-${i}`}
+                fill={fill}
                 style={{ transition: "all 0.3s ease" }}
               />
             );
@@ -420,7 +399,6 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
     </ResponsiveContainer>
   </div>
 </div>
-
 
 
 
