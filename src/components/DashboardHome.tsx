@@ -324,7 +324,7 @@ const CustomActiveBar = (props: any) => {
             <stop offset="100%" stopColor="#e5e7eb" stopOpacity={0.4}/>
           </linearGradient>
 
-          {/* Texture pattern */}
+          {/* Texture pattern (optional for later) */}
           <pattern id="texturePattern" patternUnits="userSpaceOnUse" width="6" height="6">
             <path d="M0 6 L6 0" stroke="rgba(255,255,255,0.25)" strokeWidth="2"/>
           </pattern>
@@ -345,6 +345,7 @@ const CustomActiveBar = (props: any) => {
           tick={{ fill: '#9CA3AF', fontSize: 12 }}
         />
 
+        {/* Tooltip */}
         <Tooltip 
           content={({ active, payload, label }) =>
             active && payload ? (
@@ -361,11 +362,17 @@ const CustomActiveBar = (props: any) => {
         />
 
         {/* New Customers */}
-        <Bar dataKey="newCustomers" name="New Customers" radius={[8, 8, 8, 8]} barSize={44}>
+        <Bar 
+          dataKey="newCustomers"
+          name="New Customers"
+          radius={[8, 8, 8, 8]}
+          barSize={44}
+          activeBar={<CustomActiveBar />}   // 👈 rounded hover highlight
+        >
           {customerGrowthData.map((entry, i) => {
             const isToday = entry.date === todayLabel || entry.date === "Today";
             const isSelected = selectedDay === entry.date;
-            const highlight = selectedDay ? isSelected : isToday; // default highlight today
+            const highlight = selectedDay ? isSelected : isToday; // default highlight = today
             const fill = highlight ? "url(#gradNew)" : "url(#greyNew)";
             return (
               <Cell 
@@ -378,7 +385,13 @@ const CustomActiveBar = (props: any) => {
         </Bar>
 
         {/* Returning Customers */}
-        <Bar dataKey="returningCustomers" name="Returning Customers" radius={[8, 8, 8, 8]} barSize={44}>
+        <Bar 
+          dataKey="returningCustomers"
+          name="Returning Customers"
+          radius={[8, 8, 8, 8]}
+          barSize={44}
+          activeBar={<CustomActiveBar />}   // 👈 rounded hover highlight
+        >
           {customerGrowthData.map((entry, i) => {
             const isToday = entry.date === todayLabel || entry.date === "Today";
             const isSelected = selectedDay === entry.date;
@@ -397,6 +410,7 @@ const CustomActiveBar = (props: any) => {
     </ResponsiveContainer>
   </div>
 </div>
+
 
 
 
