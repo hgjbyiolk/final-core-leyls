@@ -13,6 +13,8 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
+
 
   React.useEffect(() => {
     if (user) {
