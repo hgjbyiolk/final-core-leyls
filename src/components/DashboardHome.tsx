@@ -290,7 +290,7 @@ const DashboardHome = () => {
           </div>
         )}
       </div>
-          </div>
+          
 
         {/* Popular Rewards Distribution */}
         {rewardDistribution.length > 0 ? (
