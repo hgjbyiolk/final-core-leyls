@@ -292,16 +292,18 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
       >
         <defs>
           {/* Brand gradients (light at bottom → dark at top, drastic) */}
-          <linearGradient id="gradNew" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stopColor="#FCE7F3" stopOpacity={0.8}/> 
-            <stop offset="50%" stopColor="#E85A9B" stopOpacity={0.9}/>
-            <stop offset="100%" stopColor="#D946EF" stopOpacity={1}/>
-          </linearGradient>
-          <linearGradient id="gradReturning" x1="0" y1="1" x2="0" y2="0">
-            <stop offset="0%" stopColor="#EEF2FF" stopOpacity={0.8}/>
-            <stop offset="50%" stopColor="#7F9CF5" stopOpacity={0.9}/>
-            <stop offset="100%" stopColor="#4338CA" stopOpacity={1}/>
-          </linearGradient>
+<linearGradient id="gradNew" x1="0" y1="1" x2="0" y2="0">
+  <stop offset="0%" stopColor="#FCE7F3" stopOpacity={0.8}/> 
+  <stop offset="50%" stopColor="#E85A9B" stopOpacity={0.9}/>
+  <stop offset="100%" stopColor="#D946EF" stopOpacity={1}/>
+</linearGradient>
+
+<linearGradient id="gradReturning" x1="0" y1="1" x2="0" y2="0">
+  <stop offset="0%" stopColor="#FEF3C7" stopOpacity={0.8}/>   {/* soft gold */}
+  <stop offset="50%" stopColor="#E6A85C" stopOpacity={0.9}/>  {/* rich amber */}
+  <stop offset="100%" stopColor="#D97706" stopOpacity={1}/>   {/* deep orange-brown */}
+</linearGradient>
+
 
           {/* Greyscale gradients (matte) */}
           <linearGradient id="greyNew" x1="0" y1="1" x2="0" y2="0">
