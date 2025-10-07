@@ -354,44 +354,50 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
 
         {/* New Customers */}
         <Bar dataKey="newCustomers" name="New Customers" radius={[10, 10, 10, 10]} barSize={44} isAnimationActive={false}>
-          {customerGrowthData.map((entry, i) => {
-            const isToday = entry.date === todayLabel || entry.date === "Today";
-            const isSelected = selectedDay === entry.date;
-            const isHovered = hoveredDay === entry.date;
+  {customerGrowthData.map((entry, i) => {
+    const isToday = entry.date === todayLabel || entry.date === "Today";
+    const isSelected = selectedDay === entry.date;
+    const isHovered = hoveredDay === entry.date;
 
-            // Priority: hovered > selected > today
-            const highlight = isHovered || (!hoveredDay && (selectedDay ? isSelected : isToday));
+    const highlight = isHovered || (!hoveredDay && (selectedDay ? isSelected : isToday));
+    const fill = highlight ? "url(#gradNew)" : "url(#greyNew)";
 
-            const fill = highlight ? "url(#gradNew)" : "url(#greyNew)";
-            return (
-              <Cell 
-                key={`new-${i}`} 
-                fill={fill}
-                style={{ transition: "all 0.3s ease" }}
-              />
-            );
-          })}
-        </Bar>
+    return (
+      <Cell 
+        key={`new-${i}`} 
+        fill={fill}
+        style={{ transition: "all 0.3s ease" }}
+      >
+        {/* Overlay subtle texture only if highlighted */}
+        {highlight && <animate attributeName="fill" from="url(#gradNew)" to="url(#barTexture)" dur="0.1s" fill="freeze" />}
+      </Cell>
+    );
+  })}
+</Bar>
+
 
         {/* Returning Customers */}
-        <Bar dataKey="returningCustomers" name="Returning Customers" radius={[10, 10, 10, 10]} barSize={44} isAnimationActive={false}>
-          {customerGrowthData.map((entry, i) => {
-            const isToday = entry.date === todayLabel || entry.date === "Today";
-            const isSelected = selectedDay === entry.date;
-            const isHovered = hoveredDay === entry.date;
+       <Bar dataKey="returningCustomers" name="Returning Customers" radius={[10, 10, 10, 10]} barSize={44} isAnimationActive={false}>
+  {customerGrowthData.map((entry, i) => {
+    const isToday = entry.date === todayLabel || entry.date === "Today";
+    const isSelected = selectedDay === entry.date;
+    const isHovered = hoveredDay === entry.date;
 
-            const highlight = isHovered || (!hoveredDay && (selectedDay ? isSelected : isToday));
+    const highlight = isHovered || (!hoveredDay && (selectedDay ? isSelected : isToday));
+    const fill = highlight ? "url(#gradReturning)" : "url(#greyReturning)";
 
-            const fill = highlight ? "url(#gradReturning)" : "url(#greyReturning)";
-            return (
-              <Cell 
-                key={`ret-${i}`} 
-                fill={fill}
-                style={{ transition: "all 0.3s ease" }}
-              />
-            );
-          })}
-        </Bar>
+    return (
+      <Cell 
+        key={`ret-${i}`} 
+        fill={fill}
+        style={{ transition: "all 0.3s ease" }}
+      >
+        {highlight && <animate attributeName="fill" from="url(#gradReturning)" to="url(#barTexture)" dur="0.1s" fill="freeze" />}
+      </Cell>
+    );
+  })}
+</Bar>
+
       </BarChart>
     </ResponsiveContainer>
   </div>
