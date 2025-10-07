@@ -299,10 +299,11 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
 </linearGradient>
 
 <linearGradient id="gradReturning" x1="0" y1="1" x2="0" y2="0">
-  <stop offset="0%" stopColor="#FEF3C7" stopOpacity={0.8}/>   {/* soft gold */}
-  <stop offset="50%" stopColor="#E6A85C" stopOpacity={0.9}/>  {/* rich amber */}
-  <stop offset="100%" stopColor="#D97706" stopOpacity={1}/>   {/* deep orange-brown */}
+  <stop offset="0%" stopColor="#FDE68A" stopOpacity={0.7}/>   {/* muted rose-gold, softer */}
+  <stop offset="50%" stopColor="#E6A85C" stopOpacity={0.85}/> {/* warm amber, but toned down */}
+  <stop offset="100%" stopColor="#C241AA" stopOpacity={0.95}/> {/* deep magenta-violet */}
 </linearGradient>
+
 
 
           {/* Greyscale gradients (matte) */}
