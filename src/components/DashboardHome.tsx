@@ -658,76 +658,86 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
         </div>
       )}
 
-      {/* Enhanced Recent Activity */}
-      {recentActivity.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
-          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
-                <p className="text-sm text-gray-500">Latest customer interactions</p>
-              </div>
-              <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#1E2A78] hover:bg-[#1E2A78] hover:text-white rounded-lg transition-all duration-200">
-                <Eye className="h-4 w-4" />
-                View All
-              </button>
+{/* Enhanced Recent Activity */}
+{recentActivity.length > 0 && (
+  <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
+    <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
+          <p className="text-sm text-gray-500">Latest customer interactions</p>
+        </div>
+        <button
+          onClick={() => navigate('/customers')}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg 
+                     bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] 
+                     text-white shadow-sm hover:shadow-md transition-all duration-200"
+        >
+          <Eye className="h-4 w-4" />
+          View All
+        </button>
+      </div>
+    </div>
+
+    <div className="divide-y divide-gray-100">
+      {recentActivity.slice(0, 5).map((activity, index) => (
+        <div 
+          key={activity.id} 
+          className="p-6 hover:bg-gray-50 transition-all duration-200 group"
+          style={{ animationDelay: `${index * 50}ms` }}
+        >
+          <div className="flex items-center gap-4">
+            {/* Avatar gradient pill */}
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#E6A85C] via-[#E85A9B] to-[#D946EF] 
+                            text-white flex items-center justify-center font-medium text-sm shadow-md">
+              {activity.avatar}
             </div>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {recentActivity.map((activity, index) => (
-              <div 
-                key={activity.id} 
-                className="p-6 hover:bg-gray-50 transition-all duration-200 group"
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#E6A85C] via-[#E85A9B] to-[#D946EF] text-white flex items-center justify-center font-medium text-sm shadow-lg">
-                    {activity.avatar}
-                  </div>
-                  
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-semibold text-gray-900">{activity.customer}</p>
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        activity.tier === 'gold' ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' :
-                        activity.tier === 'silver' ? 'bg-gray-100 text-gray-800 border border-gray-200' :
-                        'bg-orange-100 text-orange-800 border border-orange-200'
-                      }`}>
-                        {activity.tier.charAt(0).toUpperCase() + activity.tier.slice(1)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex flex-col">
-                        <p className="text-sm text-gray-600">{activity.action}</p>
-                        {activity.reward && (
-                          <p className="text-sm font-medium text-[#E6A85C]">{activity.reward}</p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">{activity.points} pts</p>
-                        <p className="text-xs text-gray-500">{activity.time}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <button className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-all duration-200">
-                    <MoreVertical className="h-4 w-4 group-hover:text-[#E6A85C]" />
-                  </button>
+            
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <p className="font-semibold text-gray-900">{activity.customer}</p>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
+                  activity.tier === 'gold' ? 'bg-yellow-50 text-yellow-800 border-yellow-200' :
+                  activity.tier === 'silver' ? 'bg-gray-50 text-gray-700 border-gray-200' :
+                  'bg-orange-50 text-orange-800 border-orange-200'
+                }`}>
+                  {activity.tier.charAt(0).toUpperCase() + activity.tier.slice(1)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <p className="text-sm text-gray-600">{activity.action}</p>
+                  {activity.reward && (
+                    <p className="text-sm font-medium text-[#E85A9B]">{activity.reward}</p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">{activity.points} pts</p>
+                  <p className="text-xs text-gray-500">{activity.time}</p>
                 </div>
               </div>
-            ))}
+            </div>
+            
+            <button className="opacity-0 group-hover:opacity-100 p-2 text-gray-400 hover:text-gray-600 
+                               rounded-lg hover:bg-gray-100 transition-all duration-200">
+              <MoreVertical className="h-4 w-4 group-hover:text-[#E6A85C]" />
+            </button>
           </div>
         </div>
-      )}
+      ))}
+    </div>
+  </div>
+)}
 
-      {/* No Data States */}
-      {recentActivity.length === 0 && customerGrowthData.length === 0 && !loading && !error && (
-        <div className="bg-white rounded-2xl p-12 border border-gray-200 text-center">
-          <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Recent Activity</h3>
-          <p className="text-gray-500">Customer activity will appear here once you start using the loyalty program.</p>
-        </div>
-      )}
+{/* No Data State */}
+{recentActivity.length === 0 && customerGrowthData.length === 0 && !loading && !error && (
+  <div className="bg-white rounded-2xl p-12 border border-gray-200 text-center">
+    <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+    <h3 className="text-lg font-semibold text-gray-900 mb-2">No Recent Activity</h3>
+    <p className="text-gray-500">Customer activity will appear here once you start using the loyalty program.</p>
+  </div>
+)}
+
         </>
       )}
       </div>
