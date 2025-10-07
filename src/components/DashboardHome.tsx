@@ -290,7 +290,7 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
         onMouseMove={(state) => setHoveredDay(state?.activeLabel || null)}
         onMouseLeave={() => setHoveredDay(null)}
       >
-       <<defs>
+       <defs>
   {/* Brand gradients: dark base → light airy top */}
   <linearGradient id="gradNew" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0%" stopColor="#D946EF" stopOpacity={1}/>       {/* deep magenta base */}
