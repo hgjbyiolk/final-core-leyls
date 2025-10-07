@@ -278,7 +278,7 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
 <div className="xl:col-span-2 bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
   <div className="mb-6">
     <h2 className="text-xl font-semibold text-gray-900 tracking-tight">Customer Growth</h2>
-    <p className="text-sm text-gray-500">New vs returning customers</p>
+    <p className="text-sm text-gray-500">New vs Returning</p>
   </div>
 
   <div className="h-80">
