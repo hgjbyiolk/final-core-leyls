@@ -299,9 +299,9 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
 </linearGradient>
 
 <linearGradient id="gradReturning" x1="0" y1="1" x2="0" y2="0">
-  <stop offset="0%" stopColor="#C241AA" stopOpacity={0.95}/>   {/* deep violet bottom */}
-  <stop offset="50%" stopColor="#E6A85C" stopOpacity={0.85}/>  {/* soft rose-gold mid */}
-  <stop offset="100%" stopColor="#FDE68A" stopOpacity={0.6}/>  {/* champagne light top */}
+  <stop offset="0%" stopColor="#FDF2F8" stopOpacity={0.8}/>   {/* champagne-pink bottom */}
+  <stop offset="50%" stopColor="#E6A85C" stopOpacity={0.7}/>  {/* subtle rose-gold mid */}
+  <stop offset="100%" stopColor="#9333EA" stopOpacity={0.95}/> {/* deep violet top */}
 </linearGradient>
 
 
