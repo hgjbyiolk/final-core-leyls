@@ -278,7 +278,7 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
 <div className="xl:col-span-2 bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
   <div className="mb-6">
     <h2 className="text-xl font-semibold text-gray-900 tracking-tight">Customer Growth</h2>
-    <p className="text-sm text-gray-500">New vs Returning</p>
+    <p className="text-sm text-gray-500">New vs returning customers</p>
   </div>
 
   <div className="h-80">
@@ -290,36 +290,39 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
         onMouseMove={(state) => setHoveredDay(state?.activeLabel || null)}
         onMouseLeave={() => setHoveredDay(null)}
       >
-       <defs>
-  {/* Brand gradients: dark base → light airy top */}
-  <linearGradient id="gradNew" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stopColor="#D946EF" stopOpacity={1}/>       {/* deep magenta base */}
-    <stop offset="60%" stopColor="#E85A9B" stopOpacity={0.7}/>    {/* mid */}
-    <stop offset="100%" stopColor="#FCE7F3" stopOpacity={0.35}/>  {/* light top */}
-  </linearGradient>
-  <linearGradient id="gradReturning" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stopColor="#4338CA" stopOpacity={1}/>       {/* dark indigo base */}
-    <stop offset="60%" stopColor="#7F9CF5" stopOpacity={0.65}/>   {/* mid */}
-    <stop offset="100%" stopColor="#EEF2FF" stopOpacity={0.3}/>   {/* light airy top */}
-  </linearGradient>
+        <defs>
+          {/* Brand gradients (dark base → light top) */}
+          <linearGradient id="gradNew" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#D946EF" stopOpacity={1}/>
+            <stop offset="60%" stopColor="#E85A9B" stopOpacity={0.7}/>
+            <stop offset="100%" stopColor="#FCE7F3" stopOpacity={0.35}/>
+          </linearGradient>
+          <linearGradient id="gradReturning" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#4338CA" stopOpacity={1}/>
+            <stop offset="60%" stopColor="#7F9CF5" stopOpacity={0.65}/>
+            <stop offset="100%" stopColor="#EEF2FF" stopOpacity={0.3}/>
+          </linearGradient>
 
-  {/* Greyscale gradients: dark base → light top */}
-  <linearGradient id="greyNew" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stopColor="#374151" stopOpacity={0.75}/>
-    <stop offset="100%" stopColor="#d1d5db" stopOpacity={0.4}/>
-  </linearGradient>
-  <linearGradient id="greyReturning" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stopColor="#6b7280" stopOpacity={0.65}/>
-    <stop offset="100%" stopColor="#f3f4f6" stopOpacity={0.3}/>
-  </linearGradient>
+          {/* Greyscale gradients */}
+          <linearGradient id="greyNew" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#374151" stopOpacity={0.75}/>
+            <stop offset="100%" stopColor="#d1d5db" stopOpacity={0.4}/>
+          </linearGradient>
+          <linearGradient id="greyReturning" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#6b7280" stopOpacity={0.65}/>
+            <stop offset="100%" stopColor="#f3f4f6" stopOpacity={0.3}/>
+          </linearGradient>
 
-  {/* Texture pattern (subtle diagonal stripes) */}
-  <pattern id="barTexture" patternUnits="userSpaceOnUse" width="6" height="6">
-    <path d="M0 6 L6 0" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
-  </pattern>
-</defs>
-
-
+          {/* Textured gradients (gradient + overlay stripes) */}
+          <pattern id="gradNewTextured" patternUnits="userSpaceOnUse" width="6" height="6">
+            <rect width="100%" height="100%" fill="url(#gradNew)" />
+            <path d="M0 6 L6 0" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
+          </pattern>
+          <pattern id="gradReturningTextured" patternUnits="userSpaceOnUse" width="6" height="6">
+            <rect width="100%" height="100%" fill="url(#gradReturning)" />
+            <path d="M0 6 L6 0" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
+          </pattern>
+        </defs>
 
         <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f3f3f3" />
 
@@ -337,7 +340,7 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
         />
 
         <Tooltip 
-          cursor={{ fill: 'transparent' }}   // 👈 removes grey hover box
+          cursor={{ fill: 'transparent' }}   // remove grey hover box
           content={({ active, payload, label }) =>
             active && payload ? (
               <div className="bg-white/90 backdrop-blur-sm p-3 rounded-xl shadow-lg animate-fade-in">
@@ -354,50 +357,44 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
 
         {/* New Customers */}
         <Bar dataKey="newCustomers" name="New Customers" radius={[10, 10, 10, 10]} barSize={44} isAnimationActive={false}>
-  {customerGrowthData.map((entry, i) => {
-    const isToday = entry.date === todayLabel || entry.date === "Today";
-    const isSelected = selectedDay === entry.date;
-    const isHovered = hoveredDay === entry.date;
+          {customerGrowthData.map((entry, i) => {
+            const isToday = entry.date === todayLabel || entry.date === "Today";
+            const isSelected = selectedDay === entry.date;
+            const isHovered = hoveredDay === entry.date;
 
-    const highlight = isHovered || (!hoveredDay && (selectedDay ? isSelected : isToday));
-    const fill = highlight ? "url(#gradNew)" : "url(#greyNew)";
+            // Priority: hovered > selected > today
+            const highlight = isHovered || (!hoveredDay && (selectedDay ? isSelected : isToday));
 
-    return (
-      <Cell 
-        key={`new-${i}`} 
-        fill={fill}
-        style={{ transition: "all 0.3s ease" }}
-      >
-        {/* Overlay subtle texture only if highlighted */}
-        {highlight && <animate attributeName="fill" from="url(#gradNew)" to="url(#barTexture)" dur="0.1s" fill="freeze" />}
-      </Cell>
-    );
-  })}
-</Bar>
-
+            const fill = highlight ? "url(#gradNewTextured)" : "url(#greyNew)";
+            return (
+              <Cell 
+                key={`new-${i}`} 
+                fill={fill}
+                style={{ transition: "all 0.3s ease" }}
+              />
+            );
+          })}
+        </Bar>
 
         {/* Returning Customers */}
-       <Bar dataKey="returningCustomers" name="Returning Customers" radius={[10, 10, 10, 10]} barSize={44} isAnimationActive={false}>
-  {customerGrowthData.map((entry, i) => {
-    const isToday = entry.date === todayLabel || entry.date === "Today";
-    const isSelected = selectedDay === entry.date;
-    const isHovered = hoveredDay === entry.date;
+        <Bar dataKey="returningCustomers" name="Returning Customers" radius={[10, 10, 10, 10]} barSize={44} isAnimationActive={false}>
+          {customerGrowthData.map((entry, i) => {
+            const isToday = entry.date === todayLabel || entry.date === "Today";
+            const isSelected = selectedDay === entry.date;
+            const isHovered = hoveredDay === entry.date;
 
-    const highlight = isHovered || (!hoveredDay && (selectedDay ? isSelected : isToday));
-    const fill = highlight ? "url(#gradReturning)" : "url(#greyReturning)";
+            const highlight = isHovered || (!hoveredDay && (selectedDay ? isSelected : isToday));
 
-    return (
-      <Cell 
-        key={`ret-${i}`} 
-        fill={fill}
-        style={{ transition: "all 0.3s ease" }}
-      >
-        {highlight && <animate attributeName="fill" from="url(#gradReturning)" to="url(#barTexture)" dur="0.1s" fill="freeze" />}
-      </Cell>
-    );
-  })}
-</Bar> 
-
+            const fill = highlight ? "url(#gradReturningTextured)" : "url(#greyReturning)";
+            return (
+              <Cell 
+                key={`ret-${i}`} 
+                fill={fill}
+                style={{ transition: "all 0.3s ease" }}
+              />
+            );
+          })}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
   </div>
