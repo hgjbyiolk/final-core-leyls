@@ -396,7 +396,7 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
       </Cell>
     );
   })}
-</Bar>
+</Bar> 
 
       </BarChart>
     </ResponsiveContainer>
