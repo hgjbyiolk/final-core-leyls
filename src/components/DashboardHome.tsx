@@ -270,7 +270,7 @@ const DashboardHome = () => {
 
 
 {/* Customer Growth Chart */}
-<div className="xl:col-span-2 bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+<div className="xl:col-span-2 bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
   <div className="mb-6">
     <h2 className="text-xl font-semibold text-gray-900 tracking-tight">Customer Growth</h2>
     <p className="text-sm text-gray-500">New vs returning customers</p>
@@ -280,7 +280,7 @@ const DashboardHome = () => {
     <ResponsiveContainer width="100%" height="100%">
       <BarChart 
         data={customerGrowthData} 
-        barCategoryGap="25%"
+        barCategoryGap="30%"
         onClick={(data) => setSelectedDay(data?.activeLabel || null)}
       >
         <defs>
@@ -288,30 +288,29 @@ const DashboardHome = () => {
           <linearGradient id="gradNew" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#E6A85C" stopOpacity={0.95}/>
             <stop offset="60%" stopColor="#E85A9B" stopOpacity={0.85}/>
-            <stop offset="100%" stopColor="#D946EF" stopOpacity={0.7}/>
+            <stop offset="100%" stopColor="#D946EF" stopOpacity={0.75}/>
           </linearGradient>
           <linearGradient id="gradReturning" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#1E2A78" stopOpacity={0.9}/>
-            <stop offset="100%" stopColor="#8B5CF6" stopOpacity={0.7}/>
+            <stop offset="0%" stopColor="#2B3A67" stopOpacity={0.9}/>
+            <stop offset="100%" stopColor="#8B5CF6" stopOpacity={0.75}/>
           </linearGradient>
 
-          {/* Greyscale gradients for non-current */}
+          {/* Greyscale gradients */}
           <linearGradient id="greyNew" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#111" stopOpacity={0.5}/>
-            <stop offset="100%" stopColor="#aaa" stopOpacity={0.3}/>
+            <stop offset="0%" stopColor="#222" stopOpacity={0.6}/>
+            <stop offset="100%" stopColor="#555" stopOpacity={0.4}/>
           </linearGradient>
           <linearGradient id="greyReturning" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#444" stopOpacity={0.5}/>
-            <stop offset="100%" stopColor="#bbb" stopOpacity={0.3}/>
+            <stop offset="0%" stopColor="#aaa" stopOpacity={0.6}/>
+            <stop offset="100%" stopColor="#e5e7eb" stopOpacity={0.4}/>
           </linearGradient>
 
-          {/* Texture pattern (diagonal lines) */}
+          {/* Texture pattern */}
           <pattern id="texturePattern" patternUnits="userSpaceOnUse" width="6" height="6">
-            <path d="M0 6 L6 0" stroke="rgba(255,255,255,0.2)" strokeWidth="2"/>
+            <path d="M0 6 L6 0" stroke="rgba(255,255,255,0.25)" strokeWidth="2"/>
           </pattern>
         </defs>
 
-        {/* Clean grid */}
         <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f3f3f3" />
 
         <XAxis 
@@ -319,7 +318,7 @@ const DashboardHome = () => {
           axisLine={false}
           tickLine={false}
           tick={{ fill: '#9CA3AF', fontSize: 12 }}
-          interval={2} // fewer labels
+          interval={2}
         />
         <YAxis 
           axisLine={false}
@@ -327,10 +326,9 @@ const DashboardHome = () => {
           tick={{ fill: '#9CA3AF', fontSize: 12 }}
         />
 
-        {/* Modern tooltip */}
         <Tooltip 
           content={({ active, payload, label }) =>
-            active && payload && payload.length ? (
+            active && payload ? (
               <div className="bg-white/90 backdrop-blur-sm p-3 rounded-xl shadow-lg animate-fade-in">
                 <p className="font-medium text-gray-900 mb-1">{label}</p>
                 {payload.map((entry, i) => (
@@ -343,43 +341,44 @@ const DashboardHome = () => {
           }
         />
 
-        {/* Bars */}
-        <Bar 
-          dataKey="newCustomers"
-          name="New Customers"
-          radius={[999, 999, 999, 999]}
-          barSize={44}
-          fill={({ payload }) => {
-            const isCurrent = payload.date === "Today" || payload.date === new Date().toLocaleDateString();
-            const isSelected = selectedDay === payload.date;
-            if (isCurrent || isSelected) return "url(#gradNew)";
-            return "url(#greyNew)";
-          }}
-        >
-          {/* Texture overlay only for current/selected */}
-          <Cell 
-            fill="url(#texturePattern)" 
-            opacity={0.2} 
-            filter="url(#softShadow)" 
-          />
+        {/* New Customers */}
+        <Bar dataKey="newCustomers" name="New Customers" radius={[8, 8, 8, 8]} barSize={44}>
+          {customerGrowthData.map((entry, i) => {
+            const isToday = entry.date === todayLabel || entry.date === "Today";
+            const isSelected = selectedDay === entry.date;
+            const highlight = selectedDay ? isSelected : isToday; // default highlight today
+            const fill = highlight ? "url(#gradNew)" : "url(#greyNew)";
+            return (
+              <Cell 
+                key={`new-${i}`} 
+                fill={fill}
+                style={{ transition: "all 0.4s ease" }}
+              />
+            );
+          })}
         </Bar>
 
-        <Bar 
-          dataKey="returningCustomers"
-          name="Returning Customers"
-          radius={[999, 999, 999, 999]}
-          barSize={44}
-          fill={({ payload }) => {
-            const isCurrent = payload.date === "Today" || payload.date === new Date().toLocaleDateString();
-            const isSelected = selectedDay === payload.date;
-            if (isCurrent || isSelected) return "url(#gradReturning)";
-            return "url(#greyReturning)";
-          }}
-        />
+        {/* Returning Customers */}
+        <Bar dataKey="returningCustomers" name="Returning Customers" radius={[8, 8, 8, 8]} barSize={44}>
+          {customerGrowthData.map((entry, i) => {
+            const isToday = entry.date === todayLabel || entry.date === "Today";
+            const isSelected = selectedDay === entry.date;
+            const highlight = selectedDay ? isSelected : isToday;
+            const fill = highlight ? "url(#gradReturning)" : "url(#greyReturning)";
+            return (
+              <Cell 
+                key={`ret-${i}`} 
+                fill={fill}
+                style={{ transition: "all 0.4s ease" }}
+              />
+            );
+          })}
+        </Bar>
       </BarChart>
     </ResponsiveContainer>
-  </div> 
+  </div>
 </div>
+
 
 
         {/* Popular Rewards Distribution */}
