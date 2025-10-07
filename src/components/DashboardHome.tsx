@@ -349,7 +349,7 @@ const DashboardHome = () => {
                 <p className="text-sm text-gray-400">Rewards will appear here once customers start redeeming</p>
               </div>
             </div>
-          </div>
+          
         )}
       </div>
 
