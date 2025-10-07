@@ -290,29 +290,35 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
         onMouseMove={(state) => setHoveredDay(state?.activeLabel || null)}
         onMouseLeave={() => setHoveredDay(null)}
       >
-       <defs>
-  {/* Brand gradients: dark at bottom → light at top */}
+       <<defs>
+  {/* Brand gradients: dark base → light airy top */}
   <linearGradient id="gradNew" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stopColor="#D946EF" stopOpacity={1}/>       {/* deep at base */}
-    <stop offset="60%" stopColor="#E85A9B" stopOpacity={0.7}/>    {/* mid transition */}
-    <stop offset="100%" stopColor="#FCE7F3" stopOpacity={0.4}/>   {/* very light top */}
+    <stop offset="0%" stopColor="#D946EF" stopOpacity={1}/>       {/* deep magenta base */}
+    <stop offset="60%" stopColor="#E85A9B" stopOpacity={0.7}/>    {/* mid */}
+    <stop offset="100%" stopColor="#FCE7F3" stopOpacity={0.35}/>  {/* light top */}
   </linearGradient>
   <linearGradient id="gradReturning" x1="0" y1="0" x2="0" y2="1">
     <stop offset="0%" stopColor="#4338CA" stopOpacity={1}/>       {/* dark indigo base */}
-    <stop offset="60%" stopColor="#7F9CF5" stopOpacity={0.65}/>   {/* mid transition */}
-    <stop offset="100%" stopColor="#EEF2FF" stopOpacity={0.35}/>  {/* soft light top */}
+    <stop offset="60%" stopColor="#7F9CF5" stopOpacity={0.65}/>   {/* mid */}
+    <stop offset="100%" stopColor="#EEF2FF" stopOpacity={0.3}/>   {/* light airy top */}
   </linearGradient>
 
-  {/* Greyscale gradients: dark at base → light top */}
+  {/* Greyscale gradients: dark base → light top */}
   <linearGradient id="greyNew" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stopColor="#4b5563" stopOpacity={0.8}/>
+    <stop offset="0%" stopColor="#374151" stopOpacity={0.75}/>
     <stop offset="100%" stopColor="#d1d5db" stopOpacity={0.4}/>
   </linearGradient>
   <linearGradient id="greyReturning" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0%" stopColor="#6b7280" stopOpacity={0.7}/>
-    <stop offset="100%" stopColor="#e5e7eb" stopOpacity={0.35}/>
+    <stop offset="0%" stopColor="#6b7280" stopOpacity={0.65}/>
+    <stop offset="100%" stopColor="#f3f4f6" stopOpacity={0.3}/>
   </linearGradient>
+
+  {/* Texture pattern (subtle diagonal stripes) */}
+  <pattern id="barTexture" patternUnits="userSpaceOnUse" width="6" height="6">
+    <path d="M0 6 L6 0" stroke="rgba(255,255,255,0.25)" strokeWidth="1"/>
+  </pattern>
 </defs>
+
 
 
         <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f3f3f3" />
