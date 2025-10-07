@@ -270,7 +270,7 @@ const DashboardHome = () => {
 
 
 {/* Customer Growth Chart */}
-<div className="xl:col-span-2 bg-white rounded-3xl p-8 shadow-sm border border-gray-100">
+<div className="xl:col-span-2 bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
   <div className="mb-6">
     <h2 className="text-xl font-semibold text-gray-900 tracking-tight">Customer Growth</h2>
     <p className="text-sm text-gray-500">New vs returning customers</p>
@@ -295,23 +295,22 @@ const DashboardHome = () => {
             <stop offset="100%" stopColor="#8B5CF6" stopOpacity={0.75}/>
           </linearGradient>
 
-          {/* Softer greyscale gradients */}
+          {/* Greyscale gradients */}
           <linearGradient id="greyNew" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#d1d5db" stopOpacity={0.7}/>
-            <stop offset="100%" stopColor="#9ca3af" stopOpacity={0.4}/>
+            <stop offset="0%" stopColor="#111" stopOpacity={0.6}/>
+            <stop offset="100%" stopColor="#444" stopOpacity={0.4}/>
           </linearGradient>
           <linearGradient id="greyReturning" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#e5e7eb" stopOpacity={0.7}/>
-            <stop offset="100%" stopColor="#9ca3af" stopOpacity={0.4}/>
+            <stop offset="0%" stopColor="#aaa" stopOpacity={0.6}/>
+            <stop offset="100%" stopColor="#e5e7eb" stopOpacity={0.4}/>
           </linearGradient>
 
-          {/* Texture pattern (diagonal lines) */}
+          {/* Texture pattern (for current/selected) */}
           <pattern id="texturePattern" patternUnits="userSpaceOnUse" width="6" height="6">
-            <path d="M0 6 L6 0" stroke="rgba(255,255,255,0.2)" strokeWidth="2"/>
+            <path d="M0 6 L6 0" stroke="rgba(255,255,255,0.25)" strokeWidth="2"/>
           </pattern>
         </defs>
 
-        {/* Minimal grid */}
         <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f3f3f3" />
 
         <XAxis 
@@ -327,7 +326,7 @@ const DashboardHome = () => {
           tick={{ fill: '#9CA3AF', fontSize: 12 }}
         />
 
-        {/* Modern tooltip */}
+        {/* Tooltip */}
         <Tooltip 
           content={({ active, payload, label }) =>
             active && payload ? (
@@ -347,13 +346,15 @@ const DashboardHome = () => {
         <Bar 
           dataKey="newCustomers"
           name="New Customers"
-          radius={[999, 999, 999, 999]}
-          barSize={46}
+          radius={[8, 8, 0, 0]}   // softer rounding
+          barSize={44}
         >
           {customerGrowthData.map((entry, i) => {
             const isCurrent = entry.date === "Today";
             const isSelected = selectedDay === entry.date;
-            const fill = isCurrent || isSelected ? "url(#gradNew)" : "url(#greyNew)";
+            // current day is always brand gradient, unless another is selected
+            const highlight = isSelected || (isCurrent && !selectedDay);
+            const fill = highlight ? "url(#gradNew)" : "url(#greyNew)";
             return (
               <Cell 
                 key={`new-${i}`} 
@@ -368,13 +369,14 @@ const DashboardHome = () => {
         <Bar 
           dataKey="returningCustomers"
           name="Returning Customers"
-          radius={[999, 999, 999, 999]}
-          barSize={46}
+          radius={[8, 8, 0, 0]}   // softer rounding
+          barSize={44}
         >
           {customerGrowthData.map((entry, i) => {
             const isCurrent = entry.date === "Today";
             const isSelected = selectedDay === entry.date;
-            const fill = isCurrent || isSelected ? "url(#gradReturning)" : "url(#greyReturning)";
+            const highlight = isSelected || (isCurrent && !selectedDay);
+            const fill = highlight ? "url(#gradReturning)" : "url(#greyReturning)";
             return (
               <Cell 
                 key={`ret-${i}`} 
