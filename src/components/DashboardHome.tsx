@@ -263,62 +263,49 @@ const DashboardHome = () => {
 {/* Customer Growth Chart */}
 {customerGrowthData.length > 0 ? (
   <div className="xl:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-    <div className="mb-6">
-      <h2 className="text-lg font-semibold text-gray-900">Customer Growth</h2>
-      <p className="text-sm text-gray-500">New vs returning customers</p>
+    <div className="mb-6 flex items-center justify-between">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Customer Growth</h2>
+        <p className="text-sm text-gray-500">New vs returning customers</p>
+      </div>
     </div>
+
     <div className="h-80">
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={customerGrowthData}>
-          <defs>
-            <linearGradient id="growthNew" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#E6A85C" stopOpacity={0.35}/>
-              <stop offset="95%" stopColor="#E6A85C" stopOpacity={0.05}/>
-            </linearGradient>
-            <linearGradient id="growthReturning" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#E85A9B" stopOpacity={0.35}/>
-              <stop offset="95%" stopColor="#E85A9B" stopOpacity={0.05}/>
-            </linearGradient>
-          </defs>
-
-          {/* Subtle grid, not cluttered */}
-          <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f5" />
+        <BarChart data={customerGrowthData} barGap={12} barCategoryGap="20%">
+          {/* Very subtle grid */}
+          <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#f5f5f5" />
 
           <XAxis 
             dataKey="date" 
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: '#9CA3AF', fontSize: 12 }}
+            axisLine={false} 
+            tickLine={false} 
+            tick={{ fill: '#9CA3AF', fontSize: 12 }} 
           />
           <YAxis 
-            axisLine={false}
-            tickLine={false}
-            tick={{ fill: '#9CA3AF', fontSize: 12 }}
+            axisLine={false} 
+            tickLine={false} 
+            tick={{ fill: '#9CA3AF', fontSize: 12 }} 
           />
+
           <Tooltip content={renderCustomTooltip} />
 
-          {/* New Customers Line */}
-          <Area
-            type="monotone"
-            dataKey="newCustomers"
-            stroke="#E6A85C"
-            strokeWidth={2.5}
-            fill="url(#growthNew)"
-            name="New Customers"
-            animationDuration={1200}
+          {/* New Customers Bar */}
+          <Bar 
+            dataKey="newCustomers" 
+            name="New Customers" 
+            radius={[6, 6, 0, 0]} 
+            fill="#E6A85C" 
           />
 
-          {/* Returning Customers Line */}
-          <Area
-            type="monotone"
-            dataKey="returningCustomers"
-            stroke="#E85A9B"
-            strokeWidth={2.5}
-            fill="url(#growthReturning)"
-            name="Returning Customers"
-            animationDuration={1500}
+          {/* Returning Customers Bar */}
+          <Bar 
+            dataKey="returningCustomers" 
+            name="Returning Customers" 
+            radius={[6, 6, 0, 0]} 
+            fill="#E85A9B" 
           />
-        </AreaChart>
+        </BarChart>
       </ResponsiveContainer>
     </div>
   </div>
