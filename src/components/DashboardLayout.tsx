@@ -216,7 +216,7 @@ export default function DashboardLayout() {
                 <img 
                   src="/SwooshLogo.svg" 
                   alt="Swoosh Logo" 
-                  className="h-12 w-12 object-contain" 
+                  className="h-16 w-16 object-contain" 
                 />
               </div>
             ) : (
