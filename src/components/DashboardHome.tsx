@@ -233,7 +233,7 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
         <LoyaltyROIDashboard timeRange={timeRange} />
       ) : (
         <>
-{/* Clean Modern Stats Grid */}
+{/* Elevated Glassmorphic Stats Grid */}
 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
   {stats.map((stat) => {
     const Icon = iconMap[stat.name as keyof typeof iconMap] || Users;
@@ -242,20 +242,26 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
     return (
       <div
         key={stat.name}
-        className="bg-white rounded-2xl p-6 border border-gray-100 flex flex-col justify-between"
+        className="relative rounded-2xl bg-white/60 backdrop-blur-xl border border-white/40 
+                   p-6 flex flex-col justify-between overflow-hidden
+                   transition-all duration-300 group"
       >
-        <div className="flex items-center justify-between mb-4">
-          {/* Gradient bubble (brand accent) */}
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#E6A85C]/20 via-[#E85A9B]/20 to-[#D946EF]/20 flex items-center justify-center text-[#E85A9B]">
+        {/* Glow ring on hover */}
+        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#E6A85C]/20 via-[#E85A9B]/20 to-[#D946EF]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+        <div className="relative flex items-start justify-between mb-4">
+          {/* Icon in glass bubble */}
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#E6A85C]/20 via-[#E85A9B]/20 to-[#D946EF]/20 
+                          flex items-center justify-center text-[#E85A9B] shadow-inner">
             <Icon className="h-5 w-5" />
           </div>
 
-          {/* Small trend pill */}
+          {/* Trend pill */}
           <span
-            className={`flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${
+            className={`flex items-center text-xs font-medium px-2 py-0.5 rounded-full backdrop-blur-md ${
               trendUp
-                ? 'bg-green-50 text-green-700'
-                : 'bg-red-50 text-red-700'
+                ? 'bg-green-100/60 text-green-700'
+                : 'bg-red-100/60 text-red-700'
             }`}
           >
             {stat.change}
@@ -268,9 +274,12 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
         </div>
 
         {/* Value + label */}
-        <div>
-          <p className="text-3xl font-semibold text-gray-900">{stat.value}</p>
-          <p className="text-sm text-gray-500 mt-1">{stat.name}</p>
+        <div className="relative">
+          {/* Gradient number text */}
+          <p className="text-3xl font-bold bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] bg-clip-text text-transparent">
+            {stat.value}
+          </p>
+          <p className="text-sm text-gray-600 mt-1">{stat.name}</p>
           {stat.description && (
             <p className="text-xs text-gray-400 mt-0.5">{stat.description}</p>
           )}
