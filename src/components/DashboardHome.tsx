@@ -233,7 +233,7 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
         <LoyaltyROIDashboard timeRange={timeRange} />
       ) : (
         <>
-{/* Enhanced Stats Grid */}
+{/* Minimal Elevated Stats Grid */}
 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
   {stats.map((stat, index) => {
     const Icon = iconMap[stat.name as keyof typeof iconMap] || Users;
@@ -242,36 +242,36 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
     return (
       <div
         key={stat.name}
-        className="relative rounded-3xl p-6 bg-gradient-to-br from-white to-gray-50 shadow-sm border border-gray-100 
-                   hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group"
+        className="relative rounded-3xl p-6 bg-gradient-to-br from-white to-gray-50 
+                   shadow-sm border border-gray-100 transition-all duration-300"
         style={{ animationDelay: `${index * 120}ms` }}
       >
-        {/* Decorative subtle gradient glow */}
-        <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-[#E6A85C]/5 via-[#E85A9B]/5 to-[#D946EF]/5 opacity-0 group-hover:opacity-100 blur-xl transition duration-500"></div>
+        {/* Subtle diagonal brand tint */}
+        <div className="absolute inset-0 rounded-3xl bg-gradient-to-tr from-[#E6A85C]/5 via-[#E85A9B]/5 to-[#D946EF]/5 pointer-events-none" />
 
         <div className="relative flex items-center gap-4">
-          {/* Icon bubble */}
+          {/* Icon bubble (soft gradient) */}
           <div className="flex items-center justify-center h-12 w-12 rounded-2xl 
-                          bg-gradient-to-br from-[#E6A85C]/20 via-[#E85A9B]/20 to-[#D946EF]/20 
-                          text-[#E85A9B] group-hover:from-[#E6A85C] group-hover:via-[#E85A9B] group-hover:to-[#D946EF] 
-                          group-hover:text-white shadow-inner transition-all duration-300">
+                          bg-gradient-to-br from-[#E6A85C]/15 via-[#E85A9B]/15 to-[#D946EF]/15 
+                          text-[#E85A9B] shadow-inner">
             <Icon className="h-6 w-6" />
           </div>
 
           {/* Stat content */}
           <div className="flex-1">
-            <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">{stat.name}</p>
-            <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+            <p className="text-xs uppercase tracking-wide text-gray-400">{stat.name}</p>
+            <p className="text-3xl font-extrabold text-gray-900 leading-tight">{stat.value}</p>
           </div>
         </div>
 
-        {/* Trend pill */}
+        {/* Trend pill + description */}
         <div className="relative mt-3">
           <span
-            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium 
-              ${trendUp 
-                ? 'bg-green-50 text-green-700' 
-                : 'bg-red-50 text-red-700'}`}
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${
+              trendUp 
+                ? 'text-green-700 border-green-200 bg-green-50' 
+                : 'text-red-700 border-red-200 bg-red-50'
+            }`}
           >
             {stat.change}
             {trendUp ? (
@@ -280,7 +280,9 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
               <ArrowDownRight className="h-3 w-3 ml-1" />
             )}
           </span>
-          <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
+          {stat.description && (
+            <p className="text-xs text-gray-400 mt-1">{stat.description}</p>
+          )}
         </div>
       </div>
     );
