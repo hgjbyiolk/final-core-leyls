@@ -214,51 +214,45 @@ export default function DashboardLayout() {
       >
         <div className="flex flex-col flex-grow bg-white border-r border-gray-200 shadow-sm rounded-r-3xl m-2 mr-0">
           {/* Header */}
-         {/* Header */}
-<div
-  className={`flex items-center border-b border-gray-100 rounded-tr-3xl relative ${
-    sidebarCollapsed ? 'justify-center px-0 py-3' : 'justify-between px-4 py-4'
-  }`}
->
-  {sidebarCollapsed ? (
-    <div className="flex flex-1 items-center justify-center">
-      <img
-        src="/SwooshLogo.svg"
-        alt="Swoosh Logo"
-        className="h-12 w-12 object-contain"  // smaller, neat size
-      />
-    </div>
-  ) : (
-    <>
-      <div className="flex items-center space-x-3">
-        <img
-          src="/leyls-svg.svg"
-          alt="Leyls"
-          className="h-10 w-auto object-contain"
-        />
-      </div>
-      <button
-        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-        className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors ml-auto"
-      >
-        <ChevronLeft className="w-5 h-5" />
-      </button>
-    </>
-  )}
+          <div
+            className={`flex items-center border-b border-gray-100 rounded-tr-3xl relative ${
+              sidebarCollapsed ? 'justify-center px-0' : 'justify-between px-4'
+            }`}
+            style={{ minHeight: '6rem' }}
+          >
+            {sidebarCollapsed ? (
+              <div className="flex-1 flex items-center justify-center">
+                <img src="/SwooshLogo.svg" alt="Swoosh Logo" className="h-24 w-24 object-contain" />
+              </div>
+            ) : (
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center space-x-3">
+                  <img src="/leyls-svg.svg" alt="Leyls" className="h-10 w-auto object-contain" />
+                </div>
 
-  {/* Collapse button when collapsed */}
-  {sidebarCollapsed && (
-    <div className="absolute -right-3 top-1/2 transform -translate-y-1/2">
-      <button
-        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-        className="p-2 bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 rounded-full shadow-sm transition-colors"
-      >
-        <ChevronRight className="w-4 h-4" />
-      </button>
-    </div>
-  )}
-</div>
+                <div className="ml-auto">
+                  <button
+                    onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            )}
 
+            {/* Collapse toggle (when collapsed) - absolute so it sits overlapping the right edge */}
+            {sidebarCollapsed && (
+              <div className="absolute -right-3 top-1/2 transform -translate-y-1/2">
+                <button
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  className="p-2 bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 rounded-full shadow-sm transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div> 
 
           {/* Nav */}
           <nav className="flex-1 px-4 py-4 space-y-2">
