@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { SubscriptionService } from '../services/subscriptionService';
 import { useAuth } from '../contexts/AuthContext';
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   Home, Users, Gift, Settings, LogOut, Menu, X, ChefHat, MapPin, 
   Headphones as HeadphonesIcon, Wallet, BarChart3, Crown, Clock, 
-  ArrowRight, CreditCard, ChevronLeft, ChevronRight 
+  ArrowRight, CreditCard, ChevronLeft, ChevronRight, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip
 } from 'lucide-react';
 
 export default function DashboardLayout() {
@@ -18,6 +19,25 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth(); 
+  const [selectedStat, setSelectedStat] = useState(null);
+const [flash, setFlash] = useState<string | null>(null);
+  const stats = [
+  { 
+    name: "Customers", 
+    value: "1,230", 
+    change: "+12%", 
+    trend: "up", 
+    description: "vs last month",
+    history: [
+      { month: "Jan", value: 900 },
+      { month: "Feb", value: 1100 },
+      { month: "Mar", value: 1230 }
+    ]
+  },
+  ...
+]
+
+
 
   React.useEffect(() => {
     if (user) {
