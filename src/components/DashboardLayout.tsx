@@ -208,17 +208,19 @@ export default function DashboardLayout() {
         sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'
       }`}>
         <div className="flex flex-col flex-grow bg-white border-r border-gray-200 shadow-sm rounded-r-3xl m-2 mr-0">
-          <div className={`flex h-16 items-center border-b border-gray-100 rounded-tr-3xl relative ${
-            sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-4'
-          }`}>
-            {sidebarCollapsed ? (
-              <div className="flex items-center justify-center">
-                <img 
-                  src="/SwooshLogo.svg" 
-                  alt="Swoosh Logo" 
-                  className="h-16 w-16 object-contain" 
-                />
-              </div>
+          <div
+  className={`flex items-center border-b border-gray-100 rounded-tr-3xl relative ${
+    sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-4'
+  }`}
+>
+  {sidebarCollapsed ? (
+    <div className="flex items-center justify-center">
+      <img
+        src="/SwooshLogo.svg"
+        alt="Swoosh Logo"
+        className="h-24 w-24 object-contain"
+      />
+    </div>
             ) : (
               <>
                 <div className="flex items-center space-x-3">
