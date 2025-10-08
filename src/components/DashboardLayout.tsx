@@ -17,7 +17,7 @@ export default function DashboardLayout() {
   const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, signOut } = useAuth(); 
 
   React.useEffect(() => {
     if (user) {
