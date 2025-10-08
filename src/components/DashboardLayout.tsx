@@ -451,9 +451,9 @@ export default function DashboardLayout() {
       <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-24' : 'lg:pl-64'}`}>
         {/* Top bar */}
  {/* Top bar */}
-<div className="sticky top-0 z-40 mx-4 mt-2 flex h-16 items-center gap-x-4 
-  border border-gray-300 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 
-  rounded-2xl">
+<div className="sticky top-0 z-40 flex h-16 items-center gap-x-4 
+  border-b border-gray-300 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 
+  rounded-b-3xl">
   
   <button
     type="button"
