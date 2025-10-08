@@ -1,17 +1,115 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
-import { SubscriptionService } from '../services/subscriptionService';
 import { useAuth } from '../contexts/AuthContext';
 import { Home, Users, Gift, Settings, LogOut, Menu, X, ChefHat, MapPin, Headphones as HeadphonesIcon, Wallet, BarChart3, Crown, Clock, ArrowRight, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [subscriptionData, setSubscriptionData] = useState<any>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
+  const [lastSubscriptionCheck, setLastSubscriptionCheck] = useState<number>(0);
+  const [showUpgradeSuccess, setShowUpgradeSuccess] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, signOut } = useAuth();
 
-  const subscriptionData = SubscriptionService.getSubscriptionData();
+  React.useEffect(() => {
+    if (user) {
+      checkSubscription();
+    }
+  }, [user]);
+
+  // Listen for subscription updates from payments
+  React.useEffect(() => {
+    const handleSubscriptionUpdate = () => {
+      console.log('🔄 Subscription update event received, refreshing...');
+      checkSubscription(true);
+      setShowUpgradeSuccess(true);
+      setTimeout(() => setShowUpgradeSuccess(false), 5000);
+    };
+
+    window.addEventListener('subscription-updated', handleSubscriptionUpdate);
+    return () => window.removeEventListener('subscription-updated', handleSubscriptionUpdate);
+  }, []);
+
+  // Check for payment success in URL and refresh subscription
+  React.useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('payment') === 'success') {
+      console.log('🎉 Payment success detected, refreshing subscription...');
+      
+      // Clean up URL immediately to prevent re-triggering
+      window.history.replaceState({}, '', window.location.pathname);
+      
+      // Trigger immediate subscription refresh and set up polling
+      checkSubscription(true);
+      
+      // Set up polling to check for subscription updates
+      let pollCount = 0;
+      const maxPolls = 20; // Poll for up to 2 minutes
+      const pollInterval = setInterval(() => {
+        pollCount++;
+        console.log(`🔄 Polling for subscription update (${pollCount}/${maxPolls})`);
+        checkSubscription(true);
+        
+        if (pollCount >= maxPolls) {
+          clearInterval(pollInterval);
+          console.log('⏰ Stopped polling for subscription updates');
+        }
+      }, 6000); // Poll every 6 seconds
+      
+      // Also trigger the subscription update event
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('subscription-updated'));
+      }, 1000);
+      
+      // Clean up polling when component unmounts
+      return () => {
+        if (pollInterval) {
+          clearInterval(pollInterval);
+        }
+      };
+    }
+  }, []);
+
+  const checkSubscription = async (forceRefresh: boolean = false) => {
+    if (!user) return;
+
+    // Check if we should use cached subscription data (15 minute cache)
+    const now = Date.now();
+    const SUBSCRIPTION_CACHE_DURATION = 5 * 1000; // Reduced to 5 seconds for immediate payment updates
+    
+    if (!forceRefresh && subscriptionData && (now - lastSubscriptionCheck) < SUBSCRIPTION_CACHE_DURATION) {
+      console.log('📊 Using cached subscription data');
+      return;
+    }
+
+    try {
+      setSubscriptionLoading(true);
+      console.log('🔄 Fetching fresh subscription data...', forceRefresh ? '(forced)' : '(cache expired)');
+      
+      // Import SubscriptionService dynamically to avoid import issues
+      const { SubscriptionService } = await import('../services/subscriptionService');
+      const data = await SubscriptionService.checkSubscriptionAccess(user.id);
+      
+      console.log('📊 Subscription data loaded:', {
+        hasAccess: data.hasAccess,
+        planType: data.subscription?.plan_type,
+        status: data.subscription?.status,
+        daysRemaining: data.daysRemaining,
+        billingPeriodText: data.billingPeriodText,
+        billingPeriodAccurate: data.billingPeriodAccurate
+      });
+      
+      setSubscriptionData(data);
+      setLastSubscriptionCheck(now);
+    } catch (error) {
+      console.error('Error checking subscription:', error);
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
@@ -237,7 +335,7 @@ export default function DashboardLayout() {
                   </div>
                   <div className="absolute left-full ml-3 top-1/2 transform -translate-y-1/2 bg-gray-900 text-white px-3 py-2 rounded-xl text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 shadow-lg">
                     {user?.email}
-                  </div>
+                  <img src="/swoosh-logo.svg" alt="Leyls" className="h-12 w-12 object-contain" />
                 </div>
               ) : (
                 <>
@@ -386,4 +484,3 @@ export default function DashboardLayout() {
       </div>
     </div>
   );
-}
