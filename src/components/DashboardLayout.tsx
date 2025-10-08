@@ -3,7 +3,8 @@ import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { SubscriptionService } from '../services/subscriptionService';
 import { useAuth } from '../contexts/AuthContext';
 import { Home, Users, Gift, Settings, LogOut, Menu, X, ChefHat, MapPin, Headphones as HeadphonesIcon, Wallet, BarChart3, Crown, Clock, ArrowRight, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react';
- 
+import SwooshLogo from './SwooshLogo.svg';
+
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
