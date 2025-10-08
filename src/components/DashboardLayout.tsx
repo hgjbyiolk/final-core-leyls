@@ -214,11 +214,11 @@ export default function DashboardLayout() {
   }`}
 >
   {sidebarCollapsed ? (
-    <div className="flex items-center justify-center">
+    <div className="flex flex-1 items-center justify-center">
       <img
         src="/SwooshLogo.svg"
         alt="Swoosh Logo"
-        className="h-24 w-24 object-contain"
+        className="h-32 w-32 object-contain"
       />
     </div>
             ) : (
