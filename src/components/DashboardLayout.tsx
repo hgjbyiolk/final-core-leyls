@@ -202,49 +202,39 @@ export default function DashboardLayout() {
           </div>
         </div>
       </div>
-{/* Desktop sidebar */}
-<div
-  className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 ${
-    sidebarCollapsed ? 'lg:w-28' : 'lg:w-64'
+
+      {/* Desktop sidebar */}
+      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 ${
+        sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'
+      }`}>
+        <div className="flex flex-col flex-grow bg-white border-r border-gray-200 shadow-sm rounded-r-3xl m-2 mr-0">
+          <div
+  className={`flex items-center border-b border-gray-100 rounded-tr-3xl relative ${
+    sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-4'
   }`}
 >
-  <div className="flex flex-col flex-grow bg-white border-r border-gray-200 shadow-sm rounded-r-3xl m-2 mr-0">
-    <div
-      className={`flex items-center border-b border-gray-100 rounded-tr-3xl relative ${
-        sidebarCollapsed ? 'justify-center px-0' : 'justify-between px-4'
-      }`}
-      style={{ minHeight: '6rem' }}
-    >
-      {sidebarCollapsed ? (
-        <div className="flex flex-1 items-center justify-center">
-          <img
-            src="/SwooshLogo.svg"
-            alt="Swoosh Logo"
-            className="h-24 w-24 object-contain"
-          />
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center space-x-3">
-            <img
-              src="/leyls-svg.svg"
-              alt="Leyls"
-              className="h-10 w-auto object-contain"
-            />
-          </div>
-          {/* Collapse button positioned at the right when expanded */}
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors ml-auto"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-        </>
-      )}
+  {sidebarCollapsed ? (
+    <div className="flex flex-1 items-center justify-center">
+      <img
+        src="/SwooshLogo.svg"
+        alt="Swoosh Logo"
+        className="h-32 w-32 object-contain"
+      />
     </div>
-  </div>
-</div>
-
+            ) : (
+              <>
+                <div className="flex items-center space-x-3">
+                  <img src="/leyls-svg.svg" alt="Leyls" className="h-10 w-auto object-contain" />
+                </div>
+                {/* Collapse button positioned at the right when expanded */}
+                <button
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors ml-auto"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+              </>
+            )} 
             
             {/* Collapse button positioned below logo when collapsed */}
             {sidebarCollapsed && (
