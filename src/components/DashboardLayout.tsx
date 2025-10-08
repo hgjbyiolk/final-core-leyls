@@ -152,143 +152,119 @@ export default function DashboardLayout() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-{/* Mobile sidebar */}
-<div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
-  <div
-    className="fixed inset-0 bg-gray-600 bg-opacity-75"
-    onClick={() => setSidebarOpen(false)}
-  />
-  <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white shadow-xl rounded-r-3xl">
-    <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200 rounded-tr-3xl">
-      <div className="flex items-center space-x-3">
-        <img src="/leyls-svg.svg" alt="Leyls" className="h-8 w-auto object-contain" />
-      </div>
-      <button
-        onClick={() => setSidebarOpen(false)}
-        className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-xl transition-colors"
-      >
-        <X className="w-6 h-6" />
-      </button>
-    </div>
-
-    <nav className="flex-1 px-4 py-4 space-y-2">
-      {navigation.map((item) => {
-        const Icon = item.icon;
-        return (
-          <button
-            key={item.name}
-            onClick={() => {
-              navigate(item.href);
-              setSidebarOpen(false);
-            }}
-            className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-colors ${
-              isActive(item.href)
-                ? 'bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] text-white shadow-lg'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            <Icon className="w-6 h-6 mr-3" />
-            {item.name}
-          </button>
-        );
-      })}
-    </nav>
-
-    <div className="p-4 border-t border-gray-200 rounded-br-3xl">
-      <button
-        onClick={handleSignOut}
-        className="w-full flex items-center px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-      >
-        <LogOut className="w-6 h-6 mr-3" />
-        Sign Out
-      </button>
-    </div>
-  </div>
-</div>
-
-{/* Desktop sidebar */}
-<div
-  className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 ${
-    sidebarCollapsed ? 'lg:w-28' : 'lg:w-64'
-  }`}
->
-  <div className="flex flex-col flex-grow bg-white border-r border-gray-200 shadow-sm rounded-r-3xl m-2 mr-0">
-    {/* Header */}
-    <div
-      className={`flex items-center border-b border-gray-100 rounded-tr-3xl relative ${
-        sidebarCollapsed ? 'justify-center px-0' : 'justify-between px-4'
-      }`}
-      style={{ minHeight: '6rem' }}
-    >
-      {sidebarCollapsed ? (
-        <div className="flex flex-1 items-center justify-center">
-          <img
-            src="/SwooshLogo.svg"
-            alt="Swoosh Logo"
-            className="h-24 w-24 object-contain"
-          />
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center space-x-3">
-            <img
-              src="/leyls-svg.svg"
-              alt="Leyls"
-              className="h-10 w-auto object-contain"
-            />
-          </div>
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors ml-auto"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-        </>
-      )}
-
-      {/* Collapse button when collapsed */}
-      {sidebarCollapsed && (
-        <div className="absolute -right-3 top-1/2 transform -translate-y-1/2">
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="p-2 bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 rounded-full shadow-sm transition-colors"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-    </div>
-
-    {/* Nav */}
-    <nav className="flex-1 px-4 py-4 space-y-2">
-      {navigation.map((item) => {
-        const Icon = item.icon;
-        return (
-          <div key={item.name} className="relative group">
+      {/* Mobile sidebar */}
+      <div className={`fixed inset-0 z-50 lg:hidden ${sidebarOpen ? 'block' : 'hidden'}`}>
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white shadow-xl rounded-r-3xl">
+          <div className="flex h-16 items-center justify-between px-4 border-b border-gray-200 rounded-tr-3xl">
+            <div className="flex items-center space-x-3">
+              <img src="/leyls-svg.svg" alt="Leyls" className="h-8 w-auto object-contain" />
+            </div>
             <button
-              onClick={() => navigate(item.href)}
-              className={`w-full flex items-center ${
-                sidebarCollapsed ? 'justify-center px-3 py-4' : 'px-4 py-3'
-              } text-sm font-medium rounded-xl transition-all duration-200 ${
-                isActive(item.href)
-                  ? 'bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] text-white shadow-lg'
-                  : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <Icon
-                className={`${
-                  sidebarCollapsed ? 'w-7 h-7' : 'w-6 h-6 mr-3'
-                }`}
-              />
-              {!sidebarCollapsed && item.name}
+              onClick={() => setSidebarOpen(false)}
+              className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-xl transition-colors"
+            > 
+              <X className="w-6 h-6" />
             </button>
           </div>
-        );
-      })}
-    </nav>
-  </div>
-</div>
+          
+          <nav className="flex-1 px-4 py-4 space-y-2">
+            {navigation.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => {
+                    navigate(item.href);
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-colors ${
+                    isActive(item.href)
+                      ? 'bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] text-white shadow-lg'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Icon className="w-6 h-6 mr-3" />
+                  {item.name}
+                </button>
+              );
+            })}
+          </nav>
+          
+          <div className="p-4 border-t border-gray-200 rounded-br-3xl">
+            <button
+              onClick={handleSignOut}
+              className="w-full flex items-center px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+            >
+              <LogOut className="w-6 h-6 mr-3" />
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </div>
 
+      {/* Desktop sidebar */}
+      <div className={`hidden lg:fixed lg:inset-y-0 lg:flex lg:flex-col transition-all duration-300 ${
+        sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'
+      }`}>
+        <div className="flex flex-col flex-grow bg-white border-r border-gray-200 shadow-sm rounded-r-3xl m-2 mr-0">
+          <div
+  className={`flex items-center border-b border-gray-100 rounded-tr-3xl relative ${
+    sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-4'
+  }`}
+>
+  {sidebarCollapsed ? (
+    <div className="flex flex-1 items-center justify-center">
+      <img
+        src="/SwooshLogo.svg"
+        alt="Swoosh Logo"
+        className="h-32 w-32 object-contain"
+      />
+    </div>
+            ) : (
+              <>
+                <div className="flex items-center space-x-3">
+                  <img src="/leyls-svg.svg" alt="Leyls" className="h-10 w-auto object-contain" />
+                </div>
+                {/* Collapse button positioned at the right when expanded */}
+                <button
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors ml-auto"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+              </>
+            )} 
+            
+            {/* Collapse button positioned below logo when collapsed */}
+            {sidebarCollapsed && (
+              <div className="absolute -right-3 top-1/2 transform -translate-y-1/2">
+                <button
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  className="p-2 bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 rounded-full shadow-sm transition-colors"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+          
+          <nav className="flex-1 px-4 py-4 space-y-2">
+            {navigation.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.name} className="relative group">
+                  <button
+                    onClick={() => navigate(item.href)}
+                    className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center px-3 py-4' : 'px-4 py-3'} text-sm font-medium rounded-xl transition-all duration-200 ${
+                      isActive(item.href)
+                        ? 'bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] text-white shadow-lg'
+                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
+                  >
+                    <Icon className={`${sidebarCollapsed ? 'w-7 h-7' : 'w-6 h-6 mr-3'}`} />
+                    {!sidebarCollapsed && item.name}
+                  </button>
                   
                   {/* Tooltip for collapsed state */}
                   {sidebarCollapsed && (
