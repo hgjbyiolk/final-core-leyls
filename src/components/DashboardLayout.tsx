@@ -213,14 +213,14 @@ export default function DashboardLayout() {
       className={`flex items-center border-b border-gray-100 rounded-tr-3xl relative ${
         sidebarCollapsed ? 'justify-center px-0' : 'justify-between px-4'
       }`}
-      style={{ minHeight: '6rem' }} // makes header grow with logo
+      style={{ minHeight: '6rem' }}
     >
       {sidebarCollapsed ? (
         <div className="flex flex-1 items-center justify-center">
           <img
             src="/SwooshLogo.svg"
             alt="Swoosh Logo"
-            className="h-20 w-20 object-contain"
+            className="h-24 w-24 object-contain"
           />
         </div>
       ) : (
