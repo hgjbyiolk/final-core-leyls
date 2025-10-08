@@ -450,47 +450,52 @@ export default function DashboardLayout() {
       {/* Main content */}
       <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-24' : 'lg:pl-64'}`}>
         {/* Top bar */}
-        <div className="sticky top-0 z-40 flex h-16 items-center gap-x-4 border-b border-gray-200 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8">
-          <button
-            type="button"
-            className="-m-2.5 p-2.5 text-gray-700 lg:hidden hover:bg-gray-100 rounded-xl transition-colors"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-6 w-6" />
-          </button>
+ {/* Top bar */}
+<div className="sticky top-0 z-40 mx-4 mt-2 flex h-16 items-center gap-x-4 
+  border border-gray-300 bg-white px-4 shadow-sm sm:gap-x-6 sm:px-6 lg:px-8 
+  rounded-2xl">
+  
+  <button
+    type="button"
+    className="-m-2.5 p-2.5 text-gray-700 lg:hidden hover:bg-gray-100 rounded-xl transition-colors"
+    onClick={() => setSidebarOpen(true)}
+  >
+    <Menu className="h-6 w-6" />
+  </button>
 
-          <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-            <div className="flex flex-1"></div>
-            <div className="flex items-center gap-x-4 lg:gap-x-6">
-              {/* Subscription indicator for mobile */}
-              {subscriptionData?.subscription?.plan_type === 'trial' && 
-               subscriptionData?.daysRemaining !== undefined && 
-               subscriptionData?.daysRemaining <= 7 && (
-                <button
-                  onClick={() => navigate('/upgrade')}
-                  className="lg:hidden bg-yellow-100 text-yellow-800 px-3 py-2 rounded-full text-xs font-medium flex items-center gap-1 hover:bg-yellow-200 transition-colors"
-                >
-                  <Clock className="h-4 w-4" />
-                  {subscriptionData.daysRemaining}d left
-                </button>
-              )}
+  <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
+    <div className="flex flex-1"></div>
+    <div className="flex items-center gap-x-4 lg:gap-x-6">
+      {/* Subscription indicator for mobile */}
+      {subscriptionData?.subscription?.plan_type === 'trial' && 
+       subscriptionData?.daysRemaining !== undefined && 
+       subscriptionData?.daysRemaining <= 7 && (
+        <button
+          onClick={() => navigate('/upgrade')}
+          className="lg:hidden bg-yellow-100 text-yellow-800 px-3 py-2 rounded-full text-xs font-medium flex items-center gap-1 hover:bg-yellow-200 transition-colors"
+        >
+          <Clock className="h-4 w-4" />
+          {subscriptionData.daysRemaining}d left
+        </button>
+      )}
 
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">
-                    {user?.email?.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div className="hidden md:block">
-                  <p className="text-sm font-medium text-gray-900">
-                    {user?.email}
-                  </p>
-                  <p className="text-xs text-gray-500">Restaurant Owner</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div> 
+      <div className="flex items-center space-x-3">
+        <div className="w-10 h-10 bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] rounded-full flex items-center justify-center">
+          <span className="text-white text-sm font-medium">
+            {user?.email?.charAt(0).toUpperCase()}
+          </span>
+        </div>
+        <div className="hidden md:block">
+          <p className="text-sm font-medium text-gray-900">
+            {user?.email}
+          </p>
+          <p className="text-xs text-gray-500">Restaurant Owner</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 
         {/* Page content */}
         <main className="py-6">
