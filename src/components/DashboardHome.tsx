@@ -233,7 +233,7 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
         <LoyaltyROIDashboard timeRange={timeRange} />
       ) : (
         <>
-{/* Minimal Modern Stats Grid */}
+{/* Clean Modern Stats Grid */}
 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
   {stats.map((stat) => {
     const Icon = iconMap[stat.name as keyof typeof iconMap] || Users;
@@ -242,17 +242,20 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
     return (
       <div
         key={stat.name}
-        className="bg-white rounded-2xl border border-gray-200 p-6 flex flex-col justify-between"
+        className="bg-white rounded-2xl p-6 border border-gray-100 flex flex-col justify-between"
       >
-        <div className="flex items-center justify-between mb-3">
-          {/* Icon bubble - small + neutral */}
-          <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-gray-50 text-gray-400">
+        <div className="flex items-center justify-between mb-4">
+          {/* Gradient bubble (brand accent) */}
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#E6A85C]/20 via-[#E85A9B]/20 to-[#D946EF]/20 flex items-center justify-center text-[#E85A9B]">
             <Icon className="h-5 w-5" />
           </div>
-          {/* Trend inline badge */}
+
+          {/* Small trend pill */}
           <span
             className={`flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${
-              trendUp ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+              trendUp
+                ? 'bg-green-50 text-green-700'
+                : 'bg-red-50 text-red-700'
             }`}
           >
             {stat.change}
@@ -264,7 +267,7 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
           </span>
         </div>
 
-        {/* Main value + label */}
+        {/* Value + label */}
         <div>
           <p className="text-3xl font-semibold text-gray-900">{stat.value}</p>
           <p className="text-sm text-gray-500 mt-1">{stat.name}</p>
