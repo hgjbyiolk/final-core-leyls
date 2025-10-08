@@ -233,36 +233,45 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
         <LoyaltyROIDashboard timeRange={timeRange} />
       ) : (
         <>
-{/* Elevated Glassmorphic Stats Grid */}
+{/* Enhanced Stats Grid */}
 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-  {stats.map((stat) => {
+  {stats.map((stat, index) => {
     const Icon = iconMap[stat.name as keyof typeof iconMap] || Users;
     const trendUp = stat.trend === 'up';
 
     return (
       <div
         key={stat.name}
-        className="relative rounded-2xl bg-white/60 backdrop-blur-xl border border-white/40 
-                   p-6 flex flex-col justify-between overflow-hidden
-                   transition-all duration-300 group"
+        className="relative rounded-3xl p-6 bg-gradient-to-br from-white to-gray-50 shadow-sm border border-gray-100 
+                   hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group"
+        style={{ animationDelay: `${index * 120}ms` }}
       >
-        {/* Glow ring on hover */}
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#E6A85C]/20 via-[#E85A9B]/20 to-[#D946EF]/20 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        {/* Decorative subtle gradient glow */}
+        <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-[#E6A85C]/5 via-[#E85A9B]/5 to-[#D946EF]/5 opacity-0 group-hover:opacity-100 blur-xl transition duration-500"></div>
 
-        <div className="relative flex items-start justify-between mb-4">
-          {/* Icon in glass bubble */}
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#E6A85C]/20 via-[#E85A9B]/20 to-[#D946EF]/20 
-                          flex items-center justify-center text-[#E85A9B] shadow-inner">
-            <Icon className="h-5 w-5" />
+        <div className="relative flex items-center gap-4">
+          {/* Icon bubble */}
+          <div className="flex items-center justify-center h-12 w-12 rounded-2xl 
+                          bg-gradient-to-br from-[#E6A85C]/20 via-[#E85A9B]/20 to-[#D946EF]/20 
+                          text-[#E85A9B] group-hover:from-[#E6A85C] group-hover:via-[#E85A9B] group-hover:to-[#D946EF] 
+                          group-hover:text-white shadow-inner transition-all duration-300">
+            <Icon className="h-6 w-6" />
           </div>
 
-          {/* Trend pill */}
+          {/* Stat content */}
+          <div className="flex-1">
+            <p className="text-xs uppercase tracking-wide text-gray-500 mb-1">{stat.name}</p>
+            <p className="text-3xl font-bold text-gray-900">{stat.value}</p>
+          </div>
+        </div>
+
+        {/* Trend pill */}
+        <div className="relative mt-3">
           <span
-            className={`flex items-center text-xs font-medium px-2 py-0.5 rounded-full backdrop-blur-md ${
-              trendUp
-                ? 'bg-green-100/60 text-green-700'
-                : 'bg-red-100/60 text-red-700'
-            }`}
+            className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium 
+              ${trendUp 
+                ? 'bg-green-50 text-green-700' 
+                : 'bg-red-50 text-red-700'}`}
           >
             {stat.change}
             {trendUp ? (
@@ -271,18 +280,7 @@ const todayLabel = new Date().toLocaleDateString("en-US", { month: "short", day:
               <ArrowDownRight className="h-3 w-3 ml-1" />
             )}
           </span>
-        </div>
-
-        {/* Value + label */}
-        <div className="relative">
-          {/* Gradient number text */}
-          <p className="text-3xl font-bold bg-gradient-to-r from-[#E6A85C] via-[#E85A9B] to-[#D946EF] bg-clip-text text-transparent">
-            {stat.value}
-          </p>
-          <p className="text-sm text-gray-600 mt-1">{stat.name}</p>
-          {stat.description && (
-            <p className="text-xs text-gray-400 mt-0.5">{stat.description}</p>
-          )}
+          <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
         </div>
       </div>
     );
